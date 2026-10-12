@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Gestion de l'entretien">
+  <meta name="theme-color" content="#166534">
+  <title>Gestion de l'entretien</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪏</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    /* Filters row */
+    .filters-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-bottom: 1rem; }
+    .filters-row .form-group { margin-bottom: 0; min-width: 140px; }
+    .filters-row .form-check { display: flex; align-items: center; gap: 0.5rem; }
+
+    /* Table */
+    .table-container { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .data-table th, .data-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--theme-border); }
+    .data-table th { background: var(--theme-surface-alt); font-weight: 600; color: var(--theme-text-secondary); white-space: nowrap; }
+    .data-table tbody tr { cursor: pointer; transition: background 0.15s; }
+    .data-table tbody tr:hover { background: var(--theme-surface-alt); }
+
+    /* Status badges */
+    .status-active { background: #dcfce7; color: #166534; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; }
+    .status-archived { background: #f3f4f6; color: #6b7280; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; }
+
+    /* Modal detail sections */
+    .detail-section { margin-bottom: 1.5rem; }
+    .detail-section:last-child { margin-bottom: 0; }
+    .detail-section h4 { font-size: 0.8rem; font-weight: 600; color: var(--theme-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; }
+    .detail-item { font-size: 0.875rem; }
+    .detail-item strong { color: var(--theme-text-secondary); font-weight: 500; }
+    .detail-description { background: var(--theme-surface-alt); padding: 1rem; border-radius: var(--radius-md); white-space: pre-wrap; font-size: 0.875rem; }
+    .detail-photo { max-width: 100%; max-height: 300px; border-radius: var(--radius-md); border: 1px solid var(--theme-border); cursor: pointer; }
+
+    /* One job entry, in the detail view */
+    .entry-card { border: 1px solid var(--theme-border); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 0.75rem; background: var(--theme-surface-alt); }
+    .entry-card__title { font-weight: 600; margin-bottom: 0.4rem; }
+
+    /* Photo location links */
+    .photo-location { margin-top: 0.5rem; font-size: 0.8rem; }
+    .photo-location a { color: var(--theme-accent); margin-right: 1rem; }
+
+    /* Photo location modal (same styles as infraction-admin/signalisation-admin) - PhotoMapModal
+       (js/services/photo-map-modal.js) relies on this exact class set existing on the page. */
+    .detail-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+    .detail-modal.show { display: flex; }
+    .detail-modal__content { background: var(--theme-surface); border-radius: var(--radius-lg); max-width: 600px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
+    .detail-modal__header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--theme-border); }
+    .detail-modal__title { font-size: 1.125rem; font-weight: 600; }
+    .detail-modal__close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--theme-text-secondary); }
+    .detail-modal__body { padding: 1rem; overflow-y: auto; flex: 1; }
+    .detail-modal__footer { display: flex; gap: 1rem; justify-content: flex-end; padding: 1rem; border-top: 1px solid var(--theme-border); align-items: center; }
+
+    @media (max-width: 768px) {
+      .filters-row { flex-direction: column; align-items: stretch; }
+      .data-table { font-size: 0.8rem; }
+      .data-table th, .data-table td { padding: 0.5rem; }
+    }
+  </style>
+</head>
+<body data-theme="light" data-module="maintenance" data-nav="maintenance" data-page="maintenance-admin">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <!-- Loading -->
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <!-- Main Content -->
+  <main id="main-content" class="main" style="display: none;">
+    <div class="page-header"><div class="page-header__content"><h1 class="page-title">Gestion de l'entretien</h1><p class="page-subtitle">Consulter les rapports de travail des artisans de sentiers</p></div></div>
+
+    <section class="content-section">
+      <div class="section-card">
+        <div class="section-card__header">
+          <h2 class="section-card__title">📋 Liste des rapports</h2>
+        </div>
+        <div class="section-card__body">
+          <!-- Filters -->
+          <div class="filters-row">
+            <div class="form-group">
+              <label class="form-label" for="date-filter">Période</label>
+              <select class="form-select" id="date-filter" title="Selon la date du rapport">
+                <option value="all" selected>Toutes les saisons</option>
+                <option value="season" id="season-option">Saison en cours</option><!-- label filled with the dates -->
+                <option value="today">Aujourd'hui</option>
+                <option value="week">7 derniers jours</option>
+                <option value="month">30 derniers jours</option>
+                <option value="custom">Dates personnalisées</option>
+              </select>
+              <div id="custom-date-range" style="display:none; gap:0.5rem; align-items:center; margin-top:0.5rem;">
+                <input type="date" class="form-input" id="start-date" aria-label="Du">
+                <span>à</span>
+                <input type="date" class="form-input" id="end-date" aria-label="Au">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="sort-by">Trier par</label>
+              <select class="form-select" id="sort-by">
+                <option value="date">Date</option>
+                <option value="builder">Artisan responsable</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="filter-sector">Secteur</label>
+              <select class="form-select" id="filter-sector">
+                <option value="">Tous les secteurs</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="filter-trail">Piste / Sentier</label>
+              <select class="form-select" id="filter-trail">
+                <option value="">Toutes les pistes</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="filter-builder">Artisan</label>
+              <select class="form-select" id="filter-builder">
+                <option value="">Tous les artisans</option>
+              </select>
+            </div>
+            <div class="form-check" id="archived-box">
+              <input type="checkbox" id="show-archived">
+              <label for="show-archived">Afficher les archivées</label>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="print-sheet-btn" title="Fiche d'une page des travaux, avec le secteur, la piste et la période choisis, dans un nouvel onglet">🖨️ Fiche à imprimer</button>
+          </div>
+
+          <!-- Table -->
+          <div class="table-container">
+            <table class="data-table" id="logs-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Responsable</th>
+                  <th>Support</th>
+                  <th>Bénévoles</th>
+                  <th>Travaux</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody id="logs-tbody">
+                <tr><td colspan="6" style="text-align:center;">Chargement...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Detail Modal -->
+  <div class="modal" id="detail-modal">
+    <div class="modal__container" style="max-width: 700px;">
+      <div class="modal__header">
+        <h3 class="modal__title">Détails du rapport</h3>
+        <button class="modal__close" id="modal-close">&times;</button>
+      </div>
+      <div class="modal__body" id="modal-body">
+        <!-- Loaded dynamically -->
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn-warning" id="archive-btn">Archiver</button>
+        <button class="btn btn-secondary" id="close-btn">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+
+  <!-- Scripts -->
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/period-filter.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/photo-service.js"></script>
+  <script src="../js/services/map-service.js"></script>
+  <script src="../js/services/photo-map-modal.js"></script>
+  <script src="../js/services/sector-service.js"></script>
+  <script src="../js/services/weather-service.js"></script>
+  <script src="../js/services/weather-context.js"></script>
+
+  <script>
+    let logsData = [];
+    let showArchived = false;
+    let sortBy = 'date';
+    let currentLogId = null;
+    let sectors = []; // every sector (names), from Firestore (SectorService)
+    // Filters: options are built from what actually appears in logsData, not the full
+    // trail/sector/user catalog, so a choice always narrows the list to something non-empty.
+    let filterSector = '';
+    let filterTrail = '';
+    let filterBuilder = '';
+    let periodFilter = null;   // the Période controls (js/core/period-filter.js)
+    let isAdminUser = false;   // false = read-only history (list, filters, details, printable sheet)
+
+    // A trail identifies an entry by id when it has one, else by name (mirrors
+    // SectorService.readTrail's own id-or-name convention for legacy/free-text entries).
+    const entryTrailKey = entry => entry.trailId || ('name:' + (entry.trailName || ''));
+
+    // Logs store the sector id only. If the sectors cannot be loaded the page falls back to the id.
+    const sectorNameOf = (sectorId, fallback) => SectorService.nameOf(sectors, sectorId, fallback);
+
+    function initMaintenanceAdmin() {
+      checkAuthStatus({
+        requireAuth: true,
+        requiredPermission: 'allowMaintenance',
+        permissionDefault: false,
+        adminsAlways: true,   // the history is open to every admin and to everybody who has the Entretien app; only admins archive
+        onAuthenticated: async (userData) => {
+          isAdminUser = userData.role === 'admin' || userData.role === 'system_admin';
+          document.getElementById('archived-box').style.display = isAdminUser ? '' : 'none';
+          document.getElementById('archive-btn').style.display = isAdminUser ? '' : 'none';
+          bindEvents();
+          try {
+            sectors = await SectorService.loadAll();
+          } catch (e) {
+            console.error('Error loading sectors:', e);
+          }
+          loadLogs();
+        }
+      });
+    }
+
+    function bindEvents() {
+      document.getElementById('sort-by').addEventListener('change', (e) => {
+        sortBy = e.target.value;
+        renderLogs();
+      });
+
+      document.getElementById('filter-sector').addEventListener('change', (e) => {
+        filterSector = e.target.value;
+        updateTrailFilterOptions(); // the trail list narrows to this sector's trails
+        renderLogs();
+      });
+      document.getElementById('filter-trail').addEventListener('change', (e) => {
+        filterTrail = e.target.value;
+        renderLogs();
+      });
+      document.getElementById('filter-builder').addEventListener('change', (e) => {
+        filterBuilder = e.target.value;
+        renderLogs();
+      });
+
+      document.getElementById('show-archived').addEventListener('change', (e) => {
+        showArchived = e.target.checked;
+        loadLogs();
+      });
+
+      periodFilter = PeriodFilter.attach({
+        select: document.getElementById('date-filter'), custom: document.getElementById('custom-date-range'),
+        start: document.getElementById('start-date'), end: document.getElementById('end-date'),
+        seasonOption: document.getElementById('season-option'),
+        onChange: renderLogs
+      });
+      document.getElementById('print-sheet-btn').addEventListener('click', openPrintSheet);
+
+      // Modal
+      document.getElementById('modal-close').addEventListener('click', closeModal);
+      document.getElementById('close-btn').addEventListener('click', closeModal);
+      document.getElementById('archive-btn').addEventListener('click', toggleArchive);
+      document.getElementById('detail-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'detail-modal') closeModal();
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+    }
+
+    async function loadLogs() {
+      const tbody = document.getElementById('logs-tbody');
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Chargement...</td></tr>';
+
+      try {
+        let query = db.collection('maintenance_logs').orderBy('createdAt', 'desc');
+
+        if (!showArchived) {
+          query = query.where('archived', '==', false);
+        }
+
+        const snap = await query.get();
+        logsData = [];
+        snap.forEach(doc => {
+          const data = { id: doc.id, ...doc.data() };
+          // Every log is network:'bike' - shown regardless of the admin's currently selected
+          // network (unlike infraction/signalisation admin, there is no other network to filter out).
+          logsData.push(data);
+        });
+
+        updateFilterOptions();
+        renderLogs();
+      } catch (e) {
+        console.error('Error loading maintenance logs:', e);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--color-danger);">Erreur de chargement</td></tr>';
+      }
+    }
+
+    // Rebuilds the three filter dropdowns from what actually appears in logsData, keeping the
+    // current selection when it is still one of the options (otherwise resetting to "all").
+    function updateFilterOptions() {
+      const sectorIds = new Set();
+      const builders = new Map(); // id -> name
+      logsData.forEach(log => {
+        (log.entries || []).forEach(e => { if (e.sector) sectorIds.add(e.sector); });
+        if (log.builderId) builders.set(log.builderId, log.builderName || log.builderId);
+        (log.supportBuilderIds || []).forEach((id, i) => {
+          if (!builders.has(id)) builders.set(id, (log.supportBuilderNames || [])[i] || id);
+        });
+      });
+
+      const sectorSelect = document.getElementById('filter-sector');
+      const sectorOptions = Array.from(sectorIds, id => ({ id, name: sectorNameOf(id, id) }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+      sectorSelect.replaceChildren(new Option('Tous les secteurs', ''), ...sectorOptions.map(s => new Option(s.name, s.id)));
+      sectorSelect.value = sectorOptions.some(s => s.id === filterSector) ? filterSector : '';
+      filterSector = sectorSelect.value;
+
+      updateTrailFilterOptions();
+
+      const builderSelect = document.getElementById('filter-builder');
+      const builderOptions = Array.from(builders, ([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+      builderSelect.replaceChildren(new Option('Tous les artisans', ''), ...builderOptions.map(b => new Option(b.name, b.id)));
+      builderSelect.value = builderOptions.some(b => b.id === filterBuilder) ? filterBuilder : '';
+      filterBuilder = builderSelect.value;
+    }
+
+    // The trail dropdown narrows to filterSector's trails when one is chosen.
+    function updateTrailFilterOptions() {
+      const trailSelect = document.getElementById('filter-trail');
+      const trails = new Map(); // entryTrailKey -> name
+      logsData.forEach(log => {
+        (log.entries || []).forEach(e => {
+          if (filterSector && e.sector !== filterSector) return;
+          const key = entryTrailKey(e);
+          if (!trails.has(key)) trails.set(key, e.trailName || key);
+        });
+      });
+      const trailOptions = Array.from(trails, ([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+      trailSelect.replaceChildren(new Option('Toutes les pistes', ''), ...trailOptions.map(t => new Option(t.name, t.id)));
+      trailSelect.value = trailOptions.some(t => t.id === filterTrail) ? filterTrail : '';
+      filterTrail = trailSelect.value;
+    }
+
+    const logDate = log => log.date?.toDate?.() || log.createdAt?.toDate?.() || null;
+
+    // The one-page sheet of the works (maintenance-print.html), in a new tab, with the period, sector, trail and artisan chosen here
+    function printSheetUrl() {
+      const params = new URLSearchParams();
+      PeriodFilter.toParams(periodFilter ? periodFilter.state() : { value: 'all' }, params);
+      if (filterSector) params.set('sector', filterSector);
+      if (filterTrail) params.set('trail', filterTrail);
+      if (filterBuilder) params.set('builder', filterBuilder);
+      if (isAdminUser && showArchived) params.set('archived', '1');
+      return new URL('maintenance-print.html', location.href).href + '?' + params.toString();
+    }
+    function openPrintSheet() { window.open(printSheetUrl(), '_blank'); }
+
+    function renderLogs() {
+      const tbody = document.getElementById('logs-tbody');
+
+      let filtered = logsData;
+      if (filterSector) {
+        filtered = filtered.filter(log => (log.entries || []).some(e => e.sector === filterSector));
+      }
+      if (filterTrail) {
+        filtered = filtered.filter(log => (log.entries || []).some(e => entryTrailKey(e) === filterTrail));
+      }
+      if (filterBuilder) {
+        filtered = filtered.filter(log => log.builderId === filterBuilder || (log.supportBuilderIds || []).includes(filterBuilder));
+      }
+      // Période: judged on the day worked (js/core/period-filter.js)
+      const period = periodFilter ? periodFilter.state() : { value: 'all' };
+      filtered = filtered.filter(log => PeriodFilter.matches(logDate(log), period));
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Aucun rapport trouvé</td></tr>';
+        return;
+      }
+
+      let sorted = [...filtered];
+      if (sortBy === 'date') {
+        sorted.sort((a, b) => {
+          const dateA = a.date?.toDate?.() || a.createdAt?.toDate?.() || new Date(0);
+          const dateB = b.date?.toDate?.() || b.createdAt?.toDate?.() || new Date(0);
+          return dateB - dateA;
+        });
+      } else if (sortBy === 'builder') {
+        sorted.sort((a, b) => (a.builderName || '').localeCompare(b.builderName || '', 'fr'));
+      }
+
+      tbody.innerHTML = sorted.map(log => {
+        const date = log.date?.toDate?.() || log.createdAt?.toDate?.();
+        const dateStr = date ? date.toLocaleDateString('fr-CA') : '-';
+        const status = log.archived ? '<span class="status-archived">Archivée</span>' : '<span class="status-active">Active</span>';
+        const entryCount = (log.entries || []).length;
+
+        return `
+          <tr data-id="${log.id}">
+            <td>${dateStr}</td>
+            <td>${escapeHtml(log.builderName || '-')}</td>
+            <td>${escapeHtml((log.supportBuilderNames || []).join(', ') || '-')}</td>
+            <td>${(log.volunteerNames || []).length}</td>
+            <td>${entryCount}</td>
+            <td>${status}</td>
+          </tr>
+        `;
+      }).join('');
+
+      tbody.querySelectorAll('tr[data-id]').forEach(row => {
+        row.addEventListener('click', () => openDetail(row.dataset.id));
+      });
+    }
+
+    function entryHtml(entry, index, log) {
+      const trailLabel = entry.trailName || sectorNameOf(entry.sector, entry.sector) || '-';
+      const sectorLabel = sectorNameOf(entry.sector, '');
+
+      let photoHtml = '<p style="color:var(--theme-text-secondary);font-size:0.8rem;">Aucune photo</p>';
+      const photos = PhotoService.photosFrom({ photos: entry.photos });
+      if (photos.length > 0) {
+        photoHtml = '<div class="photo-gallery" style="display:flex;flex-wrap:wrap;gap:0.5rem;">';
+        photos.forEach((photo, idx) => {
+          const locationHtml = PhotoMapModal.locationLinks(photo, { collection: 'maintenance_logs', docId: log.id, record: log, onChanged: async () => { await loadLogs(); openDetail(log.id); } });
+          photoHtml += `<div class="photo-gallery-item" style="position:relative;">
+            <img src="${photo.url}" class="detail-photo" alt="Photo ${idx + 1}" onclick="window.open('${photo.url}', '_blank')" style="max-width:150px;max-height:150px;">
+            ${locationHtml}
+          </div>`;
+        });
+        photoHtml += '</div>';
+      }
+
+      return `
+        <div class="entry-card">
+          <div class="entry-card__title">Travail #${index + 1} — ${escapeHtml(trailLabel)}${sectorLabel ? ` (${escapeHtml(sectorLabel)})` : ''}</div>
+          <div class="detail-description" style="margin-bottom:0.5rem;">${escapeHtml(entry.jobText || '')}</div>
+          ${photoHtml}
+        </div>
+      `;
+    }
+
+    function openDetail(id) {
+      currentLogId = id;
+      const log = logsData.find(l => l.id === id);
+      if (!log) return;
+
+      const dateStr = log.date?.toDate?.()?.toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' }) || '-';
+      const createdStr = log.createdAt?.toDate?.()?.toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) || '-';
+      const modifiedStr = log.modifiedAt?.toDate?.()?.toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) || '';
+      const volunteers = (log.volunteerNames || []).join(', ') || 'Aucun';
+      const entries = log.entries || [];
+
+      const modalBody = document.getElementById('modal-body');
+      modalBody.innerHTML = `
+        <div class="detail-section">
+          <h4>Informations générales</h4>
+          <div class="detail-grid">
+            <div class="detail-item"><strong>Date:</strong> ${dateStr}</div>
+            <div class="detail-item"><strong>Responsable:</strong> ${escapeHtml(log.builderName || '-')}</div>
+            <div class="detail-item"><strong>Support:</strong> ${escapeHtml((log.supportBuilderNames || []).join(', ') || 'Aucun')}</div>
+            <div class="detail-item"><strong>Statut:</strong> ${log.archived ? 'Archivée' : 'Active'}</div>
+          </div>
+          <p style="font-size:0.75rem;color:var(--theme-text-secondary);margin-top:0.5rem;">
+            Créé le: ${createdStr}${modifiedStr ? ` • Modifié le: ${modifiedStr}` : ''}
+          </p>
+        </div>
+
+        <div class="detail-section">
+          <h4>Bénévoles présents</h4>
+          <div class="detail-item">${escapeHtml(volunteers)}</div>
+        </div>
+
+        <div class="detail-section">
+          <h4>Travaux effectués (${entries.length})</h4>
+          ${entries.map((entry, i) => entryHtml(entry, i, log)).join('') || '<p style="color:var(--theme-text-secondary);">Aucun travail enregistré</p>'}
+        </div>
+      `;
+
+      const worked = log.date?.toDate?.();
+      if (worked) WeatherContext.attach(modalBody, new Date(worked.getFullYear(), worked.getMonth(), worked.getDate(), 12), { reference: 'midi' });   // a day: the weather around noon
+
+      const archiveBtn = document.getElementById('archive-btn');
+      if (log.archived) {
+        archiveBtn.textContent = 'Désarchiver';
+        archiveBtn.classList.remove('btn-warning');
+        archiveBtn.classList.add('btn-secondary');
+      } else {
+        archiveBtn.textContent = 'Archiver';
+        archiveBtn.classList.remove('btn-secondary');
+        archiveBtn.classList.add('btn-warning');
+      }
+
+      document.getElementById('detail-modal').classList.add('is-active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('detail-modal').classList.remove('is-active');
+      document.body.style.overflow = '';
+      currentLogId = null;
+    }
+
+    async function toggleArchive() {
+      if (!currentLogId || !isAdminUser) return;   // the history is read-only for the others
+
+      const log = logsData.find(l => l.id === currentLogId);
+      if (!log) return;
+
+      const newStatus = !log.archived;
+
+      try {
+        await db.collection('maintenance_logs').doc(currentLogId).update({
+          archived: newStatus,
+          modifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        showToast(newStatus ? 'Rapport archivé' : 'Rapport désarchivé', 'success');
+        closeModal();
+        loadLogs();
+      } catch (e) {
+        console.error('Error archiving:', e);
+        showToast('Erreur lors de l\'archivage', 'error');
+      }
+    }
+
+    // escapeHtml and showToast are provided by utils.js
+    // PhotoMapModal (the location pop-up, with its map switch) lives in js/services/photo-map-modal.js
+
+    onFirebaseReady( initMaintenanceAdmin);
+  </script>
+</body>
+</html>

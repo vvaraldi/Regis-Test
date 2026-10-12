@@ -1,0 +1,75 @@
+/* ========================================
+   FOOTER.CSS - Footer Layout
+   ======================================== */
+
+/* ===== MAIN FOOTER ===== */
+.footer {
+  padding: var(--space-4) var(--space-6);
+  background-color: var(--theme-surface-alt);
+  border-top: var(--border-width) solid var(--theme-border);
+  color: var(--theme-text-light);
+  font-size: var(--text-sm);
+}
+
+.footer__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: var(--container-xl);
+  margin: 0 auto;
+}
+
+.footer__copyright {
+  color: var(--theme-text-light);
+}
+
+.footer__links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.footer__link {
+  color: var(--theme-text-light);
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+.footer__link:hover {
+  color: var(--theme-accent);
+}
+
+.footer__version {
+  color: var(--theme-text-lighter);
+  font-size: var(--text-xs);
+}
+
+/* ===== SIMPLE FOOTER ===== */
+.footer--simple {
+  text-align: center;
+}
+
+.footer--simple .footer__content {
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .footer {
+    padding: var(--space-4);
+  }
+  
+  .footer__content {
+    flex-direction: column;
+    gap: var(--space-3);
+    text-align: center;
+  }
+  
+  .footer__links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-3);
+  }
+}

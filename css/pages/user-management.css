@@ -1,0 +1,159 @@
+/* ========================================
+   USER-MANAGEMENT.CSS - User Management Page
+   ======================================== */
+
+/* ===== USER MANAGEMENT LAYOUT ===== */
+.user-management {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* ===== USER TABLE SECTION ===== */
+.user-table-section {
+  background-color: var(--theme-surface);
+  border: var(--border-width) solid var(--theme-border);
+  border-radius: var(--border-radius-xl);
+  overflow: hidden;
+}
+
+.user-table-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background-color: var(--theme-surface-alt);
+  border-bottom: var(--border-width) solid var(--theme-border);
+}
+
+.user-table-section__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--theme-text);
+  margin: 0;
+}
+
+.user-table-section__count {
+  font-size: var(--text-sm);
+  font-weight: var(--font-normal);
+  color: var(--theme-text-light);
+  margin-left: var(--space-2);
+}
+
+.user-table-section__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ===== USER TABLE ===== */
+/* User name cell - clickable */
+.user-table__name {
+  cursor: pointer;
+  color: var(--theme-accent);
+  font-weight: var(--font-medium);
+  transition: var(--transition-fast);
+}
+
+.user-table__name:hover {
+  color: var(--theme-accent-dark);
+  text-decoration: underline;
+}
+
+/* Access badges */
+.user-table__access {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.access-badge--active {
+  background-color: var(--color-success-light);
+  color: var(--color-success-dark);
+}
+
+.access-badge--inspection {
+  background-color: rgba(27, 75, 114, 0.15);
+  color: var(--color-inspection);
+}
+
+.access-badge--infraction {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: var(--color-infraction);
+}
+
+.access-badge--signalisation {
+  background-color: rgba(217, 119, 6, 0.15);
+  color: var(--color-signalisation);
+}
+
+/* Actions cell */
+.user-table__actions {
+  display: flex;
+  gap: var(--space-1);
+  justify-content: flex-end;
+}
+
+/* ===== EDIT USER MODAL ===== */
+.edit-user-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.edit-user-form__row {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.edit-user-form__access {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background-color: var(--theme-surface-alt);
+  border-radius: var(--border-radius-lg);
+}
+
+.edit-user-form__access-title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--theme-text);
+  margin-bottom: var(--space-2);
+}
+
+/* ===== BULK IMPORT SECTION ===== */
+.import-section {
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: var(--border-width) solid var(--theme-border);
+}
+
+.import-progress {
+  margin-top: var(--space-4);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+  .user-table-section__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 768px) {
+  .edit-user-form__row {
+    grid-template-columns: 1fr;
+  }
+  
+  .user-table__actions {
+    justify-content: center;
+    width: 100%;
+  }
+}

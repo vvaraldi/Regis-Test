@@ -1,0 +1,350 @@
+/* ========================================
+   MODULES.CSS - Module Accent Colors
+   ========================================
+   Defines accent colors for each application module.
+   Use data-module attribute on <body> to set.
+   
+   Example: <body data-theme="light" data-module="infraction">
+   ======================================== */
+
+/* ===== PORTAL MODULE (Default) ===== */
+[data-module="portal"],
+:root {
+  --theme-accent: var(--color-portal);
+  --theme-accent-light: var(--color-portal-light);
+  --theme-accent-dark: var(--color-portal-dark);
+  --theme-accent-rgb: var(--color-portal-rgb);
+  
+  /* Gradient for headers */
+  --theme-gradient: linear-gradient(135deg, var(--color-portal) 0%, var(--color-portal-dark) 100%);
+  --theme-header-from: var(--color-portal);
+  --theme-header-to: var(--color-portal-dark);
+  --theme-gradient-hover: linear-gradient(135deg, var(--color-portal-dark) 0%, var(--color-portal) 100%);
+}
+
+/* Portal header, bike network: same green as the bike background pattern, instead of the portal
+   blue - the portal has no app colour of its own, so it reflects the current activity. Apps keep
+   their own colour regardless of network (Infractions stays red, Signalisations amber, etc.). */
+[data-module="portal"][data-network="bike"] {
+  --theme-header-from: #3b8f5c;
+  --theme-header-to: #2f724a;
+}
+
+/* ===== INSPECTION MODULE ===== */
+[data-module="inspection"] {
+  --theme-accent: var(--color-inspection);
+  --theme-accent-light: var(--color-inspection-light);
+  --theme-accent-dark: var(--color-inspection-dark);
+  --theme-accent-rgb: var(--color-inspection-rgb);
+  
+  --theme-gradient: linear-gradient(135deg, var(--color-inspection) 0%, var(--color-inspection-dark) 100%);
+  
+  --theme-header-from: var(--color-inspection);
+  
+  --theme-header-to: var(--color-inspection-dark);
+  --theme-gradient-hover: linear-gradient(135deg, var(--color-inspection-dark) 0%, var(--color-inspection) 100%);
+}
+
+/* ===== INFRACTION MODULE ===== */
+[data-module="infraction"] {
+  --theme-accent: var(--color-infraction);
+  --theme-accent-light: var(--color-infraction-light);
+  --theme-accent-dark: var(--color-infraction-dark);
+  --theme-accent-rgb: var(--color-infraction-rgb);
+  
+  --theme-gradient: linear-gradient(135deg, var(--color-infraction) 0%, var(--color-infraction-dark) 100%);
+  
+  --theme-header-from: var(--color-infraction);
+  
+  --theme-header-to: var(--color-infraction-dark);
+  --theme-gradient-hover: linear-gradient(135deg, var(--color-infraction-dark) 0%, var(--color-infraction) 100%);
+}
+
+/* ===== SIGNALISATION MODULE ===== */
+[data-module="signalisation"] {
+  --theme-accent: var(--color-signalisation);
+  --theme-accent-light: var(--color-signalisation-light);
+  --theme-accent-dark: var(--color-signalisation-dark);
+  --theme-accent-rgb: var(--color-signalisation-rgb);
+  
+  --theme-gradient: linear-gradient(135deg, var(--color-signalisation) 0%, var(--color-signalisation-dark) 100%);
+  
+  --theme-header-from: var(--color-signalisation);
+  
+  --theme-header-to: var(--color-signalisation-dark);
+  --theme-gradient-hover: linear-gradient(135deg, var(--color-signalisation-dark) 0%, var(--color-signalisation) 100%);
+}
+
+/* ===== REQUEST/DEMANDES MODULE ===== */
+[data-module="request"] {
+  --theme-accent: var(--color-request);
+  --theme-accent-light: var(--color-request-light);
+  --theme-accent-dark: var(--color-request-dark);
+  --theme-accent-rgb: var(--color-request-rgb);
+  
+  --theme-gradient: linear-gradient(135deg, var(--color-request) 0%, var(--color-request-dark) 100%);
+  
+  --theme-header-from: var(--color-request);
+  
+  --theme-header-to: var(--color-request-dark);
+  --theme-gradient-hover: linear-gradient(135deg, var(--color-request-dark) 0%, var(--color-request) 100%);
+}
+
+/* ===== STATUS RANDONNÉE MODULE ===== */
+[data-module="status"] {
+  --theme-accent: var(--color-status);
+  --theme-accent-light: var(--color-status-light);
+  --theme-accent-dark: var(--color-status-dark);
+  --theme-accent-rgb: var(--color-status-rgb);
+  
+  --theme-gradient: linear-gradient(135deg, var(--color-status) 0%, var(--color-status-dark) 100%);
+  
+  --theme-header-from: var(--color-status);
+  
+  --theme-header-to: var(--color-status-dark);
+  --theme-gradient-hover: linear-gradient(135deg, var(--color-status-dark) 0%, var(--color-status) 100%);
+}
+
+/* ===== SUPPORT MODULE ===== */
+[data-module="support"] {
+  --theme-accent: var(--color-support);
+  --theme-accent-light: var(--color-support-light);
+  --theme-accent-dark: var(--color-support-dark);
+  --theme-accent-rgb: var(--color-support-rgb);
+  
+  --theme-gradient: linear-gradient(135deg, var(--color-support) 0%, var(--color-support-dark) 100%);
+  
+  --theme-header-from: var(--color-support);
+  
+  --theme-header-to: var(--color-support-dark);
+  --theme-gradient-hover: linear-gradient(135deg, var(--color-support-dark) 0%, var(--color-support) 100%);
+}
+
+/* ===== ADMINISTRATION MODULE ===== */
+[data-module="admin"] {
+  --theme-accent: var(--color-admin-module);
+  --theme-accent-light: var(--color-admin-module-light);
+  --theme-accent-dark: var(--color-admin-module-dark);
+  --theme-accent-rgb: var(--color-admin-module-rgb);
+  
+  --theme-gradient: linear-gradient(135deg, var(--color-admin-module) 0%, var(--color-admin-module-dark) 100%);
+  
+  --theme-header-from: var(--color-admin-module);
+  
+  --theme-header-to: var(--color-admin-module-dark);
+  --theme-gradient-hover: linear-gradient(135deg, var(--color-admin-module-dark) 0%, var(--color-admin-module) 100%);
+}
+
+/* ===== ENTRETIEN (MAINTENANCE) MODULE ===== */
+[data-module="maintenance"] {
+  --theme-accent: var(--color-maintenance);
+  --theme-accent-light: var(--color-maintenance-light);
+  --theme-accent-dark: var(--color-maintenance-dark);
+  --theme-accent-rgb: var(--color-maintenance-rgb);
+
+  --theme-gradient: linear-gradient(135deg, var(--color-maintenance) 0%, var(--color-maintenance-dark) 100%);
+
+  --theme-header-from: var(--color-maintenance);
+
+  --theme-header-to: var(--color-maintenance-dark);
+  --theme-gradient-hover: linear-gradient(135deg, var(--color-maintenance-dark) 0%, var(--color-maintenance) 100%);
+}
+
+/* ===== MÉTÉO (WEATHER) MODULE ===== */
+[data-module="meteo"] {
+  --theme-accent: var(--color-meteo);
+  --theme-accent-light: var(--color-meteo-light);
+  --theme-accent-dark: var(--color-meteo-dark);
+  --theme-accent-rgb: var(--color-meteo-rgb);
+
+  --theme-gradient: linear-gradient(135deg, var(--color-meteo) 0%, var(--color-meteo-dark) 100%);
+
+  --theme-header-from: var(--color-meteo);
+
+  --theme-header-to: var(--color-meteo-dark);
+  --theme-gradient-hover: linear-gradient(135deg, var(--color-meteo-dark) 0%, var(--color-meteo) 100%);
+}
+
+/* ===== INSPECTION RANDONNÉE MODULE ===== */
+[data-module="inspection-rando"] {
+  --theme-accent: var(--color-inspection-rando);
+  --theme-accent-light: var(--color-inspection-rando-light);
+  --theme-accent-dark: var(--color-inspection-rando-dark);
+  --theme-accent-rgb: var(--color-inspection-rando-rgb);
+  
+  --theme-gradient: linear-gradient(135deg, var(--color-inspection-rando) 0%, var(--color-inspection-rando-dark) 100%);
+  
+  --theme-header-from: var(--color-inspection-rando);
+  
+  --theme-header-to: var(--color-inspection-rando-dark);
+  --theme-gradient-hover: linear-gradient(135deg, var(--color-inspection-rando-dark) 0%, var(--color-inspection-rando) 100%);
+}
+
+/* ========================================
+   DARK MODE ADJUSTMENTS FOR MODULES
+   ======================================== 
+   Lighter accent colors for better contrast in dark mode
+   ======================================== */
+
+[data-theme="dark"][data-module="portal"],
+[data-theme="dark"][data-module="inspection"] {
+  --theme-accent: #60a5fa;
+  --theme-accent-light: #93c5fd;
+  --theme-accent-dark: #3b82f6;
+  --theme-accent-rgb: 96, 165, 250;
+  
+  --theme-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  
+  --theme-header-from: #3b82f6;
+  
+  --theme-header-to: #1d4ed8;
+}
+
+[data-theme="dark"][data-module="infraction"] {
+  --theme-accent: #f87171;
+  --theme-accent-light: #fca5a5;
+  --theme-accent-dark: #ef4444;
+  --theme-accent-rgb: 248, 113, 113;
+  
+  --theme-gradient: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+  
+  --theme-header-from: #ef4444;
+  
+  --theme-header-to: #b91c1c;
+}
+
+[data-theme="dark"][data-module="signalisation"] {
+  --theme-accent: #fbbf24;
+  --theme-accent-light: #fde68a;
+  --theme-accent-dark: #f59e0b;
+  --theme-accent-rgb: 251, 191, 36;
+  
+  --theme-gradient: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  
+  --theme-header-from: #f59e0b;
+  
+  --theme-header-to: #d97706;
+}
+
+[data-theme="dark"][data-module="request"] {
+  --theme-accent: #a78bfa;
+  --theme-accent-light: #c4b5fd;
+  --theme-accent-dark: #8b5cf6;
+  --theme-accent-rgb: 167, 139, 250;
+  
+  --theme-gradient: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+  
+  --theme-header-from: #8b5cf6;
+  
+  --theme-header-to: #6d28d9;
+}
+
+[data-theme="dark"][data-module="status"] {
+  --theme-accent: #4ade80;
+  --theme-accent-light: #86efac;
+  --theme-accent-dark: #22c55e;
+  --theme-accent-rgb: 74, 222, 128;
+  
+  --theme-gradient: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
+  
+  --theme-header-from: #22c55e;
+  
+  --theme-header-to: #15803d;
+}
+
+[data-theme="dark"][data-module="support"] {
+  --theme-accent: #38bdf8;
+  --theme-accent-light: #7dd3fc;
+  --theme-accent-dark: #0ea5e9;
+  --theme-accent-rgb: 56, 189, 248;
+  
+  --theme-gradient: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
+  
+  --theme-header-from: #0ea5e9;
+  
+  --theme-header-to: #0369a1;
+}
+
+[data-theme="dark"][data-module="admin"] {
+  --theme-accent: #c084fc;
+  --theme-accent-light: #d8b4fe;
+  --theme-accent-dark: #a855f7;
+  --theme-accent-rgb: 192, 132, 252;
+  
+  --theme-gradient: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);
+  
+  --theme-header-from: #a855f7;
+  
+  --theme-header-to: #7e22ce;
+}
+
+[data-theme="dark"][data-module="maintenance"] {
+  --theme-accent: #34d399;
+  --theme-accent-light: #6ee7b7;
+  --theme-accent-dark: #10b981;
+  --theme-accent-rgb: 52, 211, 153;
+
+  --theme-gradient: linear-gradient(135deg, #10b981 0%, #047857 100%);
+
+  --theme-header-from: #10b981;
+
+  --theme-header-to: #047857;
+}
+
+[data-theme="dark"][data-module="meteo"] {
+  --theme-accent: #facc15;
+  --theme-accent-light: #fde047;
+  --theme-accent-dark: #eab308;
+  --theme-accent-rgb: 250, 204, 21;
+
+  --theme-gradient: linear-gradient(135deg, #eab308 0%, #a16207 100%);
+
+  --theme-header-from: #eab308;
+
+  --theme-header-to: #a16207;
+}
+
+[data-theme="dark"][data-module="inspection-rando"] {
+  --theme-accent: #4ade80;
+  --theme-accent-light: #86efac;
+  --theme-accent-dark: #22c55e;
+  --theme-accent-rgb: 74, 222, 128;
+  
+  --theme-gradient: linear-gradient(135deg, #22c55e 0%, #166534 100%);
+  
+  --theme-header-from: #22c55e;
+  
+  --theme-header-to: #166534;
+}
+
+/* ========================================
+   MODULE-SPECIFIC VISUAL INDICATORS
+   ======================================== */
+
+/* Module badge in header (optional) */
+.module-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background-color: rgba(var(--theme-accent-rgb), 0.15);
+  color: var(--theme-accent);
+  border-radius: var(--border-radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+
+[data-theme="dark"] .module-badge {
+  background-color: rgba(var(--theme-accent-rgb), 0.25);
+}
+
+/* Module accent border for cards */
+.card--module-accent {
+  border-top: 3px solid var(--theme-accent);
+}
+
+/* Module accent background for section headers */
+.section-header--accent {
+  background: var(--theme-gradient);
+  color: var(--color-white);
+}

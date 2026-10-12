@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Statistiques et gestion des données de la météo">
+  <meta name="theme-color" content="#ca8a04">
+  <title>Administration de la météo</title>
+  <link rel="icon" id="page-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌦️</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/pages/data-admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body data-theme="light" data-module="meteo" data-nav="meteo" data-page="meteo-stats">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <main id="main-content" class="main" style="display: none;">
+    <div class="page-header"><div class="page-header__content"><h1 class="page-title"><span id="season-icon">🌦️</span> Administration de la météo</h1><p class="page-subtitle">Statistiques et gestion des données</p></div></div>
+    <!-- The switch for the weather shown in the reports (admins) -->
+    <section class="management-section" id="weather-settings" hidden>
+      <div class="management-section__title">⚙️ Météo dans les rapports</div>
+      <div class="management-section__desc">Quand c'est activé, la fiche d'un rapport (pages Gestion des Inspections, Infractions, Signalisations et Entretien) affiche le relevé météo le plus proche de l'heure du rapport, avec le jour et l'heure du relevé. Rien n'est copié dans le rapport. Désactiver réduit le nombre de lectures de la base de données (le changement peut prendre jusqu'à 10 minutes à atteindre les autres utilisateurs).</div>
+      <label class="form-check"><input type="checkbox" class="form-check-input" id="show-in-reports"> <span class="form-check-label">Afficher la météo dans les rapports</span></label>
+      <span id="show-in-reports-status" role="status" style="margin-left: 0.75rem; font-size: 0.875rem;"></span>
+    </section>
+    <div id="admin-root"></div>
+  </main>
+
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/weather-service.js"></script>
+  <script src="../js/services/weather-context.js"></script>
+  <script src="../js/admin/data-admin.js"></script>
+
+  <script>
+    // Météo, by season (the same seasons as the other apps: 1 Nov - 30 Apr, 1 May - 31 Oct). The readings belong to no
+    // single activity, so the season shown follows the activity chosen in the header. The page itself (tabs, season
+    // navigator, charts, delete tool) is data-admin.js; the numbers below only describe the weather.
+    const WS = WeatherService;
+    const MIDDAY_NOTE = 'un relevé par jour : le plus près de midi';
+    const MISSING_WINDOW = 20;          // days counted for "days without a reading" (ending yesterday)
+
+    let seasonRange = null;             // { start, end } of the season being shown
+    let lastDays = [];                  // the readings of the last 20 days (whatever the season shown)
+
+    const stamp = date => firebase.firestore.Timestamp.fromDate(date);
+    const toDate = value => (value && value.toDate ? value.toDate() : (value ? new Date(value) : null));
+    const dayLabel = key => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('fr-CA', { day: 'numeric', month: 'short' }); };
+    const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const num = n => String(Math.round(n * 10) / 10).replace('.', ',');
+
+    const daily = (recs, key) => WS.dailyValues(recs, key);
+    const values = (recs, key) => daily(recs, key).map(d => d.value);
+    const none = '—';
+
+    /** Days of the season so far (from its first day to today, or to its last day when it is over) */
+    function daysSoFar() {
+      if (!seasonRange) return 0;
+      const last = new Date(Math.min(seasonRange.end.getTime(), Date.now()));
+      return Math.max(0, Math.round((startOfDay(last) - startOfDay(seasonRange.start)) / 86400000) + 1);
+    }
+
+    function missingDays() {
+      const now = new Date();
+      return WS.missingDays(lastDays, new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1), MISSING_WINDOW);
+    }
+
+    const tally = (recs, keyOf) => {
+      const counts = new Map();
+      recs.forEach(r => { const key = keyOf(r); if (key) counts.set(key, (counts.get(key) || 0) + 1); });
+      return [...counts];
+    };
+
+    onFirebaseReady(() => {
+      document.getElementById('season-icon').textContent = Network.seasonIcon();
+      document.getElementById('page-icon').href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>${Network.seasonIcon()}</text></svg>`;
+
+      DataAdmin.init({
+        deniedUrl: 'meteo-report.html',
+
+        // The switch for the weather in reports. It must never stop the statistics from loading.
+        async onReady(userData) {
+          const box = document.getElementById('show-in-reports'), status = document.getElementById('show-in-reports-status');
+          try {
+            box.checked = await WeatherContext.readSetting(db);
+            document.getElementById('weather-settings').hidden = false;
+          } catch (error) {
+            console.error('Weather settings:', error);
+            document.getElementById('weather-settings').hidden = false;
+            box.disabled = true;
+            status.textContent = 'Réglage illisible (les règles Firebase à jour sont-elles publiées ?).';
+            return;
+          }
+          box.addEventListener('change', async () => {
+            const wanted = box.checked;
+            box.disabled = true;
+            status.textContent = 'Enregistrement…';
+            try {
+              await WeatherContext.saveSettings(db, firebase, { showInReports: wanted }, { uid: currentUser.uid, name: userData.name || '' });
+              status.textContent = wanted ? 'Enregistré : la météo s\'affiche dans les rapports.' : 'Enregistré : la météo ne s\'affiche plus dans les rapports.';
+            } catch (error) {
+              console.error('Saving the weather settings:', error);
+              box.checked = !wanted;
+              status.textContent = 'Erreur : le réglage n\'a pas été enregistré.';
+            } finally {
+              box.disabled = false;
+            }
+          });
+        },
+
+        async fetch({ start, end }) {
+          seasonRange = { start, end };
+          const today = startOfDay(new Date());
+          const recentFrom = new Date(today.getFullYear(), today.getMonth(), today.getDate() - MISSING_WINDOW);
+          const [season, recent] = await Promise.all([
+            WS.list(db, firebase, start, new Date(end.getTime() + 1)),
+            WS.list(db, firebase, recentFrom, today)
+          ]);
+          lastDays = recent;
+          return season.map(r => ({ ...r, date: toDate(r.recordedAt) }));
+        },
+
+        cards: [
+          { label: 'Relevés', value: r => r.length, sub: () => 'Saison affichée', highlight: true },
+          { label: 'Jours avec relevé', value: r => new Set(r.map(x => WS.dayKey(x.date))).size, sub: r => `sur ${daysSoFar()} jours de la saison` },
+          { label: 'Température moyenne', value: r => { const v = values(r, 'tempC'); return v.length ? num(v.reduce((a, b) => a + b, 0) / v.length) + ' °C' : none; }, sub: () => MIDDAY_NOTE },
+          { label: 'Jour le plus froid', value: r => { const v = daily(r, 'tempC'); return v.length ? num(Math.min(...v.map(d => d.value))) + ' °C' : none; },
+            sub: r => { const v = daily(r, 'tempC'); if (!v.length) return ''; const m = Math.min(...v.map(d => d.value)); return dayLabel(v.find(d => d.value === m).day); } },
+          { label: 'Jour le plus chaud', value: r => { const v = daily(r, 'tempC'); return v.length ? num(Math.max(...v.map(d => d.value))) + ' °C' : none; },
+            sub: r => { const v = daily(r, 'tempC'); if (!v.length) return ''; const m = Math.max(...v.map(d => d.value)); return dayLabel(v.find(d => d.value === m).day); } },
+          { label: 'Neige fraîche cumulée', value: r => { const v = values(r, 'newSnowCm'); return v.length ? num(v.reduce((a, b) => a + b, 0)) + ' cm' : none; },
+            sub: r => { const v = values(r, 'newSnowCm'); return v.length ? `${v.filter(x => x > 0).length} jour(s) de neige` : ''; } },
+          { label: 'Neige au sol maximale', value: r => { const v = values(r, 'snowDepthCm'); return v.length ? num(Math.max(...v)) + ' cm' : none; }, sub: () => 'à la base' },
+          { label: `Jours sans relevé (${MISSING_WINDOW} derniers jours)`, value: () => missingDays().length,
+            sub: () => { const m = missingDays(); return m.length ? `${m.length <= 6 ? m.map(dayLabel).join(', ') : 'à compléter'} · hier compris, sans aujourd'hui` : 'hier compris, sans aujourd\'hui'; } }
+        ],
+
+        charts: [
+          { id: 'temp', kind: 'series', type: 'line', title: `🌡️ Température par jour (${MIDDAY_NOTE})`, label: 'Température', unit: '°C', color: '#ca8a04', tall: true,
+            data: r => daily(r, 'tempC').map(d => [dayLabel(d.day), d.value]) },
+          { id: 'snowfall', kind: 'series', type: 'bar', title: '❄️ Neige fraîche (24 h) par jour', label: 'Neige fraîche', unit: 'cm', color: '#60a5fa', half: true,
+            data: r => daily(r, 'newSnowCm').map(d => [dayLabel(d.day), d.value]) },
+          { id: 'snowdepth', kind: 'series', type: 'line', title: '⛷️ Neige au sol à la base', label: 'Neige au sol', unit: 'cm', color: '#0ea5e9', half: true, beginAtZero: true,
+            data: r => daily(r, 'snowDepthCm').map(d => [dayLabel(d.day), d.value]) }
+        ],
+
+        rankings: [
+          {
+            title: '👥 Relevés saisis (par personne)',
+            columns: ['Personne', 'Relevés'],
+            rows: recs => tally(recs, r => r.createdByName || 'Inconnu').sort((a, b) => b[1] - a[1]).map(([name, n]) => [name, n])
+          }
+        ],
+
+        management: {
+          overviewNote: 'Aperçu de TOUS les relevés météo, hiver et été (la météo n\'appartient à aucune activité en particulier).',
+          async overview() {
+            const snap = await db.collection('weather_records').get();
+            const times = snap.docs.map(d => toDate(d.data().recordedAt)).filter(Boolean).sort((a, b) => a - b);
+            const fmt = d => d.toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' });
+            return [
+              { label: 'Relevés', value: snap.size },
+              { label: 'Premier relevé', value: times.length ? fmt(times[0]) : none },
+              { label: 'Dernier relevé', value: times.length ? fmt(times[times.length - 1]) : none },
+              { label: 'Avec valeurs du web', value: snap.docs.filter(d => d.data().web && d.data().web.fields).length }
+            ];
+          },
+          deleteOld: {
+            noun: 'les relevés météo',
+            scope: '(hiver et été)',
+            description: 'Supprime les relevés météo, hiver et été, enregistrés avant la date spécifiée. Un fichier de sauvegarde sera téléchargé automatiquement avant la suppression.',
+            backupName: 'backup-meteo',
+            async find(before) {
+              const snap = await db.collection('weather_records').where('recordedAt', '<=', stamp(before)).get();
+              return snap.docs
+                .filter(doc => { const t = toDate(doc.data().recordedAt); return t && t <= before; })
+                .map(doc => ({ collection: 'weather_records', id: doc.id, data: doc.data() }));
+            },
+            async remove(item) {
+              await db.collection(item.collection).doc(item.id).delete();
+            },
+            // the public "latest reading" follows (it could have been one of those just deleted)
+            async done() {
+              await WS.publishLatest(db, firebase);
+            }
+          }
+          // no orphanApp: this app has no photos
+        }
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+/* ========================================
+   VARIABLES.CSS - Design System Foundation
+   ========================================
+   All base values for colors, typography, spacing, etc.
+   These are the building blocks - themes override --theme-* variables.
+   ======================================== */
+
+:root {
+  /* ===== COLOR PALETTE - NEUTRALS ===== */
+  --color-white: #ffffff;
+  --color-black: #000000;
+  
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-300: #d1d5db;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-800: #1f2937;
+  --color-gray-900: #111827;
+  --color-gray-950: #030712;
+
+  /* ===== COLOR PALETTE - STATUS ===== */
+  --color-success: #10b981;
+  --color-success-light: #d1fae5;
+  --color-success-dark: #047857;
+  
+  --color-warning: #f59e0b;
+  --color-warning-light: #fef3c7;
+  --color-warning-dark: #b45309;
+  
+  --color-danger: #ef4444;
+  --color-danger-light: #fee2e2;
+  --color-danger-dark: #b91c1c;
+  
+  --color-info: #3b82f6;
+  --color-info-light: #dbeafe;
+  --color-info-dark: #1d4ed8;
+
+  /* ===== COLOR PALETTE - MODULE ACCENTS ===== */
+  /* Portal & Inspection - Alpine Blue */
+  --color-portal: #1b4b72;
+  --color-portal-light: #5d8db3;
+  --color-portal-dark: #0d2b42;
+  --color-portal-rgb: 27, 75, 114;
+  
+  --color-inspection: #1b4b72;
+  --color-inspection-light: #5d8db3;
+  --color-inspection-dark: #0d2b42;
+  --color-inspection-rgb: 27, 75, 114;
+  
+  /* Infraction - Alert Red */
+  --color-infraction: #dc2626;
+  --color-infraction-light: #fecaca;
+  --color-infraction-dark: #991b1b;
+  --color-infraction-rgb: 220, 38, 38;
+  
+  /* Signalisation - Warning Orange */
+  --color-signalisation: #d97706;
+  --color-signalisation-light: #fef3c7;
+  --color-signalisation-dark: #92400e;
+  --color-signalisation-rgb: 217, 119, 6;
+
+  /* Request/Demandes - Purple */
+  --color-request: #8b5cf6;
+  --color-request-light: #ede9fe;
+  --color-request-dark: #6d28d9;
+  --color-request-rgb: 139, 92, 246;
+
+  /* Status Randonnée - Light Green */
+  --color-status: #22c55e;
+  --color-status-light: #bbf7d0;
+  --color-status-dark: #15803d;
+  --color-status-rgb: 34, 197, 94;
+
+  /* Support - Light Blue */
+  --color-support: #0ea5e9;
+  --color-support-light: #bae6fd;
+  --color-support-dark: #0369a1;
+  --color-support-rgb: 14, 165, 233;
+
+  /* Administration - Purple */
+  --color-admin-module: #a855f7;
+  --color-admin-module-light: #e9d5ff;
+  --color-admin-module-dark: #7e22ce;
+  --color-admin-module-rgb: 168, 85, 247;
+
+  /* Inspection Randonnée - Dark Green */
+  --color-inspection-rando: #166534;
+  --color-inspection-rando-light: #86efac;
+  --color-inspection-rando-dark: #14532d;
+  --color-inspection-rando-rgb: 22, 101, 52;
+
+  /* Entretien (Maintenance) - Emerald */
+  --color-maintenance: #059669;
+  --color-maintenance-light: #6ee7b7;
+  --color-maintenance-dark: #047857;
+  --color-maintenance-rgb: 5, 150, 105;
+
+  /* Météo (weather) - Yellow */
+  --color-meteo: #ca8a04;
+  --color-meteo-light: #fde047;
+  --color-meteo-dark: #a16207;
+  --color-meteo-rgb: 202, 138, 4;
+
+  /* ===== TRAIL DIFFICULTY COLORS ===== */
+  --color-difficulty-easy: #22c55e;
+  --color-difficulty-medium: #3b82f6;
+  --color-difficulty-hard: #1f2937;
+  --color-difficulty-expert: #1f2937;
+
+  /* ===== SPECIAL COLORS ===== */
+  --color-shelter: #8b5cf6;
+  --color-admin: #fbbf24;
+
+  /* ===== TYPOGRAPHY ===== */
+  --font-primary: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  --font-secondary: Georgia, 'Times New Roman', serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  /* Banner title: bold caps, loaded in main.css */
+  --font-brand: 'Archivo', 'Arial Narrow', Arial, sans-serif;
+  /* The dark blue of the logo (Logo_Mont-Orford transparent.png) */
+  --color-logo-blue: #00577f;
+  
+  /* Font Sizes */
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.25rem;      /* 20px */
+  --text-2xl: 1.5rem;      /* 24px */
+  --text-3xl: 1.875rem;    /* 30px */
+  --text-4xl: 2.25rem;     /* 36px */
+  --text-5xl: 3rem;        /* 48px */
+  
+  /* Font Weights */
+  --font-light: 300;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  
+  /* Line Heights */
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+
+  /* ===== SPACING ===== */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 0.125rem;   /* 2px */
+  --space-1: 0.25rem;      /* 4px */
+  --space-1-5: 0.375rem;   /* 6px */
+  --space-2: 0.5rem;       /* 8px */
+  --space-2-5: 0.625rem;   /* 10px */
+  --space-3: 0.75rem;      /* 12px */
+  --space-3-5: 0.875rem;   /* 14px */
+  --space-4: 1rem;         /* 16px */
+  --space-5: 1.25rem;      /* 20px */
+  --space-6: 1.5rem;       /* 24px */
+  --space-7: 1.75rem;      /* 28px */
+  --space-8: 2rem;         /* 32px */
+  --space-9: 2.25rem;      /* 36px */
+  --space-10: 2.5rem;      /* 40px */
+  --space-12: 3rem;        /* 48px */
+  --space-14: 3.5rem;      /* 56px */
+  --space-16: 4rem;        /* 64px */
+  --space-20: 5rem;        /* 80px */
+  
+  /* Semantic spacing aliases */
+  --space-xs: var(--space-1);
+  --space-sm: var(--space-2);
+  --space-md: var(--space-4);
+  --space-lg: var(--space-6);
+  --space-xl: var(--space-8);
+  --space-2xl: var(--space-12);
+  --space-3xl: var(--space-16);
+
+  /* ===== BORDERS ===== */
+  --border-width: 1px;
+  --border-width-2: 2px;
+  --border-width-4: 4px;
+  
+  --border-radius-none: 0;
+  --border-radius-sm: 0.25rem;    /* 4px */
+  --border-radius-md: 0.375rem;   /* 6px */
+  --border-radius-lg: 0.5rem;     /* 8px */
+  --border-radius-xl: 0.75rem;    /* 12px */
+  --border-radius-2xl: 1rem;      /* 16px */
+  --border-radius-3xl: 1.5rem;    /* 24px */
+  --border-radius-full: 9999px;
+
+  /* ===== SHADOWS ===== */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+  --shadow-none: 0 0 #0000;
+
+  /* ===== TRANSITIONS ===== */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 350ms ease;
+  --transition-slower: 500ms ease;
+  
+  /* Specific transitions */
+  --transition-colors: color 150ms ease, background-color 150ms ease, border-color 150ms ease;
+  --transition-transform: transform 250ms ease;
+  --transition-all: all 250ms ease;
+
+  /* ===== Z-INDEX SCALE ===== */
+  --z-behind: -1;
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+  --z-toast: 800;
+  --z-max: 9999;
+
+  /* ===== BREAKPOINTS (for reference in JS) ===== */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* ===== CONTAINER WIDTHS ===== */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+
+  /* ===== HEADER HEIGHT ===== */
+  --header-height: 64px;
+  --header-height-mobile: 56px;
+
+  /* ===== DEFAULT THEME VARIABLES ===== */
+  /* These are overridden by themes.css and modules.css */
+  --theme-bg: var(--color-gray-50);
+  --theme-bg-alt: var(--color-gray-100);
+  --theme-surface: var(--color-white);
+  --theme-surface-alt: var(--color-gray-50);
+  --theme-text: var(--color-gray-800);
+  --theme-text-light: var(--color-gray-500);
+  --theme-text-lighter: var(--color-gray-400);
+  --theme-border: var(--color-gray-200);
+  --theme-border-light: var(--color-gray-100);
+  
+  /* Default accent (overridden by module) */
+  --theme-accent: var(--color-portal);
+  --theme-accent-light: var(--color-portal-light);
+  --theme-accent-dark: var(--color-portal-dark);
+  --theme-accent-rgb: var(--color-portal-rgb);
+}

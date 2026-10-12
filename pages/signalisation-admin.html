@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Gestion Signalisation">
+  <meta name="theme-color" content="#f59e0b">
+  <title>Gestion Signalisation</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚧</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    /* Filters section (same collapsible layout as inspection-history.html, kept small by default) */
+    .filters-section { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+    .filters-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+    .filters-title { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .filters-toggle { background: none; border: none; color: var(--theme-accent); cursor: pointer; font-size: 0.875rem; }
+    .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; align-items: end; }
+    .filters-grid .form-group { margin-bottom: 0; }
+    .filters-grid .form-check { display: flex; align-items: center; gap: 0.5rem; height: 2.5rem; }
+    .filters-actions { display: flex; gap: 0.75rem; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--theme-border); }
+
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th, .data-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--theme-border); }
+    .data-table th { background: var(--theme-surface-alt); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+    .data-table tbody tr:hover { background: var(--theme-surface-alt); cursor: pointer; }
+    
+    .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 500; }
+    .badge--open { background: #d1fae5; color: #065f46; }
+    .badge--warning { background: #fef3c7; color: #92400e; }
+    .badge--closed { background: #fee2e2; color: #991b1b; }
+    .badge--archived { background: #e5e7eb; color: #374151; }
+    .status-badges { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+    
+    .empty-row td { text-align: center; padding: 2rem; color: var(--theme-text-secondary); }
+    
+    .detail-section { margin-bottom: 1.5rem; }
+    .detail-section h4 { font-size: 0.875rem; font-weight: 600; color: var(--theme-accent); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+    .detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+    @media (max-width: 480px) { .detail-grid { grid-template-columns: 1fr; } }
+    .detail-item { font-size: 0.875rem; }
+    .detail-item strong { color: var(--theme-text-secondary); font-weight: 500; display: block; margin-bottom: 0.25rem; }
+    .detail-photo { max-width: 100%; max-height: 300px; border-radius: var(--radius-md); border: 1px solid var(--theme-border); cursor: pointer; }
+    .detail-description { background: var(--theme-surface-alt); padding: 0.75rem; border-radius: var(--radius-md); white-space: pre-wrap; font-size: 0.875rem; }
+    
+    .photo-location { margin-top: 0.5rem; font-size: 0.8rem; }
+    .photo-location a { color: var(--theme-accent); margin-right: 1rem; }
+    
+    .modal-checkboxes { display: flex; gap: 1.5rem; }
+    .modal-checkboxes label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem; }
+    .modal-checkboxes input[type="checkbox"] { width: 18px; height: 18px; }
+
+    /* Modal */
+    .detail-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+    .detail-modal.show { display: flex; }
+    .detail-modal__content { background: var(--theme-surface); border-radius: var(--radius-lg); max-width: 600px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
+    .detail-modal__header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--theme-border); }
+    .detail-modal__title { font-size: 1.125rem; font-weight: 600; }
+    .detail-modal__close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--theme-text-secondary); }
+    .detail-modal__body { padding: 1rem; overflow-y: auto; flex: 1; }
+    .detail-modal__footer { display: flex; gap: 1rem; justify-content: space-between; padding: 1rem; border-top: 1px solid var(--theme-border); align-items: center; }
+    .detail-modal__actions { display: flex; gap: 0.5rem; }
+  </style>
+</head>
+<body data-theme="light" data-module="signalisation" data-nav="signalisation" data-page="signalisation-admin">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/kind.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <main id="main-content" class="main" style="display:none;">
+    <div class="page-header"><div class="page-header__content"><h1 class="page-title">Gestion des signalisations</h1><p class="page-subtitle">Consulter et gérer tous les rapports</p></div></div>
+
+    <div class="filters-section" id="filters-section">
+      <div class="filters-header">
+        <div class="filters-title">🔍 Filtres</div>
+        <button class="filters-toggle" id="toggle-filters">Masquer</button>
+      </div>
+      <div id="filters-content">
+        <div class="filters-grid">
+          <div class="form-group">
+            <label class="form-label" for="filter-sector">Secteur</label>
+            <select class="form-select" id="filter-sector">
+              <option value="">Tous les secteurs</option><!-- filled by SectorService -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="filter-trail">Piste / Sentier</label>
+            <select class="form-select" id="filter-trail">
+              <option value="">Toutes les pistes</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="filter-duration">Durée</label>
+            <select class="form-select" id="filter-duration" title="Une signalisation temporaire est due à une condition temporaire">
+              <option value="both" selected>Permanentes et temporaires</option>
+              <option value="permanent">Permanentes</option>
+              <option value="temporary">Temporaires</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="date-filter">Période</label>
+            <select class="form-select" id="date-filter" title="Selon la dernière modification du rapport">
+              <option value="all" selected>Toutes les saisons</option>
+              <option value="season" id="season-option">Saison en cours</option><!-- label filled with the dates -->
+              <option value="today">Aujourd'hui</option>
+              <option value="week">7 derniers jours</option>
+              <option value="month">30 derniers jours</option>
+              <option value="custom">Dates personnalisées</option>
+            </select>
+            <div id="custom-date-range" style="display:none; gap:0.5rem; align-items:center; margin-top:0.5rem;">
+              <input type="date" class="form-input" id="start-date" aria-label="Du">
+              <span>à</span>
+              <input type="date" class="form-input" id="end-date" aria-label="Au">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sort-by">Trier par</label>
+            <select class="form-select" id="sort-by">
+              <option value="date">Date</option>
+              <option value="sector">Secteur</option>
+            </select>
+          </div>
+
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="show-archived">
+            <label class="form-check-label" for="show-archived">Archivés</label>
+          </div>
+        </div>
+        <div class="filters-actions">
+          <button class="btn btn-secondary btn-sm" id="print-sheet-btn" title="Fiche d'une page des signalisations actives, avec le secteur, la piste, la durée et la période choisis, dans un nouvel onglet">🖨️ Fiche à imprimer</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="content-section">
+      <div class="section-card">
+        <div class="section-card__header">
+          <h2 class="section-card__title">📋 Liste des rapports</h2>
+        </div>
+        <div class="section-card__body" style="padding:0;">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Secteur</th>
+                  <th>Piste</th>
+                  <th>Statut</th>
+                  <th>Photos</th>
+                  <th>Inspecteur</th>
+                  <th>État</th>
+                </tr>
+              </thead>
+              <tbody id="reports-tbody">
+                <tr class="empty-row"><td colspan="7">Chargement...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Detail Modal -->
+  <div class="detail-modal" id="detail-modal">
+    <div class="detail-modal__content">
+      <div class="detail-modal__header">
+        <h3 class="detail-modal__title">Détails du rapport</h3>
+        <button class="detail-modal__close" onclick="closeModal()">×</button>
+      </div>
+      <div class="detail-modal__body" id="modal-body"></div>
+      <div class="detail-modal__footer">
+        <div class="modal-checkboxes" id="modal-archived-box">
+          <label><input type="checkbox" id="modal-archived"> Archivé</label>
+        </div>
+        <div class="detail-modal__actions">
+          <button class="btn btn-primary" id="modal-save" onclick="saveChanges()">💾 Enregistrer</button>
+          <button class="btn btn-secondary" onclick="closeModal()">Fermer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/period-filter.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/photo-service.js"></script>
+  <script src="../js/services/map-service.js"></script>
+  <script src="../js/services/photo-map-modal.js"></script>
+  <script src="../js/services/sector-service.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/weather-service.js"></script>
+  <script src="../js/services/weather-context.js"></script>
+
+  <script>
+    const STATUS_LABELS = {
+      'ouverte': '🟢 Ouverte',
+      'attention-requise': '🟡 Attention requise',
+      'fermee': '🔴 Fermée'
+    };
+
+    const STATUS_BADGE_CLASS = {
+      'ouverte': 'badge--open',
+      'attention-requise': 'badge--warning',
+      'fermee': 'badge--closed'
+    };
+
+    let reportsData = [];
+    let currentReportId = null;
+    let showArchived = false;
+    let filterSector = '';
+    let filterTrail = '';
+    let sortBy = 'date';
+    let periodFilter = null;   // the Période controls (js/core/period-filter.js)
+    let filterDuration = 'both';   // 'both' (default), 'permanent' or 'temporary'
+    let sectors = []; // this activity's sectors, with their trails (SectorService.load)
+    let allTrails = []; // every trail record (even hidden): tells which view (Montée / Descente) a report belongs to
+    let filtersVisible = true;
+    let isAdminUser = false;   // false = read-only history (list, filters, details, printable sheet)
+
+    // A trail identifies a report by id when it has one, else by name (old reports)
+    const reportTrailKey = r => r.trailId || ('name:' + (r.trail || ''));
+
+    // Which map a record's photos should default to: its own trail's kind, else its sector's kind
+    // when every trail of that sector shares one (e.g. a sector used only for backcountry/
+    // randonnée alpine reports, with no specific trail selected) - else null (network default).
+    // See js/services/photo-map-modal.js for how `preferred` is used.
+    function geoMapFor(record) {
+      const sector = SectorService.find(sectors, record.sector);
+      const trail = sector && sector.items.find(i => i.id === record.trailId);
+      if (trail) return TrailService.geoMapIdOf(trail.kind);
+      if (sector && sector.items.length) {
+        const kinds = new Set(sector.items.map(i => i.kind));
+        if (kinds.size === 1) return TrailService.geoMapIdOf([...kinds][0]);
+      }
+      return null;
+    }
+
+    function toggleFilters() {
+      const content = document.getElementById('filters-content');
+      const btn = document.getElementById('toggle-filters');
+      filtersVisible = !filtersVisible;
+      content.style.display = filtersVisible ? 'block' : 'none';
+      btn.textContent = filtersVisible ? 'Masquer' : 'Afficher';
+    }
+
+    // escapeHtml is now provided by utils.js
+
+    function initSignalisationAdmin() {
+      checkAuthStatus({
+        requireAuth: true,
+        requiredPermission: 'allowSignalisation',
+        permissionDefault: false,
+        adminsAlways: true,   // the history is open to every admin and to everybody who has the Signalisations app; only admins change anything
+        onAuthenticated: async (userData) => {
+          isAdminUser = userData.role === 'admin' || userData.role === 'system_admin';
+          bindEvents();
+          await loadSectors();
+          loadReports();
+        }
+      });
+    }
+
+    // Sector names for every record, and the filter dropdown. If the sectors cannot be
+    // loaded the page still works with the name stored on each report.
+    async function loadSectors() {
+      try {
+        sectors = await SectorService.load();
+        allTrails = await SectorService.loadTrails();
+        // Montée / Descente (header switch): only the sectors and reports of the view shown
+        SectorService.fillSectors(document.getElementById('filter-sector'), SectorService.withKinds(sectors, TrailService.viewKinds()), 'Tous les secteurs');
+      } catch (e) {
+        console.error('Error loading sectors:', e);
+      }
+    }
+
+    const sectorNameOf = r => SectorService.nameOf(sectors, r.sector, r.sectorDisplayName);
+
+    // The trail dropdown narrows to filterSector's trails when one is chosen. Options are built
+    // from what's actually in reportsData, so a choice always narrows to something non-empty.
+    function updateTrailFilterOptions() {
+      const trailSelect = document.getElementById('filter-trail');
+      const trails = new Map(); // reportTrailKey -> name
+      reportsData.forEach(r => {
+        if (filterSector && SectorService.find(sectors, r.sector)?.id !== filterSector) return;
+        const key = reportTrailKey(r);
+        if (!trails.has(key)) trails.set(key, r.trail || key);
+      });
+      const trailOptions = Array.from(trails, ([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+      trailSelect.replaceChildren(new Option('Toutes les pistes', ''), ...trailOptions.map(t => new Option(t.name, t.id)));
+      trailSelect.value = trailOptions.some(t => t.id === filterTrail) ? filterTrail : '';
+      filterTrail = trailSelect.value;
+    }
+
+    function bindEvents() {
+      document.getElementById('filter-sector').addEventListener('change', (e) => {
+        filterSector = e.target.value;
+        updateTrailFilterOptions(); // the trail list narrows to this sector's trails
+        renderReports();
+      });
+      document.getElementById('filter-trail').addEventListener('change', (e) => { filterTrail = e.target.value; renderReports(); });
+      document.getElementById('sort-by').addEventListener('change', (e) => { sortBy = e.target.value; renderReports(); });
+      document.getElementById('filter-duration').addEventListener('change', (e) => { filterDuration = e.target.value; renderReports(); });
+      periodFilter = PeriodFilter.attach({
+        select: document.getElementById('date-filter'), custom: document.getElementById('custom-date-range'),
+        start: document.getElementById('start-date'), end: document.getElementById('end-date'),
+        seasonOption: document.getElementById('season-option'),
+        onChange: renderReports
+      });
+      document.getElementById('show-archived').addEventListener('change', (e) => { showArchived = e.target.checked; loadReports(); });
+      document.getElementById('print-sheet-btn').addEventListener('click', openPrintSheet);
+      document.getElementById('toggle-filters').addEventListener('click', toggleFilters);
+    }
+
+    async function loadReports() {
+      try {
+        const snap = await db.collection('signalisations').orderBy('createdAt', 'desc').get();
+        
+        reportsData = [];
+        snap.forEach(doc => {
+          const data = { id: doc.id, ...doc.data() };
+          if (!Network.matches(data)) return; // this activity's reports only
+          if (!showArchived && data.archived === true) return;
+          reportsData.push(data);
+        });
+        // Only the view shown (Montée / Descente); a report whose trail cannot be told stays in both
+        reportsData = SectorService.inKinds(sectors, allTrails, reportsData, TrailService.viewKinds());
+
+        updateTrailFilterOptions();
+        renderReports();
+      } catch (e) {
+        console.error('Error loading reports:', e);
+        document.getElementById('reports-tbody').innerHTML = '<tr class="empty-row"><td colspan="7" style="color:#ef4444;">Erreur de chargement</td></tr>';
+      }
+    }
+
+    // The one-page sheet of the ACTIVE signs (signalisation-print.html), in a new tab, with the sector, trail and period chosen here
+    function printSheetUrl() {
+      const params = new URLSearchParams();
+      if (filterSector) params.set('sector', filterSector);
+      if (filterTrail) params.set('trail', filterTrail);
+      params.set('duration', filterDuration);
+      PeriodFilter.toParams(periodFilter ? periodFilter.state() : { value: 'all' }, params);
+      return new URL('signalisation-print.html', location.href).href + '?' + params.toString();
+    }
+    function openPrintSheet() { window.open(printSheetUrl(), '_blank'); }
+
+    function renderReports() {
+      const tbody = document.getElementById('reports-tbody');
+      
+      let filtered = [...reportsData];
+      // Compare by current sector id so a record with an older id (alias) still matches
+      if (filterSector) filtered = filtered.filter(r => SectorService.find(sectors, r.sector)?.id === filterSector);
+      if (filterTrail) filtered = filtered.filter(r => reportTrailKey(r) === filterTrail);
+      // Durée: a report without the field is permanent (all reports made before the choice existed)
+      if (filterDuration !== 'both') filtered = filtered.filter(r => (filterDuration === 'temporary') === (r.duration === 'temporary'));
+      // Période: judged on the last change of the report (js/core/period-filter.js)
+      const period = periodFilter ? periodFilter.state() : { value: 'all' };
+      filtered = filtered.filter(r => PeriodFilter.matches(PeriodFilter.lastChange(r), period));
+
+      if (sortBy === 'date') {
+        filtered.sort((a, b) => (b.createdAt?.toDate?.() || 0) - (a.createdAt?.toDate?.() || 0));
+      } else if (sortBy === 'sector') {
+        filtered.sort((a, b) => sectorNameOf(a).localeCompare(sectorNameOf(b), 'fr'));
+      }
+      
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Aucun rapport trouvé</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = filtered.map(r => {
+        const date = r.createdAt?.toDate?.();
+        const dateStr = date ? date.toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+        const sectorName = sectorNameOf(r);
+        
+        let statusHtml = '<span style="color:var(--theme-text-secondary);">-</span>';
+        if (r.status) {
+          const badgeClass = STATUS_BADGE_CLASS[r.status] || '';
+          statusHtml = `<span class="badge ${badgeClass}">${STATUS_LABELS[r.status] || r.status}</span>`;
+        }
+        
+        let etatBadges = [];
+        if (r.archived) etatBadges.push('<span class="badge badge--archived">Archivé</span>');
+        const etatHtml = etatBadges.length ? `<div class="status-badges">${etatBadges.join('')}</div>` : '<span style="color:var(--theme-text-secondary);">Actif</span>';
+        const photoCount = PhotoService.photosFrom(r).length;
+
+        return `<tr data-id="${r.id}"><td>${dateStr}</td><td>${escapeHtml(sectorName)}</td><td>${escapeHtml(r.trail || '-')}</td><td>${statusHtml}</td><td><span class="badge badge-secondary">📷 ${photoCount}</span></td><td>${escapeHtml(r.inspectorName || '-')}</td><td>${etatHtml}</td></tr>`;
+      }).join('');
+      
+      tbody.querySelectorAll('tr[data-id]').forEach(row => {
+        row.addEventListener('click', () => openDetail(row.dataset.id));
+      });
+    }
+
+    function openDetail(id) {
+      currentReportId = id;
+      const r = reportsData.find(rep => rep.id === id);
+      if (!r) return;
+      
+      const date = r.createdAt?.toDate?.();
+      const dateStr = date ? date.toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const modifiedStr = r.modifiedAt?.toDate?.()?.toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) || '';
+      let statusHtml = '<span style="color:var(--theme-text-secondary);">Non spécifié</span>';
+      if (r.status) {
+        const badgeClass = STATUS_BADGE_CLASS[r.status] || '';
+        statusHtml = `<span class="badge ${badgeClass}">${STATUS_LABELS[r.status] || r.status}</span>`;
+      }
+      
+      // Photos with GPS location.
+      // PhotoService.photosFrom() normalises the photos array and de-duplicates by URL.
+      let photoHtml = '<p style="color:var(--theme-text-secondary);">Aucune photo</p>';
+      const photos = PhotoService.photosFrom(r);
+      
+      if (photos.length > 0) {
+        const preferredMap = geoMapFor(r);
+        photoHtml = '<div class="photo-gallery" style="display:flex;flex-wrap:wrap;gap:0.5rem;">';
+        photos.forEach((photo, idx) => {
+          const locationHtml = PhotoMapModal.locationLinks(photo, { collection: 'signalisations', docId: r.id, record: r, preferredMap, onChanged: async () => { await loadReports(); openDetail(r.id); } });
+          photoHtml += `<div class="photo-gallery-item" style="position:relative;">
+            <img src="${photo.url}" class="detail-photo" alt="Photo ${idx + 1}" onclick="window.open('${photo.url}', '_blank')" style="max-width:150px;max-height:150px;">
+            ${locationHtml}
+          </div>`;
+        });
+        photoHtml += '</div>';
+      }
+      
+      document.getElementById('modal-body').innerHTML = `
+        <div class="detail-section">
+          <h4>📍 Localisation</h4>
+          ${isAdminUser ? `<div class="detail-grid">
+            <div class="detail-item"><strong>Secteur</strong><select class="form-select" id="admin-sector" aria-label="Secteur"></select></div>
+            <div class="detail-item"><strong>Piste</strong><select class="form-select" id="admin-trail" aria-label="Piste"></select></div>
+          </div>
+          <p class="form-hint" style="margin-top:0.5rem;">Corriger le secteur ou la piste d'un rapport : choisir une piste de Descente (ou de Montée) le fait passer dans cette vue.</p>` : `<div class="detail-grid">
+            <div class="detail-item"><strong>Secteur</strong>${escapeHtml(sectorNameOf(r))}</div>
+            <div class="detail-item"><strong>Piste</strong>${escapeHtml(r.trail || '-')}</div>
+          </div>`}
+        </div>
+        <div class="detail-section">
+          <h4>📊 Statut de la signalisation</h4>
+          ${statusHtml}${r.duration === "temporary" ? ' <span class="badge badge-warning" title="Due à une condition temporaire">Temporaire</span>' : ''}
+          ${isAdminUser ? `<div class="admin-field" style="margin-top:0.5rem;">
+            <label for="admin-duration" style="font-size:0.85rem;">Durée de la signalisation</label>
+            <select class="form-select" id="admin-duration">
+              <option value="permanent">Permanente</option>
+              <option value="temporary">Temporaire (due à une condition temporaire)</option>
+            </select>
+          </div>` : ''}
+        </div>
+        <div class="detail-section">
+          <h4>📷 Photos (${photos.length})</h4>
+          ${photoHtml}
+        </div>
+        ${r.comments ? `<div class="detail-section"><h4>💬 Commentaires de l'inspecteur</h4><div class="detail-description">${escapeHtml(r.comments)}</div></div>` : ''}
+        <div class="detail-section">
+          <h4>👤 Informations</h4>
+          <div class="detail-grid">
+            <div class="detail-item"><strong>Inspecteur</strong>${escapeHtml(r.inspectorName || '-')}</div>
+            <div class="detail-item"><strong>Créé le</strong>${dateStr}</div>
+          </div>
+          ${modifiedStr ? `<p style="font-size:0.75rem;color:var(--theme-text-secondary);margin-top:0.5rem;">Modifié le: ${modifiedStr}</p>` : ''}
+        </div>
+        ${isAdminUser ? `<div class="detail-section">
+          <h4>📝 Commentaires administratifs</h4>
+          <textarea class="form-textarea" id="admin-comments" rows="3" placeholder="Ajouter un commentaire...">${escapeHtml(r.adminComments || '')}</textarea>
+          ${r.adminModifiedAt ? `<p style="font-size:0.75rem;color:var(--theme-text-secondary);margin-top:0.25rem;">Dernière modification: ${r.adminModifiedAt.toDate?.()?.toLocaleDateString('fr-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) || ''}</p>` : ''}
+        </div>` : ''}
+      `;
+      
+      WeatherContext.attach(document.getElementById('modal-body'), date);   // the weather nearest in time to the report (if the admin switch is on)
+      document.getElementById('modal-save').style.display = isAdminUser ? '' : 'none';
+      document.getElementById('modal-archived-box').style.display = isAdminUser ? '' : 'none';
+      if (isAdminUser) {
+        document.getElementById('admin-duration').value = r.duration === 'temporary' ? 'temporary' : 'permanent';   // an admin can swap permanent / temporary
+        fillLocationEditor(r);
+        document.getElementById('modal-archived').checked = r.archived || false;
+      }
+      
+      document.getElementById('detail-modal').classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    // ---- Admin correction of a report's sector and trail --------------------------------------------
+    // All the sectors of this activity are offered (not only the view shown), and every kind of trail with
+    // its kind in brackets, so a report can be moved between Montée and Descente by choosing a trail of the
+    // other one. The activity itself never changes (the Firestore rules refuse it).
+    function fillTrailEditor(sectorId, selectedName, selectedId) {
+      const trailSelect = document.getElementById('admin-trail');
+      const sector = SectorService.find(sectors, sectorId);
+      SectorService.fillTrails(trailSelect, sector, '-- Sélectionner une piste --');
+      const kindOfId = {};
+      ((sector && sector.items) || []).forEach(i => { kindOfId[i.id] = i.kind; });
+      [...trailSelect.options].forEach(o => {
+        const kind = kindOfId[o.dataset.trailId];
+        if (kind) o.textContent += ' (' + TrailService.kindLabel(kind) + ')';
+      });
+      if (selectedName !== undefined) SectorService.selectTrail(trailSelect, selectedName, selectedId);
+    }
+
+    function fillLocationEditor(r) {
+      const sectorSelect = document.getElementById('admin-sector');
+      SectorService.fillSectors(sectorSelect, sectors, '-- Sélectionner un secteur --');
+      SectorService.selectSector(sectorSelect, sectors, r.sector);
+      fillTrailEditor(sectorSelect.value, r.trail, r.trailId);
+      sectorSelect.onchange = () => fillTrailEditor(sectorSelect.value); // a new sector: choose its trail again
+    }
+
+    // The location fields to write, only when the admin changed them (so resolving or commenting never
+    // rewrites an older report). Returns null when unchanged, false when the choice is incomplete.
+    function locationChanges(r) {
+      const sectorId = document.getElementById('admin-sector').value;
+      const chosen = SectorService.readTrail(document.getElementById('admin-trail'));
+      const originalSector = SectorService.find(sectors, r.sector);
+      const sameSector = sectorId === (originalSector ? originalSector.id : (r.sector || ''));
+      const sameTrail = (chosen.id || null) === (r.trailId || null) && (chosen.name || '') === (r.trail || '');
+      if (sameSector && sameTrail) return null;
+      if (!sectorId || !chosen.name) return false;
+      return {
+        sector: sectorId,
+        sectorDisplayName: SectorService.nameOf(sectors, sectorId),
+        trail: chosen.name,
+        trailId: chosen.id
+      };
+    }
+
+    function closeModal() {
+      document.getElementById('detail-modal').classList.remove('show');
+      document.body.style.overflow = '';
+      currentReportId = null;
+    }
+
+    async function saveChanges() {
+      if (!currentReportId || !isAdminUser) return;   // the history is read-only for inspectors
+
+      const adminComments = document.getElementById('admin-comments').value.trim();
+      const archived = document.getElementById('modal-archived').checked;
+      const report = reportsData.find(rep => rep.id === currentReportId);
+      const location = report ? locationChanges(report) : null;
+      if (location === false) {
+        showToast('Choisissez un secteur et une piste.', 'warning');
+        return;
+      }
+
+      try {
+        const updateData = {
+          adminComments: adminComments || null,
+          archived: archived,
+          duration: document.getElementById('admin-duration').value === 'temporary' ? 'temporary' : 'permanent',
+          adminModifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        if (location) Object.assign(updateData, location); // never "network": the activity cannot change
+        if (archived) updateData.archivedAt = firebase.firestore.FieldValue.serverTimestamp();
+        
+        await db.collection('signalisations').doc(currentReportId).update(updateData);
+        
+        // A report moved to a trail of the other view leaves this list: say where it went
+        let moved = '';
+        if (location && TrailService.viewKinds()) {
+          const kind = SectorService.kindOfReport(sectors, allTrails, { ...report, ...location });
+          if (kind && !TrailService.viewKinds().includes(kind)) {
+            const view = Kind.ids().find(k => TrailService.kindsInView(k).includes(kind)) || kind;
+            moved = `. Le rapport est maintenant dans la vue « ${TrailService.kindLabel(view)} » (changer de vue dans l'en-tête pour le voir)`;
+          }
+        }
+        showToast('Modifications enregistrées' + moved, 'success');
+        closeModal();
+        loadReports();
+      } catch (e) {
+        console.error('Error saving:', e);
+        showToast('Erreur lors de l\'enregistrement', 'error');
+      }
+    }
+
+    // PhotoMapModal (the location pop-up, with its map switch) lives in js/services/photo-map-modal.js
+
+    onFirebaseReady( initSignalisationAdmin);
+  </script>
+</body>
+</html>

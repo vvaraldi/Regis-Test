@@ -1,0 +1,188 @@
+/* ========================================
+   BREAKPOINTS.CSS - Responsive Design
+   ======================================== */
+
+/* 
+   Breakpoint Reference:
+   - sm: 640px  (small phones landscape, large phones)
+   - md: 768px  (tablets portrait)
+   - lg: 1024px (tablets landscape, small laptops)
+   - xl: 1280px (desktops)
+   - 2xl: 1536px (large desktops)
+*/
+
+/* ===== SMALL SCREENS (max-width: 640px) ===== */
+@media (max-width: 640px) {
+  /* Typography adjustments */
+  html {
+    font-size: 14px;
+  }
+  
+  /* Full width buttons */
+  .btn--responsive {
+    width: 100%;
+  }
+}
+
+/* ===== MEDIUM SCREENS (max-width: 768px) ===== */
+@media (max-width: 768px) {
+  /* Stack form rows */
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Stack flex containers */
+  .stack-mobile {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  /* Reduce padding */
+  .card-body {
+    padding: var(--space-4);
+  }
+}
+
+/* ===== LARGE SCREENS (max-width: 1024px) ===== */
+@media (max-width: 1024px) {
+  /* Two column grids become single */
+  .grid-collapse-lg {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== TOUCH DEVICE ADJUSTMENTS ===== */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets */
+  .btn {
+    min-height: 44px;
+  }
+  
+  .form-input,
+  .form-select,
+  .form-textarea {
+    min-height: 44px;
+  }
+  
+  .nav__link {
+    min-height: 44px;
+  }
+  
+  /* Remove hover effects that don't work on touch */
+  .btn:hover {
+    transform: none;
+  }
+  
+  .card--interactive:hover {
+    transform: none;
+  }
+}
+
+/* ===== HIGH CONTRAST MODE ===== */
+@media (prefers-contrast: high) {
+  :root {
+    --theme-border: var(--color-gray-600);
+  }
+  
+  .btn {
+    border-width: 2px;
+  }
+  
+  .form-input,
+  .form-select,
+  .form-textarea {
+    border-width: 2px;
+  }
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .loading-spinner {
+    animation: none;
+    border-style: dotted;
+  }
+}
+
+/* ===== DARK MODE SYSTEM PREFERENCE ===== */
+/* Only applies if no data-theme is explicitly set */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --theme-bg: #0f172a;
+    --theme-bg-alt: #1e293b;
+    --theme-surface: #1e293b;
+    --theme-surface-alt: #334155;
+    --theme-surface-hover: #334155;
+    --theme-text: #f1f5f9;
+    --theme-text-light: #94a3b8;
+    --theme-text-lighter: #64748b;
+    --theme-border: #334155;
+    --theme-border-light: #1e293b;
+  }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  /* Reset backgrounds */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  /* Hide non-essential elements */
+  .header,
+  .footer,
+  .mobile-nav,
+  .btn,
+  .modal {
+    display: none !important;
+  }
+  
+  /* Ensure content is visible */
+  .main {
+    padding: 0;
+    max-width: none;
+  }
+  
+  /* Remove shadows */
+  .card {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+  
+  /* Ensure links show URLs */
+  a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    color: #666;
+  }
+  
+  /* Page breaks */
+  .page-break {
+    page-break-before: always;
+  }
+  
+  .no-page-break {
+    page-break-inside: avoid;
+  }
+}
+
+/* ===== LANDSCAPE ORIENTATION ===== */
+@media (orientation: landscape) and (max-height: 500px) {
+  /* Reduce header height on landscape phones */
+  .header {
+    height: 48px;
+  }
+  
+  /* Reduce modal max height */
+  .modal__container {
+    max-height: calc(100vh - var(--space-4));
+  }
+}

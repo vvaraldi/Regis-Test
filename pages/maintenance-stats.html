@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Statistiques et gestion des données de l'entretien">
+  <meta name="theme-color" content="#059669">
+  <title>Administration de l'entretien</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪏</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/pages/data-admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body data-theme="light" data-module="maintenance" data-nav="maintenance" data-page="maintenance-stats">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <main id="main-content" class="main" style="display: none;">
+    <div class="page-header"><div class="page-header__content"><h1 class="page-title">Administration de l'entretien</h1><p class="page-subtitle">Statistiques et gestion des données</p></div></div>
+    <div id="admin-root"></div>
+  </main>
+
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/photo-service.js"></script>
+  <script src="../js/services/sector-service.js"></script>
+  <script src="../js/services/storage-cleanup.js"></script>
+  <script src="../js/admin/data-admin.js"></script>
+
+  <script>
+    // Entretien (daily work logs of the trail builders, bike network), by season (`date` = the day worked).
+    // A log holds several work entries, each with its trail, a job description and photos. The numbers
+    // below are only a description; the page itself (tabs, season, charts, clean-up) is data-admin.js.
+    let sectors = [];
+
+    const stamp = date => firebase.firestore.Timestamp.fromDate(date);
+    const toDate = value => (value && value.toDate ? value.toDate() : (value ? new Date(value) : null));
+    const tally = (recs, keyOf) => {
+      const counts = new Map();
+      recs.forEach(r => { const key = keyOf(r); if (key) counts.set(key, (counts.get(key) || 0) + 1); });
+      return [...counts];
+    };
+    const entriesOf = recs => recs.flatMap(log => log.entries || []);
+    const photosOfEntry = entry => PhotoService.urlsFrom({ photos: entry.photos }).length;
+    const volunteerNames = recs => recs.flatMap(log => log.volunteerNames || []);
+
+    onFirebaseReady(() => DataAdmin.init({
+      deniedUrl: 'maintenance-report.html',
+
+      // Entretien only exists for the bike activity
+      notice: () => (Network.current() === 'bike' ? '' : 'L\'entretien concerne uniquement l\'activité Vélo : changez d\'activité dans l\'en-tête pour voir ses statistiques.'),
+
+      async onReady() {
+        try { sectors = await SectorService.load(); } catch (error) { console.error('Error loading sectors:', error); }
+      },
+
+      async fetch({ start, end }) {
+        const snap = await db.collection('maintenance_logs').where('date', '>=', stamp(start)).where('date', '<=', stamp(end)).get();
+        return snap.docs.filter(doc => Network.matches(doc.data())).map(doc => {
+          const d = doc.data();
+          return {
+            id: doc.id, ...d,
+            date: toDate(d.date),
+            builder: d.builderName || 'Inconnu',
+            builderKey: d.builderId || d.builderName || '?',
+            entries: d.entries || [],
+            photoCount: (d.entries || []).reduce((n, e) => n + photosOfEntry(e), 0)
+          };
+        });
+      },
+
+      cards: [
+        { label: 'Rapports de travail', value: r => r.length, sub: () => 'Saison affichée', highlight: true },
+        { label: 'Travaux effectués', value: r => entriesOf(r).length, sub: r => (r.length ? `${(entriesOf(r).length / r.length).toFixed(1)} par rapport` : '-') },
+        { label: 'Photos téléversées', value: r => r.reduce((n, l) => n + l.photoCount, 0) },
+        { label: 'Artisans de sentiers actifs', value: r => new Set(r.map(l => l.builderKey)).size },
+        { label: 'Bénévoles différents', value: r => new Set(volunteerNames(r)).size },
+        { label: 'Présences de bénévoles', value: r => volunteerNames(r).length, sub: () => 'Total des jours de présence' },
+        { label: 'Sentiers travaillés', value: r => new Set(entriesOf(r).map(e => e.trailId || e.trailName).filter(Boolean)).size }
+      ],
+
+      charts: [
+        { id: 'weekly', kind: 'weekly', title: '📈 Rapports par semaine', label: 'Rapports', half: true, color: '#059669' },
+        { id: 'trails', kind: 'bar', title: '🏔️ Sentiers les plus travaillés (nombre de travaux)', label: 'Travaux', horizontal: true, half: true, limit: 10, color: '#059669', data: r => tally(entriesOf(r), e => e.trailName) },
+        { id: 'sectors', kind: 'bar', title: '🗺️ Travaux par secteur', label: 'Travaux', horizontal: true, half: true, color: '#10b981', data: r => tally(entriesOf(r), e => (e.sector ? SectorService.nameOf(sectors, e.sector, e.sector) : 'Sans secteur')) }
+      ],
+
+      rankings: [
+        {
+          title: '🏆 Classement des artisans de sentiers (par nombre de rapports)',
+          columns: ['Artisan', 'Rapports', 'Travaux', 'Photos'],
+          rows: recs => {
+            const stats = {};
+            recs.forEach(l => {
+              const s = stats[l.builderKey] || (stats[l.builderKey] = { name: l.builder, n: 0, jobs: 0, photos: 0 });
+              s.n++; s.jobs += l.entries.length; s.photos += l.photoCount;
+            });
+            return Object.values(stats).sort((a, b) => b.n - a.n).map(s => [s.name, s.n, s.jobs, s.photos]);
+          }
+        },
+        {
+          title: '🙋 Bénévoles (par nombre de présences)',
+          columns: ['Bénévole', 'Présences'],
+          rows: recs => tally(volunteerNames(recs), n => n).sort((a, b) => b[1] - a[1]).map(([name, n]) => [name, n])
+        }
+      ],
+
+      management: {
+        async overview() {
+          const [logs, volunteers] = await Promise.all([db.collection('maintenance_logs').get(), db.collection('volunteers').get()]);
+          let jobs = 0, photos = 0;
+          logs.forEach(doc => { (doc.data().entries || []).forEach(e => { jobs++; photos += photosOfEntry(e); }); });
+          return [{ label: 'Rapports', value: logs.size }, { label: 'Travaux', value: jobs }, { label: 'Photos', value: photos }, { label: 'Bénévoles inscrits', value: volunteers.size }];
+        },
+        deleteOld: {
+          noun: 'les rapports d\'entretien',
+          backupName: 'backup-entretien',
+          async find(before) {
+            const snap = await db.collection('maintenance_logs').where('date', '<=', stamp(before)).get();
+            return snap.docs.filter(doc => Network.matches(doc.data())).map(doc => ({ collection: 'maintenance_logs', id: doc.id, data: doc.data() }));
+          },
+          async remove(item) {
+            const photos = (item.data.entries || []).flatMap(e => e.photos || []);
+            await PhotoService.deletePhotos(photos);
+            await db.collection(item.collection).doc(item.id).delete();
+          }
+        },
+        orphanApp: 'maintenance'
+      }
+    }));
+  </script>
+</body>
+</html>

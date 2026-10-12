@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Statistiques et gestion des données des signalisations">
+  <meta name="theme-color" content="#d97706">
+  <title>Administration des signalisations</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚧</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/pages/data-admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body data-theme="light" data-module="signalisation" data-nav="signalisation" data-page="signalisation-stats">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/kind.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <main id="main-content" class="main" style="display: none;">
+    <div class="page-header"><div class="page-header__content"><h1 class="page-title">Administration des signalisations</h1><p class="page-subtitle">Statistiques et gestion des données</p></div></div>
+    <div id="admin-root"></div>
+  </main>
+
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/photo-service.js"></script>
+  <script src="../js/services/sector-service.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/storage-cleanup.js"></script>
+  <script src="../js/admin/data-admin.js"></script>
+
+  <script>
+    // Signalisations of the current activity, by season (createdAt), for the view shown in the header
+    // (Montée / Descente, like the rest of the app). The numbers below are only a description; the page
+    // itself (tabs, season, charts, clean-up) is data-admin.js.
+    const STATUS_LABELS = { 'ouverte': 'Ouverte', 'attention-requise': 'Attention requise', 'fermee': 'Fermée' };
+    let sectors = [], allTrails = [];
+
+    const stamp = date => firebase.firestore.Timestamp.fromDate(date);
+    const toDate = value => (value && value.toDate ? value.toDate() : (value ? new Date(value) : null));
+    const tally = (recs, keyOf) => {
+      const counts = new Map();
+      recs.forEach(r => { const key = keyOf(r); if (key) counts.set(key, (counts.get(key) || 0) + 1); });
+      return [...counts];
+    };
+    const percent = (n, total) => (total ? `${Math.round(n / total * 100)}% des signalisations` : '-');
+
+    onFirebaseReady(() => DataAdmin.init({
+      deniedUrl: 'signalisation-report.html',
+
+      async onReady() {
+        try { sectors = await SectorService.load(); allTrails = await SectorService.loadTrails(); }
+        catch (error) { console.error('Error loading sectors:', error); }
+      },
+
+      async fetch({ start, end }) {
+        const snap = await db.collection('signalisations').where('createdAt', '>=', stamp(start)).where('createdAt', '<=', stamp(end)).get();
+        const mine = snap.docs.filter(doc => Network.matches(doc.data())).map(doc => {
+          const d = doc.data();
+          const created = toDate(d.createdAt);
+          return {
+            id: doc.id, ...d,
+            date: created,
+            inspector: d.inspectorName || 'Inconnu',
+            inspectorKey: d.inspectorId || d.inspectorName || '?',
+            photoCount: PhotoService.photosFrom(d).length,
+            statusLabel: STATUS_LABELS[d.status] || 'Sans statut',
+            trailLabel: d.trail || 'Sans piste précisée',
+            sectorLabel: SectorService.nameOf(sectors, d.sector, d.sectorDisplayName)
+          };
+        });
+        return SectorService.inKinds(sectors, allTrails, mine, TrailService.viewKinds()); // the view shown (Montée / Descente)
+      },
+
+      cards: [
+        { label: 'Total signalisations', value: r => r.length, sub: () => 'Saison affichée', highlight: true },
+        { label: 'Actives (non archivées)', value: r => r.filter(i => !i.archived).length, sub: r => percent(r.filter(i => !i.archived).length, r.length) },
+        { label: 'Statut « Fermée »', value: r => r.filter(i => i.status === 'fermee').length },
+        { label: 'Statut « Attention requise »', value: r => r.filter(i => i.status === 'attention-requise').length },
+        { label: 'Photos téléversées', value: r => r.reduce((n, i) => n + i.photoCount, 0) },
+        { label: 'Inspecteurs actifs', value: r => new Set(r.map(i => i.inspectorKey)).size }
+      ],
+
+      charts: [
+        { id: 'weekly', kind: 'weekly', title: '📈 Signalisations par semaine', label: 'Signalisations', half: true },
+        { id: 'status', kind: 'doughnut', title: '📊 Statuts signalés', half: true, data: r => tally(r, i => i.statusLabel) },
+        { id: 'trails', kind: 'bar', title: '🏔️ Pistes les plus signalées', label: 'Signalisations', horizontal: true, half: true, limit: 10, data: r => tally(r, i => i.trailLabel) },
+        { id: 'sectors', kind: 'bar', title: '🗺️ Signalisations par secteur', label: 'Signalisations', horizontal: true, half: true, color: '#f59e0b', data: r => tally(r, i => i.sectorLabel) }
+      ],
+
+      rankings: [
+        {
+          title: '🏆 Classement des inspecteurs (par nombre de signalisations)',
+          columns: ['Inspecteur', 'Signalisations', 'Photos'],
+          rows: recs => {
+            const stats = {};
+            recs.forEach(i => {
+              const s = stats[i.inspectorKey] || (stats[i.inspectorKey] = { name: i.inspector, n: 0, photos: 0 });
+              s.n++; s.photos += i.photoCount;
+            });
+            return Object.values(stats).sort((a, b) => b.n - a.n).map(s => [s.name, s.n, s.photos]);
+          }
+        }
+      ],
+
+      management: {
+        async overview() {
+          const snap = await db.collection('signalisations').get();
+          let photos = 0;
+          snap.forEach(doc => { photos += PhotoService.photosFrom(doc.data()).length; });
+          return [{ label: 'Signalisations', value: snap.size }, { label: 'Photos', value: photos }];
+        },
+        deleteOld: {
+          noun: 'les signalisations',
+          backupName: 'backup-signalisations',
+          async find(before) {
+            const snap = await db.collection('signalisations').where('createdAt', '<=', stamp(before)).get();
+            return snap.docs.filter(doc => Network.matches(doc.data())).map(doc => ({ collection: 'signalisations', id: doc.id, data: doc.data() }));
+          },
+          async remove(item) {
+            await PhotoService.deletePhotosFrom(item.data);
+            await db.collection(item.collection).doc(item.id).delete();
+          }
+        },
+        orphanApp: 'signalisation'
+      }
+    }));
+  </script>
+</body>
+</html>

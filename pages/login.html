@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Connexion">
+  <meta name="theme-color" content="#1b4b72">
+  <title>Connexion</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" data-brand href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔️</text></svg>">
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body data-theme="light" data-module="portal">
+  <div class="auth-layout">
+    <div class="auth-card">
+      <div class="auth-card__header">
+        <div class="auth-card__logo" data-brand-logo>🏔️</div>
+        <h1 class="auth-card__title" data-brand-name></h1>
+        <p class="auth-card__subtitle" data-brand-tagline></p>
+      </div>
+
+      <div class="auth-card__body">
+        <!-- Error/Success Messages -->
+        <div id="auth-message" class="auth-message" style="display: none;"></div>
+
+        <form class="auth-form" id="login-form">
+          <div class="form-group">
+            <label class="form-label" for="email">Adresse courriel</label>
+            <div class="form-input-icon">
+              <span class="form-input-icon__icon">📧</span>
+              <input 
+                type="email" 
+                class="form-input" 
+                id="email" 
+                name="email"
+                placeholder="exemple@email.com"
+                required
+                autocomplete="email"
+              >
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="password">Mot de passe</label>
+            <div class="password-input-wrapper">
+              <input 
+                type="password" 
+                class="form-input" 
+                id="password" 
+                name="password"
+                placeholder="Votre mot de passe"
+                required
+                autocomplete="current-password"
+              >
+              <button type="button" class="password-toggle" onclick="togglePasswordVisibility('password', this)" aria-label="Afficher le mot de passe">
+                <svg class="icon-eye" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <svg class="icon-eye-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="auth-links">
+            <label class="remember-me">
+              <input type="checkbox" id="remember-me" name="remember-me">
+              <span>Se souvenir de moi</span>
+            </label>
+            <a href="forgot-password.html" class="auth-link">Mot de passe oublié?</a>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn--block btn--lg" id="login-btn">
+            Connexion
+          </button>
+        </form>
+      </div>
+
+      <div class="auth-card__footer">
+        <p class="text-sm text-muted">
+          Problème de connexion? Contactez l'administrateur.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+
+  <!-- Core JS -->
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+
+  <!-- Page JS -->
+  <script>
+    /**
+     * Toggle password visibility
+     */
+    function togglePasswordVisibility(inputId, button) {
+      const input = document.getElementById(inputId);
+      const eyeIcon = button.querySelector('.icon-eye');
+      const eyeOffIcon = button.querySelector('.icon-eye-off');
+
+      if (input.type === 'password') {
+        input.type = 'text';
+        eyeIcon.style.display = 'none';
+        eyeOffIcon.style.display = 'block';
+      } else {
+        input.type = 'password';
+        eyeIcon.style.display = 'block';
+        eyeOffIcon.style.display = 'none';
+      }
+    }
+
+    /**
+     * Show auth message
+     */
+    function showAuthMessage(message, type = 'error') {
+      const messageEl = document.getElementById('auth-message');
+      if (messageEl) {
+        messageEl.textContent = message;
+        messageEl.className = `auth-message auth-message--${type}`;
+        messageEl.style.display = 'block';
+      }
+    }
+
+    /**
+     * Hide auth message
+     */
+    function hideAuthMessage() {
+      const messageEl = document.getElementById('auth-message');
+      if (messageEl) {
+        messageEl.style.display = 'none';
+      }
+    }
+
+    /**
+     * Get return URL - always go to main portal
+     */
+    function getReturnUrl() {
+      // Always redirect to main portal after login
+      return '../index.html';
+    }
+
+    /**
+     * Handle login form submission
+     */
+    async function handleLogin(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const loginBtn = document.getElementById('login-btn');
+      const rememberMe = document.getElementById('remember-me').checked;
+
+      // Validate
+      if (!email || !password) {
+        showAuthMessage('Veuillez remplir tous les champs.');
+        return;
+      }
+
+      // Set loading state
+      setButtonLoading(loginBtn, true, 'Connexion...');
+      hideAuthMessage();
+
+      try {
+        // Set persistence based on remember me
+        const persistence = rememberMe 
+          ? firebase.auth.Auth.Persistence.LOCAL 
+          : firebase.auth.Auth.Persistence.SESSION;
+        
+        await auth.setPersistence(persistence);
+        
+        // Sign in
+        const userCredential = await auth.signInWithEmailAndPassword(email, password);
+        
+        // Check if user exists in inspectors collection
+        const inspectorDoc = await db.collection('inspectors').doc(userCredential.user.uid).get();
+        
+        if (!inspectorDoc.exists) {
+          await auth.signOut();
+          showAuthMessage('Utilisateur non autorisé. Contactez l\'administrateur.');
+          setButtonLoading(loginBtn, false);
+          return;
+        }
+
+        const userData = inspectorDoc.data();
+        
+        // Check if user is active
+        if (userData.status !== 'active') {
+          await auth.signOut();
+          showAuthMessage('Votre compte a été désactivé. Contactez l\'administrateur.');
+          setButtonLoading(loginBtn, false);
+          return;
+        }
+
+        // Success - redirect
+        showAuthMessage('Connexion réussie! Redirection...', 'success');
+        
+        setTimeout(() => {
+          window.location.href = getReturnUrl();
+        }, 500);
+
+      } catch (error) {
+        console.error('Login error:', error);
+        showAuthMessage(getAuthErrorMessage(error));
+        setButtonLoading(loginBtn, false);
+      }
+    }
+
+    /**
+     * Check if already logged in
+     */
+    function checkExistingAuth() {
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          // Already logged in, redirect
+          window.location.href = getReturnUrl();
+        }
+      });
+    }
+
+    /**
+     * Initialize login page
+     */
+    function initLogin() {
+      // Check existing auth
+      checkExistingAuth();
+
+      // Handle form submission
+      const form = document.getElementById('login-form');
+      if (form) {
+        form.addEventListener('submit', handleLogin);
+      }
+
+      // Focus email field
+      const emailField = document.getElementById('email');
+      if (emailField) {
+        emailField.focus();
+      }
+
+      // Check for messages in URL params
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('reset') === 'success') {
+        showAuthMessage('Un courriel de réinitialisation a été envoyé.', 'success');
+      }
+      if (params.get('logout') === 'true') {
+        showAuthMessage('Vous avez été déconnecté.', 'info');
+      }
+    }
+
+    // Initialize when DOM is ready
+    onFirebaseReady( initLogin);
+  </script>
+</body>
+</html>

@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" data-no-brand content="État en direct des sentiers de randonnée alpine du Mont Orford">
+  <meta name="theme-color" content="#1b4b72">
+  <title data-no-brand>Mont Orford - État des sentiers</title>
+
+  <!-- Favicon -->
+  <link rel="icon" data-brand href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔️</text></svg>">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    body { background: var(--theme-bg); color: var(--theme-text); min-height: 100vh; }
+
+    .ps-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 1rem 1.5rem; background: var(--theme-gradient); color: #fff; }
+    .ps-header h1 { font-size: 1.25rem; font-weight: 700; margin: 0; color: inherit; }
+    .ps-header__meta { display: flex; align-items: center; gap: 1rem; font-size: 0.85rem; }
+    .ps-header a { color: #fff; opacity: 0.85; text-decoration: none; }
+    .ps-header a:hover { opacity: 1; text-decoration: underline; }
+    .ps-theme-btn { background: rgba(255,255,255,0.18); border: 0; border-radius: 8px; color: #fff; cursor: pointer; font-size: 1.1rem; line-height: 1; padding: 0.4rem 0.55rem; }
+
+    /* body is a flex column (main.css): width/min-width stop the map's min-width from widening the page */
+    .ps-main { width: 100%; min-width: 0; max-width: 1100px; margin: 0 auto; padding: 1.25rem 1rem 2rem; box-sizing: border-box; }
+
+    .ps-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+    .ps-dot--open { background: #10b981; }
+    .ps-dot--closed { background: #ef4444; }
+    .ps-dot--unknown { background: #6b7280; }
+
+    .ps-map { overflow: auto; border: 1px solid var(--theme-border); border-radius: 12px; background: var(--theme-surface-alt); }
+    .ps-map__wrapper { position: relative; min-width: 720px; }
+    .ps-map__wrapper img { display: block; width: 100%; height: auto; }
+    .ps-marker { position: absolute; width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 2px solid #fff; color: #fff; font-size: 10px; font-weight: 700; cursor: pointer; transform: translate(-50%, -50%); box-shadow: 0 2px 6px rgba(0,0,0,0.3); transition: transform 0.15s ease; }
+    .ps-marker:hover, .ps-marker:focus-visible { transform: translate(-50%, -50%) scale(1.15); z-index: 5; }
+    .ps-marker--open { background: #10b981; }
+    .ps-marker--closed { background: #ef4444; }
+    .ps-marker--unknown { background: #6b7280; }
+    .ps-map__wrapper.is-missing .ps-marker { display: none; } /* the activity's map image is not there yet */
+
+    .ps-legend { display: flex; gap: 1.25rem; flex-wrap: wrap; padding: 0.6rem 0.25rem 0; font-size: 0.8rem; color: var(--theme-text-light); }
+    .ps-legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+    /* Tap/hover label on a marker (phones have no hover, so the title attribute is not enough) */
+    .ps-tip { position: absolute; transform: translate(-50%, calc(-100% - 22px)); background: var(--theme-surface); color: var(--theme-text); border: 1px solid var(--theme-border); border-radius: 8px; padding: 0.35rem 0.6rem; font-size: 0.8rem; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.25); z-index: 10; pointer-events: none; }
+
+    .ps-message { padding: 1rem; text-align: center; color: var(--theme-text-light); }
+    .ps-message--error { color: #dc2626; }
+    .ps-message--warn { color: #b45309; font-size: 0.875rem; padding: 0.5rem 1rem; }
+    .ps-footer { text-align: center; font-size: 0.75rem; color: var(--theme-text-light); padding: 0 1rem 0.4rem; }
+
+    /* Small, unobtrusive: lets you preview the other activity's page without waiting for the season to change */
+    .ps-season-toggle { display: flex; justify-content: center; align-items: center; gap: 0.4rem; flex-wrap: wrap; font-size: 0.75rem; color: var(--theme-text-light); padding: 0 1rem 1.5rem; }
+    .ps-season-toggle button { background: none; border: 1px solid var(--theme-border); border-radius: 999px; color: inherit; cursor: pointer; font-size: 0.75rem; padding: 0.2rem 0.65rem; }
+    .ps-season-toggle button.is-active { background: var(--color-logo-blue); border-color: transparent; color: #fff; font-weight: 600; }
+
+    @media (max-width: 640px) {
+      .ps-header { padding: 0.9rem 1rem; }
+      .ps-header h1 { font-size: 1.05rem; }
+    }
+  </style>
+</head>
+<body data-theme="light" data-module="status">
+  <header class="ps-header">
+    <h1 id="page-title">Mont Orford</h1>
+    <div class="ps-header__meta">
+      <span>Dernière mise à jour : <strong id="last-update">--</strong></span>
+      <!-- When the public file was last rewritten (it is read every minute): proves the page is alive even when no trail changed -->
+      <span id="data-checked-wrap" hidden>Données vérifiées : <strong id="data-checked">--</strong></span>
+      <a href="../index.html">Portail</a>
+      <button type="button" class="ps-theme-btn" id="theme-btn" aria-label="Changer le thème" title="Changer le thème">🌙</button>
+    </div>
+  </header>
+
+  <main class="ps-main" id="main-content">
+    <div class="ps-message" id="loading">Chargement de l'état des sentiers...</div>
+    <div class="ps-message ps-message--error" id="error" hidden></div>
+    <!-- Shown when the public file has not been rewritten for a long time (updates paused, or the function is down) -->
+    <div class="ps-message ps-message--warn" id="stale-note" hidden></div>
+
+    <div class="ps-map">
+      <div class="ps-map__wrapper" id="map-wrapper">
+        <img alt="Carte des sentiers du Mont Orford" id="map-image"><!-- src set for the season's activity -->
+      </div>
+    </div>
+    <div class="ps-legend">
+      <span><i class="ps-dot ps-dot--open"></i>Ouvert</span>
+      <span><i class="ps-dot ps-dot--closed"></i>Fermé</span>
+      <span><i class="ps-dot ps-dot--unknown"></i>Inconnu</span>
+    </div>
+
+    <!-- Météo: the latest published reading (weather_public/latest), live; hidden when there is none -->
+    <section id="weather-panel" aria-label="Météo" hidden></section>
+  </main>
+
+  <p class="ps-footer" id="footer"></p>
+  <!-- Preview: switch the activity shown regardless of today's date. The page still opens on the
+       season's own activity every time (no choice is remembered): this is only a look-around tool. -->
+  <div class="ps-season-toggle" id="season-toggle"></div>
+  <!-- Which kind of trail to show (only when the activity has more than one, e.g. ski uphill/downhill) -->
+  <div class="ps-season-toggle" id="kind-toggle" hidden></div>
+
+  <!-- Shared JS (no login needed on this page) -->
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/services/map-service.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/weather-public.js"></script>
+  <script src="../js/services/status-snapshot.js"></script>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+
+  <script>
+    let rawTrails = []; // this activity's inspected trails, every kind together
+    let trails = [];    // rawTrails filtered to currentKind: what is actually drawn
+    let currentKind = null; // which inspectionKind the map shows (null = the activity has only one)
+    let mapSize = null; // natural size of the map image; marker coordinates are pixels on it
+    let lastWeather = null; // the latest published weather reading (plain object), or null
+
+    const el = id => document.getElementById(id);
+
+    const statusOf = TrailService.statusOf;
+    const numberOf = TrailService.markerLabel; // the trail's number, else its id without the prefix (trail_3, bike_3 -> 3)
+
+    function render() {
+      trails = currentKind ? rawTrails.filter(t => TrailService.kindOf(t) === currentKind) : rawTrails;
+      const sorted = [...trails].sort((a, b) => a.id.localeCompare(b.id, 'fr', { numeric: true }));
+
+      renderMarkers(sorted);
+      renderLastUpdate(sorted);
+    }
+
+    function renderMarkers(list) {
+      const wrapper = el('map-wrapper');
+      hideTip();
+      wrapper.querySelectorAll('.ps-marker').forEach(m => m.remove());
+      if (!mapSize) return; // drawn once the image has loaded
+
+      list.forEach(trail => {
+        const pos = trail.coordinates;
+        if (!pos || pos.left == null || pos.top == null) return;
+
+        const status = statusOf(trail);
+        const marker = document.createElement('button');
+        marker.type = 'button';
+        marker.className = `ps-marker ps-marker--${status}`;
+        marker.textContent = numberOf(trail);
+        marker.style.left = `${(pos.left / mapSize.width) * 100}%`;
+        marker.style.top = `${(pos.top / mapSize.height) * 100}%`;
+        marker.title = `${trail.name || numberOf(trail)} - ${TrailService.statusText(status)}`;
+        marker.setAttribute('aria-label', marker.title);
+        marker.addEventListener('click', () => showTip(marker));
+        wrapper.appendChild(marker);
+      });
+    }
+
+    function renderLastUpdate(list) {
+      const times = list
+        .map(t => t.lastUpdated && t.lastUpdated.toDate ? t.lastUpdated.toDate().getTime() : 0)
+        .filter(Boolean);
+      el('last-update').textContent = times.length ? formatDateTime(new Date(Math.max(...times))) : '--';
+    }
+
+    function hideTip() {
+      document.querySelectorAll('.ps-tip').forEach(t => t.remove());
+    }
+
+    // Label above a tapped marker: "name : status" (the marker's title already holds that text)
+    function showTip(marker) {
+      hideTip();
+      const tip = document.createElement('div');
+      tip.className = 'ps-tip';
+      tip.textContent = marker.title.replace(' - ', ' : ');
+      tip.style.left = marker.style.left;
+      tip.style.top = marker.style.top;
+      el('map-wrapper').appendChild(tip);
+    }
+
+    // Small toggle at the bottom: preview another activity's page without waiting for the season to
+    // change. It only changes what THIS load of the page shows (via ?network=); nothing is remembered,
+    // so the page still opens on the season's own activity every time, for everyone else.
+    function renderSeasonToggle() {
+      const ids = Network.ids;
+      const params = new URLSearchParams(window.location.search);
+      const forced = ids.includes(params.get('network')) ? params.get('network') : null;
+      const auto = Network.ofSeason();
+
+      const urlFor = id => {
+        const p = new URLSearchParams(window.location.search);
+        if (id) p.set('network', id); else p.delete('network');
+        const qs = p.toString();
+        return window.location.pathname + (qs ? '?' + qs : '');
+      };
+
+      const buttons = [{ id: null, label: `Auto (${APP_CONFIG.networks[auto].name})` }]
+        .concat(ids.map(id => ({ id, label: `${APP_CONFIG.networks[id].icon} ${APP_CONFIG.networks[id].name}` })));
+
+      el('season-toggle').replaceChildren(...buttons.map(b => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = b.label;
+        if (b.id ? forced === b.id : !forced) btn.classList.add('is-active');
+        btn.addEventListener('click', () => { window.location.href = urlFor(b.id); });
+        return btn;
+      }));
+    }
+
+    // Kind toggle: shown only when the current activity inspects more than one kind (ski:
+    // uphill/downhill). Each kind has its own map, so switching also swaps the map image;
+    // no page reload needed since the trails are already loaded (just refiltered).
+    function renderKindToggle() {
+      const kinds = APP_CONFIG.networks[Network.current()].inspectionKinds || [];
+      const box = el('kind-toggle');
+      if (kinds.length < 2) { box.hidden = true; return; }
+      box.hidden = false;
+      box.replaceChildren(...kinds.map(k => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = TrailService.kindLabel(k);
+        if (k === currentKind) btn.classList.add('is-active');
+        btn.addEventListener('click', () => switchKind(k));
+        return btn;
+      }));
+    }
+
+    function switchKind(kind) {
+      if (kind === currentKind) return;
+      currentKind = kind;
+      renderKindToggle();
+      updateTitle();
+      mapSize = null;
+      MapService.showImage(el('map-image'), TrailService.mapIdOf(currentKind));
+      render();
+    }
+
+    // "Mont Orford - <network's publicTitle>", plus the kind's label when there is more than one
+    // (ski: "... — Descente" so the title matches whichever map/markers are currently shown)
+    function updateTitle() {
+      const network = APP_CONFIG.networks[Network.current()];
+      const brand = APP_CONFIG.branding;
+      const kindSuffix = currentKind && (network.inspectionKinds || []).length > 1 ? ` — ${TrailService.kindLabel(currentKind)}` : '';
+      const title = `Mont Orford - ${network.publicTitle}${kindSuffix}`;
+      el('page-title').textContent = `${brand.logoImage ? '' : brand.logo + ' '}${title}`;
+      document.title = title;
+    }
+
+    function showError(message) {
+      el('loading').hidden = true;
+      el('error').textContent = message;
+      el('error').hidden = false;
+    }
+
+    // Markers need the image's natural size to convert pixel coordinates to percentages. The
+    // listener must stay attached (not just fire once via img.complete) since switchKind() swaps
+    // img.src again later for the same <img> element - each swap needs its own "ready" run once
+    // the new image has loaded, to recompute mapSize and redraw the markers for that map.
+    function watchMapImage() {
+      const img = el('map-image');
+      const ready = () => {
+        if (!img.naturalWidth) return;
+        mapSize = { width: img.naturalWidth, height: img.naturalHeight };
+        render();
+      };
+      img.addEventListener('load', ready);
+      if (img.complete) ready(); // already loaded (e.g. from cache) by the time we got here
+    }
+
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error(`Failed to load ${src}`));
+        document.head.appendChild(s);
+      });
+    }
+
+    // ---- The data: the public file first (no Firestore read at all), Firestore only when the file cannot be read ----
+    // public/status.json is rewritten every minute or so by the Cloud Function "publishStatus" (see PUBLIC_STATUS_SETUP.md):
+    // however many visitors come, Firestore is only asked by that function. If the file is not there yet (first day, CORS not
+    // set up), the page falls back to the live Firestore listeners below, so it never shows nothing.
+    let fallbackStarted = false;
+    let snapshotTimer = null;
+    let snapshotMismatch = false;   // the file is for another activity than the one this page shows
+
+    function applySnapshot(snapshot) {
+      // The season's activity only, every inspected kind together (render() then keeps currentKind's)
+      rawTrails = snapshot.trails.filter(t => Network.matches(t) && TrailService.isActive(t));
+      lastWeather = snapshot.weather;
+      if (snapshot.generatedAt) {
+        el('data-checked').textContent = formatDateTime(snapshot.generatedAt);
+        el('data-checked-wrap').hidden = false;
+      }
+      el('loading').hidden = true;
+      el('error').hidden = true;
+      const note = el('stale-note');
+      if (StatusSnapshot.isStale(snapshot)) {
+        note.textContent = snapshot.generatedAt
+          ? `Les données n'ont pas été mises à jour depuis le ${formatDateTime(snapshot.generatedAt)}.`
+          : 'Les données ne sont peut-être pas à jour.';
+        note.hidden = false;
+      } else {
+        note.hidden = true;
+      }
+      render();
+      redrawWeather();
+    }
+
+    async function readSnapshot() {
+      try {
+        const snapshot = await StatusSnapshot.fetchSnapshot(APP_CONFIG.firebase.storageBucket);
+        // The file holds the activity of the season only. A page showing the other one (a preview with ?network=, or the day the season
+        // changes) cannot use it: it reads Firestore instead.
+        snapshotMismatch = !!snapshot.network && snapshot.network !== Network.current();
+        if (snapshotMismatch) throw new Error('The public file is for the activity ' + snapshot.network);
+        applySnapshot(snapshot);
+        return true;
+      } catch (error) {
+        console.warn('Status file:', error);
+        return false;
+      }
+    }
+
+    async function startData() {
+      if (await readSnapshot()) {
+        // the file is cached for a minute: read it again about every minute, while the page is shown
+        snapshotTimer = setInterval(async () => {
+          if (document.hidden) return;
+          if (!(await readSnapshot()) && snapshotMismatch && !fallbackStarted) {   // the season changed while the page was open
+            fallbackStarted = true;
+            clearInterval(snapshotTimer);
+            startFirestore();
+          }
+        }, StatusSnapshot.POLL_MS);
+        setInterval(redrawWeather, 10 * 60 * 1000);   // the "(ancien)" mark appears by itself on a screen left open
+        return;
+      }
+      if (fallbackStarted) return;
+      fallbackStarted = true;
+      await startFirestore();
+    }
+
+    // Public page: only the app + Firestore SDKs are needed (no auth, no storage)
+    async function startFirestore() {
+      await loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
+      await loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js');
+      if (!firebase.apps.length) firebase.initializeApp(APP_CONFIG.firebase);
+
+      // Live updates: a status change made by a patroller shows up without a refresh
+      firebase.firestore().collection('trails').onSnapshot(snapshot => {
+        // An empty snapshot from the local cache means "not connected yet", not "no trails":
+        // keep the loading message instead of showing "0 ouverts / 0 fermés"
+        if (snapshot.empty && snapshot.metadata.fromCache) {
+          el('loading').textContent = 'Connexion en cours...';
+          return;
+        }
+        // The season's activity only, every inspected kind together (render() then keeps currentKind's)
+        rawTrails = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(t => Network.matches(t) && TrailService.isActive(t));
+        el('loading').hidden = true;
+        el('error').hidden = true;
+        render();
+      }, error => {
+        console.error('Error loading trails:', error);
+        showError("Impossible de charger l'état des sentiers. Veuillez réessayer plus tard.");
+      });
+
+      watchWeather();
+    }
+
+    // The weather panel follows the public document live. It is an extra: whatever goes wrong here (no reading yet,
+    // rules not published) only hides the panel, never the trail map.
+    function redrawWeather() {
+      const panel = el('weather-panel');
+      const plain = lastWeather;
+      if (!plain) { panel.hidden = true; panel.innerHTML = ''; return; }
+      WeatherPublic.injectStyles();
+      panel.innerHTML = WeatherPublic.panelHtml(plain, { icon: Network.seasonIcon() });
+      panel.hidden = false;
+    }
+
+    function watchWeather() {
+      const redraw = redrawWeather;
+      firebase.firestore().collection('weather_public').doc('latest').onSnapshot(snap => {
+        lastWeather = snap.exists ? WeatherPublic.fromSdk(snap.data()) : null;
+        redraw();
+      }, error => {
+        console.error('Weather:', error);
+        lastWeather = null;
+        redraw();
+      });
+      setInterval(redraw, 10 * 60 * 1000);   // the "(ancien)" mark appears by itself on a screen left open
+    }
+
+    function init() {
+      el('footer').textContent = APP_CONFIG.branding.footerText;
+
+      // Which activity to show: the season's (bike May-Oct, ski otherwise), or ?network=bike|ski
+      const network = APP_CONFIG.networks[Network.usePublic()];
+      currentKind = (network.inspectionKinds || [])[0] || null;
+      updateTitle();
+      MapService.showImage(el('map-image'), TrailService.mapIdOf(currentKind));
+      renderSeasonToggle();
+      renderKindToggle();
+
+      const themeBtn = el('theme-btn');
+      const syncThemeBtn = () => { themeBtn.textContent = window.themeManager.isDark() ? '☀️' : '🌙'; };
+      themeBtn.addEventListener('click', () => window.themeManager.toggle());
+      document.addEventListener('themeChanged', syncThemeBtn);
+      syncThemeBtn();
+
+      // Tapping anywhere but a marker closes the label
+      document.addEventListener('click', e => { if (!e.target.closest('.ps-marker')) hideTip(); });
+
+      watchMapImage();
+      startData().catch(error => {
+        console.error('Failed to load the status:', error);
+        showError("Impossible de charger l'application. Veuillez rafraîchir la page.");
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

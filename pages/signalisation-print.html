@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Fiche des signalisations actives">
+  <meta name="theme-color" content="#f59e0b">
+  <title>Fiche des signalisations</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚧</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    /* The sheet page holds ONLY what is printed: no portal header, menus or footer (layout.js is not loaded) */
+    body { background: #fff; margin: 0; }
+    body::before { display: none; }   /* the portal's triangle pattern */
+    .sheet { max-width: 1000px; margin: 0 auto; padding: 1.25rem; }
+    .sheet-head__right { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; justify-content: flex-end; }
+    .sheet-close-btn, .sheet-pdf-btn { padding: 0.7rem 1.2rem; border-radius: 999px; font-size: 1rem; font-weight: 600; cursor: pointer; white-space: nowrap; background: #fff; }
+    .sheet-close-btn { border: 1px solid var(--theme-border); color: var(--theme-text, #1f2937); }
+    .sheet-pdf-btn { border: 2px solid var(--theme-accent, #d97706); color: var(--theme-accent, #d97706); }
+    .sheet-hint { max-width: 1000px; margin: 0 auto 0.5rem; padding: 0.5rem 1.25rem 0; font-size: 0.85rem; color: var(--theme-text-secondary); text-align: right; }
+    .sheet-print-btn { padding: 0.7rem 1.4rem; border-radius: 999px; border: 0; background: var(--theme-accent, #d97706); color: #fff; font-size: 1.1rem; font-weight: 700; cursor: pointer; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
+    .sheet-print-btn:hover { filter: brightness(1.08); }
+    .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 2px solid var(--theme-border); padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
+    .sheet-head h1 { font-size: 1.6rem; margin: 0; }
+    .sheet-logo { max-height: 56px; max-width: 160px; width: auto; object-fit: contain; }
+    .sheet-filters { font-size: 0.875rem; margin: 0 0 1rem; display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; }
+    .sheet-filters b { font-weight: 600; }
+    .sector-title { font-size: 1rem; font-weight: 700; margin: 1.25rem 0 0.25rem; padding-bottom: 0.2rem; border-bottom: 1px solid var(--theme-border); }
+    /* photos (one column, the photos one under the other) | trail and comment (the wide column) | state and date */
+    .sign { display: grid; grid-template-columns: 236px minmax(0, 1fr) 7.5rem; gap: 0.9rem; padding: 0.7rem 0; border-bottom: 1px dashed var(--theme-border); break-inside: avoid; page-break-inside: avoid; }
+    .sign__photos { display: flex; flex-direction: column; gap: 0.5rem; }
+    .sign__photo { width: 228px; font-size: 0.75rem; }
+    .sign__thumb { display: block; width: 228px; height: 228px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--theme-border); cursor: zoom-in; }
+    .sign__nophoto { font-size: 0.8rem; color: var(--theme-text-secondary); }
+    .sign .photo-location { margin-top: 0.2rem; font-size: 0.75rem; line-height: 1.3; }
+    .sign .photo-location a { color: var(--theme-accent); margin-right: 0.4rem; white-space: nowrap; }
+    .sign__trail { font-weight: 600; font-size: 1.05rem; }
+    .sign__comment { font-size: 0.95rem; white-space: pre-wrap; margin-top: 0.25rem; overflow-wrap: anywhere; }
+    .sign__side { text-align: right; font-size: 0.85rem; }
+    .sign__date { margin-top: 0.3rem; color: var(--theme-text-secondary); white-space: nowrap; }
+    .badge { display: inline-flex; align-items: center; padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 600; }
+    .badge--temporary { background: #fef3c7; color: #92400e; }
+    .badge--permanent { background: #e5e7eb; color: #374151; }
+    .sheet-empty { text-align: center; padding: 2rem 0; color: var(--theme-text-secondary); }
+    .sheet-total { margin: 0.75rem 0 0; font-size: 0.8125rem; color: var(--theme-text-secondary); }
+    @media (max-width: 700px) {
+      .sheet { padding: 0.75rem; }
+      .sign { grid-template-columns: minmax(0, 1fr) 6rem; }
+      .sign__photos { grid-column: 1 / -1; order: 3; flex-direction: row; flex-wrap: wrap; }
+      .sign__photo, .sign__thumb { width: min(228px, 100%); }
+      .sign__thumb { height: auto; aspect-ratio: 1; }
+    }
+
+    /* On paper: just the sheet; photos stay big, a sign is never cut across two pages */
+    @media print {
+      .no-print { display: none !important; }
+      .sheet { max-width: none; padding: 0; }
+      .sign .photo-location { display: none; }
+      .sign { grid-template-columns: 200px minmax(0, 1fr) 6.5rem; }
+      .sign__photo { width: 192px; }
+      .sign__thumb { width: 192px; height: 192px; border-color: #999; }
+      .sector-title { break-after: avoid; page-break-after: avoid; }
+      @page { margin: 12mm; }
+    }
+    /* Photo-location pop-up (js/services/photo-map-modal.js builds its own markup; these are its rules) */
+    .detail-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+    .detail-modal.show { display: flex; }
+    .detail-modal__content { background: var(--theme-surface); border-radius: var(--radius-lg); max-width: 600px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
+    .detail-modal__header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--theme-border); }
+    .detail-modal__title { font-size: 1.125rem; font-weight: 600; }
+    .detail-modal__close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--theme-text-secondary); }
+    .detail-modal__body { padding: 1rem; overflow-y: auto; flex: 1; }
+    .detail-modal__footer { display: flex; gap: 1rem; justify-content: flex-end; padding: 1rem; border-top: 1px solid var(--theme-border); }
+  </style>
+</head>
+<body data-theme="light" data-module="signalisation" data-page="signalisation-print">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/kind.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <main id="main-content" style="display:none;">
+    <article class="sheet" id="sheet">
+      <header class="sheet-head">
+        <h1>Signalisations</h1>
+        <div class="sheet-head__right">
+          <button type="button" class="sheet-close-btn no-print" id="close-btn" title="Fermer cette fiche et revenir">✕ Fermer</button>
+          <button type="button" class="sheet-print-btn no-print" id="print-btn" title="Imprimer cette fiche">🖨️ Imprimer</button>
+          <button type="button" class="sheet-pdf-btn no-print" id="pdf-btn" title="Enregistrer la fiche en PDF (ouvre l'impression : choisir « Enregistrer en PDF »)">📄 PDF</button>
+          <img class="sheet-logo" id="sheet-logo" alt="Mont Orford">
+        </div>
+      </header>
+      <p class="sheet-hint no-print" id="pdf-hint" hidden>Dans la fenêtre qui s'ouvre, choisissez « Enregistrer en PDF » comme imprimante, puis « Enregistrer ».</p>
+      <p class="sheet-filters" id="sheet-filters"></p>
+      <div id="sheet-list"><p class="sheet-empty">Chargement...</p></div>
+      <p class="sheet-total" id="sheet-total"></p>
+    </article>
+  </main>
+
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/period-filter.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/photo-service.js"></script>
+  <script src="../js/services/map-service.js"></script>
+  <script src="../js/services/photo-map-modal.js"></script>
+  <script src="../js/services/sector-service.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+
+  <script>
+    // The filters come in the address, from the dashboard's "Fiche à imprimer" button:
+    //   ?sector=<id>&trail=<id or name:...>&duration=both|permanent|temporary&period=all|season|today|week|month|custom&start=&end=
+    // Active signs only (not archived), of the activity and the Montée / Descente view shown.
+    const addressParams = new URLSearchParams(location.search);
+    const DURATIONS = { both: 'Permanentes et temporaires', permanent: 'Permanentes', temporary: 'Temporaires' };
+    const paramSector = addressParams.get('sector') || '';
+    const paramTrail = addressParams.get('trail') || '';
+    const paramDuration = DURATIONS[addressParams.get('duration')] ? addressParams.get('duration') : 'both';
+    const paramPeriod = PeriodFilter.fromParams(addressParams);
+
+    let sectors = [];
+    let allTrails = [];
+    let reports = [];
+
+    const sectorNameOf = r => SectorService.nameOf(sectors, r.sector, r.sectorDisplayName);
+    const reportTrailKey = r => r.trailId || ('name:' + (r.trail || ''));
+    const isTemporary = r => r.duration === 'temporary';
+    const sameSector = (a, b) => a === b || (!!a && !!b && (SectorService.find(sectors, a) || {}).id !== undefined && (SectorService.find(sectors, a) || {}).id === (SectorService.find(sectors, b) || {}).id);
+    const dayText = d => d ? d.toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+
+    // Which map a record's photos default to (same rule as the dashboard)
+    function geoMapFor(record) {
+      const sector = SectorService.find(sectors, record.sector);
+      const trail = sector && sector.items.find(i => i.id === record.trailId);
+      if (trail) return TrailService.geoMapIdOf(trail.kind);
+      if (sector && sector.items.length) {
+        const kinds = new Set(sector.items.map(i => i.kind));
+        if (kinds.size === 1) return TrailService.geoMapIdOf([...kinds][0]);
+      }
+      return null;
+    }
+
+    function initSignalisationPrint() {
+      checkAuthStatus({
+        requireAuth: true,
+        requiredPermission: 'allowSignalisation',
+        permissionDefault: false,
+        onAuthenticated: async () => {
+          const logo = document.getElementById('sheet-logo');
+          if (BRANDING.logoImage) logo.src = siteUrl(BRANDING.logoImage); else logo.remove();
+          document.getElementById('print-btn').addEventListener('click', () => window.print());
+          // PDF: the browser's own printing can save a PDF; the hint says how, and the page title becomes the file name
+          document.getElementById('pdf-btn').addEventListener('click', () => { document.getElementById('pdf-hint').hidden = false; window.print(); });
+          // Close: a tab opened by the button closes itself; if the browser refuses (page opened by hand), go back to the list
+          document.getElementById('close-btn').addEventListener('click', () => { window.close(); setTimeout(() => { if (!window.closed) goBackToList(); }, 300); });
+          try {
+            sectors = await SectorService.load();
+            allTrails = await SectorService.loadTrails();
+          } catch (e) {
+            console.error('Error loading sectors:', e);
+          }
+          await MapService.load();
+          await loadReports();
+        }
+      });
+    }
+
+    async function loadReports() {
+      const list = document.getElementById('sheet-list');
+      try {
+        // Active signs = not archived (read in date order, the archived ones left out here: no index needed)
+        const snap = await db.collection('signalisations').orderBy('createdAt', 'desc').get();
+        let found = [];
+        snap.forEach(doc => { const d = doc.data(); if (d.archived !== true && Network.matches(d)) found.push({ id: doc.id, ...d }); });
+        reports = SectorService.inKinds(sectors, allTrails, found, TrailService.viewKinds());
+        render();
+      } catch (e) {
+        console.error('Error loading reports:', e);
+        list.innerHTML = '<p class="sheet-empty" style="color:#ef4444;">Erreur de chargement</p>';
+      }
+    }
+
+    function selected() {
+      let rows = reports.filter(r => paramDuration === 'both' || (paramDuration === 'temporary') === isTemporary(r));
+      if (paramSector) rows = rows.filter(r => sameSector(r.sector, paramSector));
+      if (paramTrail) rows = rows.filter(r => reportTrailKey(r) === paramTrail);
+      rows = rows.filter(r => PeriodFilter.matches(PeriodFilter.lastChange(r), paramPeriod));
+      // by sector, then trail, then the most recently changed first
+      return rows.sort((a, b) =>
+        sectorNameOf(a).localeCompare(sectorNameOf(b), 'fr') ||
+        (a.trail || '').localeCompare(b.trail || '', 'fr') ||
+        ((PeriodFilter.lastChange(b) || 0) - (PeriodFilter.lastChange(a) || 0)));
+    }
+
+    function filtersHtml() {
+      const trailRow = paramTrail ? reports.find(r => reportTrailKey(r) === paramTrail) : null;
+      const sectorText = paramSector ? SectorService.nameOf(sectors, paramSector, paramSector) : 'Tous';
+      const trailText = paramTrail ? (trailRow ? trailRow.trail : paramTrail.replace(/^name:/, '')) : 'Toutes';
+      const parts = [
+        ['Secteur', sectorText], ['Piste / Sentier', trailText],
+        ['Durée', DURATIONS[paramDuration]], ['Période', PeriodFilter.label(paramPeriod)]
+      ];
+      if (typeof Kind !== 'undefined' && Kind.ids().length > 1) parts.unshift(['Vue', TrailService.kindLabel(Kind.current())]);
+      return parts.map(([k, v]) => `<span>${escapeHtml(k)} : <b>${escapeHtml(v)}</b></span>`).join('');
+    }
+
+    function signHtml(r) {
+      const photos = PhotoService.photosFrom(r);
+      const preferredMap = geoMapFor(r);
+      const photosHtml = photos.length
+        ? photos.map(p => `<div class="sign__photo"><img class="sign__thumb" src="${escapeHtml(p.url)}" alt="Photo" loading="lazy" onclick="window.open(this.src, '_blank')">${PhotoMapModal.locationLinks(p, { collection: 'signalisations', docId: r.id, record: r, preferredMap, onChanged: loadReports })}</div>`).join('')
+        : '<span class="sign__nophoto">Aucune photo</span>';
+      const temporary = isTemporary(r);
+      return `<div class="sign" data-id="${escapeHtml(r.id)}">
+        <div class="sign__photos">${photosHtml}</div>
+        <div><div class="sign__trail">${escapeHtml(r.trail || '-')}</div>${r.comments ? `<div class="sign__comment">${escapeHtml(r.comments)}</div>` : ''}</div>
+        <div class="sign__side"><span class="badge ${temporary ? 'badge--temporary' : 'badge--permanent'}">${temporary ? 'Temporaire' : 'Permanente'}</span><div class="sign__date">${escapeHtml(dayText(PeriodFilter.lastChange(r)))}</div></div>
+      </div>`;
+    }
+
+    function render() {
+      document.getElementById('sheet-filters').innerHTML = filtersHtml();
+      const rows = selected();
+      const list = document.getElementById('sheet-list');
+      if (!rows.length) {
+        list.innerHTML = '<p class="sheet-empty">Aucune signalisation active pour ces filtres.</p>';
+      } else {
+        let html = '', last = null;
+        rows.forEach(r => {
+          const name = sectorNameOf(r);
+          if (name !== last) { html += `<h2 class="sector-title">${escapeHtml(name)}</h2>`; last = name; }
+          html += signHtml(r);
+        });
+        list.innerHTML = html;
+      }
+      document.title = 'Signalisations ' + new Date().toISOString().slice(0, 10);   // the default name of a saved PDF
+      document.getElementById('sheet-total').textContent =`${rows.length} signalisation(s) active(s) · fiche du ${dayText(new Date())}`;
+    }
+
+    // where \"Fermer\" leads when the browser will not close the tab (the page was opened by hand)
+    function goBackToList() { location.href = 'signalisation-admin.html'; }
+
+    onFirebaseReady(initSignalisationPrint);
+  </script>
+</body>
+</html>

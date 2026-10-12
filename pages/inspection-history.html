@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Historique des inspections">
+  <meta name="theme-color" content="#1b4b72">
+  <title>Historique</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    /* Filters section */
+    .filters-section { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.5rem; }
+    .filters-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .filters-title { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .filters-toggle { background: none; border: none; color: var(--theme-accent); cursor: pointer; font-size: 0.875rem; }
+    .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+    .filters-actions { display: flex; gap: 0.75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--theme-border); }
+    .custom-date-range { display: none; grid-template-columns: 1fr auto 1fr; gap: 0.5rem; align-items: center; margin-top: 0.5rem; }
+    .custom-date-range.show { display: grid; }
+    .date-separator { color: var(--theme-text-secondary); }
+    .search-container { position: relative; }
+    .search-container input { padding-right: 2.5rem; }
+    .search-icon { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--theme-text-secondary); pointer-events: none; }
+
+    /* Results section */
+    .results-section { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .results-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; background: var(--theme-surface-alt); border-bottom: 1px solid var(--theme-border); flex-wrap: wrap; gap: 1rem; }
+    .results-info { display: flex; align-items: center; gap: 1rem; }
+    .results-title { font-size: 1rem; font-weight: 600; }
+    .results-count { font-size: 0.875rem; color: var(--theme-text-secondary); }
+    .results-count strong { color: var(--theme-text); }
+    .page-size-select { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; }
+    .page-size-select select { width: auto; padding: 0.375rem 0.75rem; }
+
+    /* Table */
+    .table-container { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .data-table th, .data-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--theme-border); }
+    .data-table th { background: var(--theme-surface-alt); font-weight: 600; color: var(--theme-text-secondary); white-space: nowrap; }
+    .data-table th.sortable { cursor: pointer; user-select: none; }
+    .data-table th.sortable:hover { color: var(--theme-accent); }
+    .data-table th.sort-asc::after { content: ' ▲'; font-size: 0.7em; }
+    .data-table th.sort-desc::after { content: ' ▼'; font-size: 0.7em; }
+    .data-table tbody tr:hover { background: var(--theme-surface-alt); }
+    .data-table td { color: var(--theme-text); }
+
+    /* Badges */
+    .badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.5rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 500; white-space: nowrap; }
+    .badge-success { background: rgba(16, 185, 129, 0.15); color: #065f46; }
+    .badge-warning { background: rgba(245, 158, 11, 0.15); color: #92400e; }
+    .badge-danger { background: rgba(239, 68, 68, 0.15); color: #991b1b; }
+    .badge-secondary { background: rgba(107, 114, 128, 0.15); color: #374151; }
+    .badge-primary { background: rgba(59, 130, 246, 0.15); color: #1e40af; }
+    .type-trail { color: var(--color-success); }
+    .type-shelter { color: var(--color-warning); }
+
+    /* Action buttons */
+    .action-btns { display: flex; gap: 0.25rem; }
+    .action-btns .btn { padding: 0.375rem 0.5rem; font-size: 0.875rem; }
+
+    /* Pagination */
+    .pagination-container { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-top: 1px solid var(--theme-border); flex-wrap: wrap; gap: 1rem; }
+    .pagination-info { font-size: 0.875rem; color: var(--theme-text-secondary); }
+    .pagination { display: flex; gap: 0.25rem; }
+    .page-btn { min-width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--theme-border); border-radius: var(--radius-md); background: var(--theme-surface); color: var(--theme-text); cursor: pointer; font-size: 0.875rem; transition: all 0.15s; }
+    .page-btn:hover:not(:disabled) { border-color: var(--theme-accent); color: var(--theme-accent); }
+    .page-btn.active { background: var(--theme-accent); border-color: var(--theme-accent); color: white; }
+    .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .page-ellipsis { display: flex; align-items: center; padding: 0 0.5rem; color: var(--theme-text-secondary); }
+
+    /* Detail Modal */
+    .detail-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+    .detail-modal.show { display: flex; }
+    .detail-modal__content { background: var(--theme-surface); border-radius: var(--radius-lg); width: 100%; max-width: 700px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
+    .detail-modal__header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--theme-border); background: var(--theme-surface-alt); }
+    .detail-modal__title { font-size: 1.125rem; font-weight: 600; }
+    .detail-modal__close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--theme-text-secondary); line-height: 1; }
+    .detail-modal__close:hover { color: var(--theme-text); }
+    .detail-modal__body { padding: 1.25rem; overflow-y: auto; flex: 1; }
+    .detail-modal__footer { padding: 1rem 1.25rem; border-top: 1px solid var(--theme-border); display: flex; justify-content: flex-end; gap: 0.75rem; }
+    .detail-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--theme-border); }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row__label { font-weight: 500; color: var(--theme-text-secondary); }
+    .detail-section { margin-top: 1.25rem; }
+    .detail-section__title { font-weight: 600; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+    .detail-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.75rem; }
+    .detail-photo { text-align: center; }
+    .detail-photo img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-md); cursor: pointer; }
+    .photo-location { font-size: 0.7rem; margin-top: 0.25rem; display: flex; gap: 0.5rem; justify-content: center; }
+    .photo-location a { color: var(--theme-accent); text-decoration: none; }
+    .photo-location a:hover { text-decoration: underline; }
+    .detail-notes { background: var(--theme-surface-alt); padding: 0.75rem 1rem; border-radius: var(--radius-md); font-size: 0.875rem; white-space: pre-wrap; }
+    .issues-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .issue-tag { background: rgba(239, 68, 68, 0.1); color: #991b1b; padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.75rem; }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--theme-text-secondary); }
+    .empty-state__icon { font-size: 3rem; margin-bottom: 1rem; }
+
+    /* Loading */
+    .table-loading { position: relative; min-height: 200px; }
+    .table-loading::after { content: ''; position: absolute; inset: 0; background: var(--theme-surface); opacity: 0.8; display: flex; align-items: center; justify-content: center; }
+
+    @media (max-width: 768px) {
+      .filters-grid { grid-template-columns: 1fr; }
+      .results-header { flex-direction: column; align-items: flex-start; }
+      .pagination-container { flex-direction: column; align-items: center; }
+      .data-table { font-size: 0.8rem; }
+      .data-table th, .data-table td { padding: 0.5rem; }
+    }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+  </style>
+</head>
+<body data-theme="light" data-module="inspection-rando" data-nav="inspection" data-page="inspection-history">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/kind.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement de l'historique...</p></div>
+  
+  <main id="main-content" class="main" style="display: none;">
+    <div class="page-header"><div class="page-header__content"><h1 class="page-title">Historique des inspections</h1><p class="page-subtitle">Consultez et filtrez toutes les inspections</p></div></div>
+
+    <!-- Filters Section -->
+    <div class="filters-section" id="filters-section">
+      <div class="filters-header">
+        <div class="filters-title">🔍 Filtres</div>
+        <button class="filters-toggle" id="toggle-filters">Masquer</button>
+      </div>
+      <div id="filters-content">
+        <div class="filters-grid">
+          <div class="form-group">
+            <label class="form-label" for="date-filter">Période</label>
+            <select class="form-select" id="date-filter">
+              <option value="season" id="season-option">Saison en cours</option><!-- label filled with the dates -->
+              <option value="all">Toutes les saisons</option>
+              <option value="today">Aujourd'hui</option>
+              <option value="week">7 derniers jours</option>
+              <option value="month">30 derniers jours</option>
+              <option value="custom">Dates personnalisées</option>
+            </select>
+            <div class="custom-date-range" id="custom-date-range">
+              <input type="date" class="form-input" id="start-date">
+              <span class="date-separator">à</span>
+              <input type="date" class="form-input" id="end-date">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="type-filter">Type</label>
+            <select class="form-select" id="type-filter">
+              <option value="all">Tous les types</option>
+              <option value="trail">Sentiers</option>
+              <option value="shelter">Abris</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="location-filter">Lieu</label>
+            <select class="form-select" id="location-filter">
+              <option value="all">Tous les lieux</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="inspector-filter">Inspecteur</label>
+            <select class="form-select" id="inspector-filter">
+              <option value="all">Tous les inspecteurs</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="search-input">Recherche</label>
+            <div class="search-container">
+              <input type="text" class="form-input" id="search-input" placeholder="Rechercher dans les notes...">
+              <span class="search-icon">🔍</span>
+            </div>
+          </div>
+        </div>
+        <div class="filters-actions">
+          <button class="btn btn-secondary" id="reset-filters">Réinitialiser</button>
+          <button class="btn btn-secondary" id="print-sheet-btn" title="Fiche des inspections avec les filtres choisis (sans météo, heure ni nom d'inspecteur), dans un nouvel onglet">🖨️ Fiche à imprimer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="results-section">
+      <div class="results-header">
+        <div class="results-info">
+          <span class="results-title">Résultats</span>
+          <span class="results-count"><strong id="results-count">0</strong> inspection(s) trouvée(s)</span>
+        </div>
+        <div class="page-size-select">
+          <label for="page-size">Afficher:</label>
+          <select class="form-select" id="page-size">
+            <option value="10">10</option>
+            <option value="25" selected>25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-container" id="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th data-sort="date" class="sortable sort-desc">Date</th>
+              <th data-sort="type" class="sortable">Type</th>
+              <th data-sort="location" class="sortable">Lieu</th>
+              <th data-sort="inspector" class="sortable">Inspecteur</th>
+              <th data-sort="condition" class="sortable">État</th>
+              <th>Photos</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="inspections-table">
+            <tr><td colspan="7" class="empty-state"><div class="empty-state__icon">📋</div><div>Chargement des données...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination-container" id="pagination-container" style="display: none;">
+        <div class="pagination-info" id="pagination-info">Affichage de 1 à 25 sur 0</div>
+        <div class="pagination" id="pagination-buttons"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Detail Modal -->
+  <div class="detail-modal" id="detail-modal">
+    <div class="detail-modal__content">
+      <div class="detail-modal__header">
+        <h3 class="detail-modal__title" id="modal-title">Détails de l'inspection</h3>
+        <button class="detail-modal__close" id="close-modal">×</button>
+      </div>
+      <div class="detail-modal__body" id="modal-body"></div>
+      <div class="detail-modal__footer">
+        <button class="btn btn-secondary" id="close-modal-btn">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/photo-service.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/weather-service.js"></script>
+  <script src="../js/services/weather-context.js"></script>
+  <script src="../js/services/map-service.js"></script>
+  <script src="../js/services/photo-map-modal.js"></script>
+
+  <script>
+    // State
+    let allInspections = [];
+    let filteredInspections = [];
+    let trails = new Map();
+    let shelters = new Map();
+    let inspectors = new Map();
+    let currentPage = 1;
+    let pageSize = 25;
+    let sortField = 'date';
+    let sortDirection = 'desc';
+    let filtersVisible = true;
+    let isAdmin = false;
+    let isSystemAdmin = false; // deleting an inspection is reserved to the system admin
+
+    // Elements
+    const tableBody = document.getElementById('inspections-table');
+    const resultsCount = document.getElementById('results-count');
+    const paginationContainer = document.getElementById('pagination-container');
+    const paginationInfo = document.getElementById('pagination-info');
+    const paginationButtons = document.getElementById('pagination-buttons');
+    const detailModal = document.getElementById('detail-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+
+    // Init
+    function initHistory() {
+      bindEvents();
+      checkAuthStatus({
+        requireAuth: true,
+        requiredPermission: 'allowInspection',
+        onAuthenticated: async (userData) => {
+          isAdmin = userData.role === 'admin' || userData.role === 'system_admin';
+          isSystemAdmin = userData.role === 'system_admin';
+          // Show admin nav links if user is admin
+          if (isAdmin) {
+            document.querySelectorAll('.nav__link--admin, .mobile-nav__link--admin').forEach(el => el.style.display = '');
+          }
+          await loadAllData();
+        }
+      });
+    }
+
+    function bindEvents() {
+      // Filters
+      document.getElementById('toggle-filters').addEventListener('click', toggleFilters);
+      document.getElementById('date-filter').addEventListener('change', handleDateFilterChange);
+      document.getElementById('type-filter').addEventListener('change', () => { updateLocationFilter(); applyFilters(); });
+      document.getElementById('location-filter').addEventListener('change', applyFilters);
+      document.getElementById('inspector-filter').addEventListener('change', applyFilters);
+      document.getElementById('search-input').addEventListener('input', debounce(applyFilters, 300));
+      document.getElementById('start-date').addEventListener('change', filterWithHistory);
+      document.getElementById('end-date').addEventListener('change', filterWithHistory);
+      document.getElementById('reset-filters').addEventListener('click', resetFilters);
+      document.getElementById('print-sheet-btn').addEventListener('click', openPrintSheet);
+      document.getElementById('page-size').addEventListener('change', e => { pageSize = parseInt(e.target.value); currentPage = 1; updateDisplay(); });
+
+      // Sorting
+      document.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', () => handleSort(th.dataset.sort));
+      });
+
+      // Modal
+      document.getElementById('close-modal').addEventListener('click', closeModal);
+      document.getElementById('close-modal-btn').addEventListener('click', closeModal);
+      detailModal.addEventListener('click', e => { if (e.target === detailModal) closeModal(); });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    }
+
+    function debounce(fn, delay) {
+      let timer;
+      return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); };
+    }
+
+    // Only the current season is read at first (Network.seasonStart, same rule for ski and bike); the
+    // whole history is read once, the first time a period needing it is chosen (see historyNeedsFull).
+    let loadedFullHistory = false;
+
+    async function loadAllData(full = false) {
+      loadedFullHistory = full;
+      const since = full ? null : firebase.firestore.Timestamp.fromDate(Network.seasonStart());
+      const readInspections = name => (since ? db.collection(name).where('date', '>=', since).orderBy('date', 'desc') : db.collection(name)).get();
+      document.getElementById('season-option').textContent = Network.seasonLabel(Network.seasonRange());
+      try {
+        // Load trails (this activity's only, of the kind currently shown - kind.js + header switcher)
+        const trailsSnap = await db.collection('trails').get();
+        trailsSnap.forEach(doc => {
+          const t = doc.data();
+          if (Network.matches(t) && TrailService.isInspected(t) && TrailService.kindOf(t) === Kind.current()) trails.set(doc.id, t);
+        });
+
+        // Load shelters (only activities that have shelters)
+        if (Network.feature('shelters')) {
+          const sheltersSnap = await db.collection('shelters').get();
+          sheltersSnap.forEach(doc => { if (Network.matches(doc.data())) shelters.set(doc.id, doc.data()); });
+        } else {
+          document.querySelectorAll('#type-filter option[value="shelter"]').forEach(o => o.remove());
+        }
+
+        // Load inspectors
+        const inspSnap = await db.collection('inspectors').get();
+        inspSnap.forEach(doc => inspectors.set(doc.id, doc.data().name));
+
+        // Load trail inspections
+        const trailInspSnap = await readInspections('trail_inspections');
+        const trailInsp = trailInspSnap.docs.filter(doc => trails.has(doc.data().trail_id)).map(doc => { // this activity's trails only
+          const d = doc.data();
+          const trail = trails.get(d.trail_id);
+          return {
+            id: doc.id,
+            type: 'trail',
+            locationId: d.trail_id,
+            location: trail?.name || 'Sentier inconnu',
+            date: d.date?.toDate ? d.date.toDate() : new Date(d.date),
+            inspector: d.inspector_name || inspectors.get(d.inspector_id) || 'Inconnu',
+            condition: d.condition || 'unknown',
+            trail_status: d.trail_status,
+            snow_condition: d.snow_condition,
+            issues: d.issues || [],
+            notes: d.notes || '',
+            // Normalised once here; everything downstream can assume {url, filename, coordinates, timestamp}.
+            photos: PhotoService.photosFrom(d),
+            raw: d
+          };
+        });
+
+        // Load shelter inspections
+        const shelterInspDocs = shelters.size ? (await readInspections('shelter_inspections')).docs : [];
+        const shelterInsp = shelterInspDocs.filter(doc => shelters.has(doc.data().shelter_id)).map(doc => { // this activity's shelters only
+          const d = doc.data();
+          const shelter = shelters.get(d.shelter_id);
+          return {
+            id: doc.id,
+            type: 'shelter',
+            locationId: d.shelter_id,
+            location: shelter?.name || 'Abri inconnu',
+            date: d.date?.toDate ? d.date.toDate() : new Date(d.date),
+            inspector: d.inspector_name || inspectors.get(d.inspector_id) || 'Inconnu',
+            condition: d.condition || 'unknown',
+            cleanliness: d.cleanliness,
+            accessibility: d.accessibility,
+            cleanliness_details: d.cleanliness_details,
+            accessibility_details: d.accessibility_details,
+            issues: d.issues || [],
+            notes: d.notes || '',
+            photos: PhotoService.photosFrom(d),
+            raw: d
+          };
+        });
+
+        allInspections = [...trailInsp, ...shelterInsp];
+        
+        // Populate filter dropdowns
+        populateFilters();
+        
+        // Apply initial sort and display
+        applyFilters();
+
+      } catch (e) {
+        console.error('Error loading data:', e);
+        tableBody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="empty-state__icon">❌</div><div>Erreur de chargement</div></td></tr>';
+      }
+    }
+
+    function populateFilters() {
+      // Location filter
+      updateLocationFilter();
+
+      // Inspector filter
+      const inspectorFilter = document.getElementById('inspector-filter');
+      const chosenInspector = inspectorFilter.value;
+      const uniqueInspectors = [...new Set(allInspections.map(i => i.inspector))].filter(Boolean).sort();
+      inspectorFilter.innerHTML = '<option value="all">Tous les inspecteurs</option>';
+      uniqueInspectors.forEach(name => {
+        inspectorFilter.innerHTML += `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`;
+      });
+      if ([...inspectorFilter.options].some(o => o.value === chosenInspector)) inspectorFilter.value = chosenInspector;
+    }
+
+    function updateLocationFilter() {
+      const typeFilter = document.getElementById('type-filter').value;
+      const locationFilter = document.getElementById('location-filter');
+      locationFilter.innerHTML = '<option value="all">Tous les lieux</option>';
+
+      if (typeFilter === 'all' || typeFilter === 'trail') {
+        trails.forEach((t, id) => {
+          locationFilter.innerHTML += `<option value="${id}">${escapeHtml(t.name)} (Sentier)</option>`;
+        });
+      }
+      if (typeFilter === 'all' || typeFilter === 'shelter') {
+        shelters.forEach((s, id) => {
+          locationFilter.innerHTML += `<option value="${id}">${escapeHtml(s.name)} (Abri)</option>`;
+        });
+      }
+    }
+
+    function toggleFilters() {
+      const content = document.getElementById('filters-content');
+      const btn = document.getElementById('toggle-filters');
+      filtersVisible = !filtersVisible;
+      content.style.display = filtersVisible ? 'block' : 'none';
+      btn.textContent = filtersVisible ? 'Masquer' : 'Afficher';
+    }
+
+    function handleDateFilterChange() {
+      const value = document.getElementById('date-filter').value;
+      document.getElementById('custom-date-range').classList.toggle('show', value === 'custom');
+      filterWithHistory();
+    }
+
+    // Does the chosen period reach back before the current season, which is all that is loaded at first?
+    function historyNeedsFull() {
+      const value = document.getElementById('date-filter').value;
+      const seasonStart = Network.seasonStart();
+      if (value === 'all') return true;
+      if (value === 'month') return new Date(new Date().getFullYear(), new Date().getMonth() - 1, new Date().getDate()) < seasonStart;
+      if (value === 'week') return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) < seasonStart;
+      if (value === 'custom') {
+        const start = document.getElementById('start-date').value;
+        return !start || new Date(start) < seasonStart;
+      }
+      return false; // season, today
+    }
+
+    // Apply the filters, reading the full history first (once) when the period needs it
+    async function filterWithHistory() {
+      if (historyNeedsFull() && !loadedFullHistory) await loadAllData(true); // ends with applyFilters()
+      else applyFilters();
+    }
+
+    function resetFilters() {
+      document.getElementById('date-filter').value = 'season';
+      document.getElementById('type-filter').value = 'all';
+      document.getElementById('location-filter').value = 'all';
+      document.getElementById('inspector-filter').value = 'all';
+      document.getElementById('search-input').value = '';
+      document.getElementById('start-date').value = '';
+      document.getElementById('end-date').value = '';
+      document.getElementById('custom-date-range').classList.remove('show');
+      updateLocationFilter();
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const dateFilter = document.getElementById('date-filter').value;
+      const typeFilter = document.getElementById('type-filter').value;
+      const locationFilter = document.getElementById('location-filter').value;
+      const inspectorFilter = document.getElementById('inspector-filter').value;
+      const searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+      const startDate = document.getElementById('start-date').value;
+      const endDate = document.getElementById('end-date').value;
+
+      filteredInspections = allInspections.filter(insp => {
+        // Type filter
+        if (typeFilter !== 'all' && insp.type !== typeFilter) return false;
+
+        // Location filter
+        if (locationFilter !== 'all' && insp.locationId !== locationFilter) return false;
+
+        // Inspector filter
+        if (inspectorFilter !== 'all' && insp.inspector !== inspectorFilter) return false;
+
+        // Date filter
+        const inspDate = insp.date;
+        const now = new Date();
+        if (dateFilter === 'today') {
+          if (!isSameDay(inspDate, now)) return false;
+        } else if (dateFilter === 'season') {
+          if (inspDate < Network.seasonStart()) return false;
+        } else if (dateFilter === 'week') {
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          if (inspDate < weekAgo) return false;
+        } else if (dateFilter === 'month') {
+          const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+          if (inspDate < monthAgo) return false;
+        } else if (dateFilter === 'custom') {
+          if (startDate && inspDate < new Date(startDate)) return false;
+          if (endDate) {
+            const endOfDay = new Date(endDate);
+            endOfDay.setHours(23, 59, 59, 999);
+            if (inspDate > endOfDay) return false;
+          }
+        }
+
+        // Search filter
+        if (searchQuery) {
+          const searchableText = [insp.location, insp.inspector, insp.notes, ...(insp.issues || [])].join(' ').toLowerCase();
+          if (!searchableText.includes(searchQuery)) return false;
+        }
+
+        return true;
+      });
+
+      // Sort
+      sortInspections();
+      currentPage = 1;
+      updateDisplay();
+    }
+
+    // The one-page sheet of the inspections listed here (inspection-print.html), in a new tab, with the filters chosen
+    function printSheetUrl() {
+      const params = new URLSearchParams();
+      const get = id => document.getElementById(id).value;
+      params.set('period', get('date-filter'));
+      if (get('date-filter') === 'custom') { if (get('start-date')) params.set('start', get('start-date')); if (get('end-date')) params.set('end', get('end-date')); }
+      if (get('type-filter') !== 'all') params.set('type', get('type-filter'));
+      if (get('location-filter') !== 'all') params.set('location', get('location-filter'));
+      if (get('inspector-filter') !== 'all') params.set('inspector', get('inspector-filter'));
+      if (get('search-input').trim()) params.set('q', get('search-input').trim());
+      return new URL('inspection-print.html', location.href).href + '?' + params.toString();
+    }
+    function openPrintSheet() { window.open(printSheetUrl(), '_blank'); }
+
+    function isSameDay(d1, d2) {
+      return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+    }
+
+    function sortInspections() {
+      filteredInspections.sort((a, b) => {
+        let valA, valB;
+        switch (sortField) {
+          case 'date': valA = a.date; valB = b.date; break;
+          case 'type': valA = a.type; valB = b.type; break;
+          case 'location': valA = a.location.toLowerCase(); valB = b.location.toLowerCase(); break;
+          case 'inspector': valA = a.inspector.toLowerCase(); valB = b.inspector.toLowerCase(); break;
+          case 'condition': valA = a.condition; valB = b.condition; break;
+          default: valA = a.date; valB = b.date;
+        }
+        if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    function handleSort(field) {
+      if (sortField === field) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortField = field;
+        sortDirection = 'asc';
+      }
+      // Update sort indicators
+      document.querySelectorAll('th.sortable').forEach(th => th.classList.remove('sort-asc', 'sort-desc'));
+      document.querySelector(`th[data-sort="${field}"]`)?.classList.add(`sort-${sortDirection}`);
+      sortInspections();
+      updateDisplay();
+    }
+
+    function updateDisplay() {
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+      const pageInspections = filteredInspections.slice(start, end);
+
+      resultsCount.textContent = filteredInspections.length;
+
+      if (pageInspections.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="7" class="empty-state"><div class="empty-state__icon">📋</div><div>Aucune inspection trouvée</div></td></tr>';
+        paginationContainer.style.display = 'none';
+        return;
+      }
+
+      tableBody.innerHTML = pageInspections.map(insp => {
+        const dateStr = insp.date.toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+        const timeStr = insp.date.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' });
+        const typeLabel = insp.type === 'trail' ? 'Sentier' : 'Abri';
+        const typeClass = insp.type === 'trail' ? 'type-trail' : 'type-shelter';
+        const conditionBadge = getConditionBadge(insp.condition);
+        const photoCount = insp.photos?.length || 0;
+
+        return `<tr>
+          <td><div>${dateStr}</div><div style="font-size:0.75rem;color:var(--theme-text-secondary);">${timeStr}</div></td>
+          <td><span class="${typeClass}">${typeLabel}</span></td>
+          <td>${escapeHtml(insp.location || 'Inconnu')}</td>
+          <td>${escapeHtml(insp.inspector || 'Inconnu')}</td>
+          <td>${conditionBadge}</td>
+          <td><span class="badge badge-secondary">📷 ${photoCount}</span></td>
+          <td><div class="action-btns"><button class="btn btn-sm btn-primary" onclick="viewDetails('${insp.id}')" title="Voir détails">👁️</button>${isSystemAdmin ? `<button class="btn btn-sm btn-danger" onclick="deleteInspection('${insp.id}', event)" title="Supprimer">🗑️</button>` : ''}</div></td>
+        </tr>`;
+      }).join('');
+
+      updatePagination();
+    }
+
+    function getConditionBadge(condition) {
+      const badge = { good: 'badge-success', warning: 'badge-warning', critical: 'badge-danger' };
+      return `<span class="badge ${badge[condition] || 'badge-secondary'}">${TrailService.conditionText(condition, true)}</span>`;
+    }
+
+    function updatePagination() {
+      const totalPages = Math.ceil(filteredInspections.length / pageSize);
+      if (totalPages <= 1) {
+        paginationContainer.style.display = 'none';
+        return;
+      }
+      paginationContainer.style.display = 'flex';
+
+      const start = (currentPage - 1) * pageSize + 1;
+      const end = Math.min(currentPage * pageSize, filteredInspections.length);
+      paginationInfo.textContent = `Affichage de ${start} à ${end} sur ${filteredInspections.length}`;
+
+      let html = `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
+      
+      // Page buttons logic
+      const maxButtons = 5;
+      let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+      let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+      if (endPage - startPage < maxButtons - 1) startPage = Math.max(1, endPage - maxButtons + 1);
+
+      if (startPage > 1) {
+        html += `<button class="page-btn" onclick="goToPage(1)">1</button>`;
+        if (startPage > 2) html += `<span class="page-ellipsis">…</span>`;
+      }
+      for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+      }
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += `<span class="page-ellipsis">…</span>`;
+        html += `<button class="page-btn" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+      }
+
+      html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>›</button>`;
+      paginationButtons.innerHTML = html;
+    }
+
+    function goToPage(page) {
+      const totalPages = Math.ceil(filteredInspections.length / pageSize);
+      if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        updateDisplay();
+        document.getElementById('table-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function viewDetails(id) {
+      const insp = filteredInspections.find(i => i.id === id) || allInspections.find(i => i.id === id);
+      if (!insp) return;
+
+      const dateStr = insp.date.toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const typeLabel = insp.type === 'trail' ? `${Network.config().icon} Sentier` : '🏠 Abri';
+
+      let html = `
+        <div class="detail-row"><span class="detail-row__label">Type</span><span>${typeLabel}</span></div>
+        <div class="detail-row"><span class="detail-row__label">Lieu</span><span>${escapeHtml(insp.location)}</span></div>
+        <div class="detail-row"><span class="detail-row__label">Date</span><span>${dateStr}</span></div>
+        <div class="detail-row"><span class="detail-row__label">Inspecteur</span><span>${escapeHtml(insp.inspector)}</span></div>
+        <div class="detail-row"><span class="detail-row__label">État général</span><span>${getConditionBadge(insp.condition)}</span></div>
+      `;
+
+      // Trail-specific
+      if (insp.type === 'trail') {
+        if (insp.trail_status) {
+          const statusBadge = insp.trail_status === 'open' ? '<span class="badge badge-success">🟢 Ouvert</span>' : '<span class="badge badge-danger">🔴 Fermé</span>';
+          html += `<div class="detail-row"><span class="detail-row__label">Statut sentier</span><span>${statusBadge}</span></div>`;
+        }
+        if (insp.snow_condition) {
+          const snowMap = { good: 'Bonnes', warning: 'Moyennes', critical: 'Mauvaises' };
+          html += `<div class="detail-row"><span class="detail-row__label">Conditions neige</span><span>${snowMap[insp.snow_condition] || insp.snow_condition}</span></div>`;
+        }
+      }
+
+      // Shelter-specific
+      if (insp.type === 'shelter') {
+        if (insp.cleanliness) {
+          const cleanMap = { good: 'Propre', warning: 'Moyen', critical: 'Sale' };
+          html += `<div class="detail-row"><span class="detail-row__label">Propreté</span><span>${cleanMap[insp.cleanliness] || insp.cleanliness}</span></div>`;
+        }
+        if (insp.accessibility) {
+          const accessMap = { good: 'Dégagé', warning: 'Partiellement obstrué', critical: 'Bloqué' };
+          html += `<div class="detail-row"><span class="detail-row__label">Accessibilité</span><span>${accessMap[insp.accessibility] || insp.accessibility}</span></div>`;
+        }
+        if (insp.cleanliness_details) {
+          html += `<div class="detail-section"><div class="detail-section__title">Détails propreté</div><div class="detail-notes">${escapeHtml(insp.cleanliness_details)}</div></div>`;
+        }
+        if (insp.accessibility_details) {
+          html += `<div class="detail-section"><div class="detail-section__title">Détails accessibilité</div><div class="detail-notes">${escapeHtml(insp.accessibility_details)}</div></div>`;
+        }
+      }
+
+      // Issues
+      if (insp.issues && insp.issues.length > 0) {
+        html += `<div class="detail-section"><div class="detail-section__title">⚠️ Problèmes identifiés</div><div class="issues-list">${insp.issues.map(i => `<span class="issue-tag">${escapeHtml(i)}</span>`).join('')}</div></div>`;
+      }
+
+      // Notes
+      if (insp.notes) {
+        html += `<div class="detail-section"><div class="detail-section__title">📝 Notes</div><div class="detail-notes">${escapeHtml(insp.notes)}</div></div>`;
+      }
+
+      // Photos - already normalised by PhotoService at load time. A photo opens by default on its
+      // own trail kind's GPS map (geoMapIdOf - may differ from the kind's status-marker map), or
+      // falls back to the network default for a shelter (shelters are not kind-specific) - never
+      // necessarily Kind.current(), even though every trail entry shown here happens to match it
+      // today (history filters trails by it too). The full report-maps switch is still offered.
+      if (insp.photos && insp.photos.length > 0) {
+        const photoMapId = insp.type === 'trail' ? TrailService.geoMapIdOf(trails.get(insp.locationId)) : null;
+        html += `<div class="detail-section"><div class="detail-section__title">📷 Photos (${insp.photos.length})</div><div class="detail-photos">${insp.photos.map(p => {
+          // 📍 Carte / Google Maps, and ✏️ for the inspector who made it or an admin (hand-set position)
+          const loc = PhotoMapModal.locationLinks(p, {
+            collection: insp.type === 'trail' ? 'trail_inspections' : 'shelter_inspections',
+            docId: insp.id, record: insp.raw, preferredMap: photoMapId,
+            onChanged: async () => { await loadAllData(loadedFullHistory); viewDetails(insp.id); }
+          });
+          return `<div class="detail-photo"><img src="${p.url}" alt="Photo" onclick="window.open('${p.url}','_blank')">${loc}</div>`;
+        }).join('')}</div></div>`;
+      }
+
+      modalTitle.textContent = `Inspection - ${insp.location || 'Lieu inconnu'}`;
+      modalBody.innerHTML = html;
+      WeatherContext.attach(modalBody, insp.date);   // the weather nearest in time to this inspection (if the admin switch is on)
+      detailModal.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      detailModal.classList.remove('show');
+      document.body.style.overflow = '';
+    }
+
+    let deleteInProgress = false;
+    
+    async function deleteInspection(id, event) {
+      console.log('=== DELETE CALLED ===', id, 'deleteInProgress:', deleteInProgress);
+      
+      // Prevent double-click and event bubbling
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        // Disable the button immediately
+        if (event.target) {
+          event.target.disabled = true;
+        }
+      }
+      
+      // Prevent multiple simultaneous deletes
+      if (deleteInProgress) {
+        console.log('Delete already in progress, aborting');
+        return;
+      }
+      
+      if (!isSystemAdmin) {
+        console.log('Not system admin, aborting');
+        return;
+      }
+      
+      const insp = allInspections.find(i => i.id === id);
+      if (!insp) {
+        console.log('Inspection not found:', id);
+        alert('Inspection non trouvée');
+        return;
+      }
+
+      const locationName = insp.location || 'lieu inconnu';
+      console.log('Showing confirm for:', locationName);
+      
+      if (!confirm(`Êtes-vous sûr de vouloir supprimer cette inspection de "${locationName}"?\n\nCette action est irréversible.`)) {
+        // Cancelled: re-enable button
+        if (event && event.target) {
+          event.target.disabled = false;
+        }
+        return;
+      }
+      
+      // Set flag to prevent double execution
+      deleteInProgress = true;
+      console.log('Starting deletion...');
+
+      try {
+        const collection = insp.type === 'trail' ? 'trail_inspections' : 'shelter_inspections';
+        console.log('Deleting from collection:', collection);
+        
+        // Delete photos from storage; a missing file never blocks deleting the document.
+        const photoResult = await PhotoService.deletePhotos(insp.photos);
+        console.log('Photos supprimées:', photoResult.deleted, '- échecs:', photoResult.failed);
+
+        // Delete document
+        console.log('Deleting document:', id);
+        await db.collection(collection).doc(id).delete();
+        console.log('Document deleted successfully');
+
+        // Update local state
+        allInspections = allInspections.filter(i => i.id !== id);
+        filteredInspections = filteredInspections.filter(i => i.id !== id);
+        updateDisplay();
+
+        // Show success toast instead of alert
+        showToast('Inspection supprimée avec succès', 'success');
+      } catch (e) {
+        console.error('Error deleting:', e);
+        showToast('Erreur lors de la suppression: ' + e.message, 'error');
+      } finally {
+        deleteInProgress = false;
+        console.log('Delete process finished');
+      }
+    }
+    
+    // showToast and escapeHtml are now provided by utils.js
+
+    // Photo location modal: js/services/photo-map-modal.js (shared with inspection-dashboard.html,
+    // infraction-admin.html, signalisation-admin.html, signalisation-resume.html). viewDetails()
+    // above passes the one map a photo's own trail/shelter belongs on - no switch.
+
+    onFirebaseReady( initHistory);
+  </script>
+</body>
+</html>

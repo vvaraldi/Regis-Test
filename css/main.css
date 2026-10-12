@@ -1,0 +1,138 @@
+/* ========================================
+   MAIN.CSS - Portal
+   ========================================
+   Single entry point for all CSS styles
+   
+   Structure:
+   1. Config (variables, themes, modules)
+   2. Base (reset, typography)
+   3. Components (buttons, cards, forms, etc.)
+   4. Layout (header, content, footer)
+   5. Pages (page-specific styles)
+   6. Utilities (helper classes)
+   7. Responsive (breakpoints)
+   ======================================== */
+
+/* Font of the banner title (a free grotesque close to the bold caps of montorford.com). Must stay the first import. */
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@700&display=swap');
+
+/* ===== 1. CONFIGURATION ===== */
+@import 'config/variables.css';
+@import 'config/themes.css';
+@import 'config/modules.css';
+
+/* ===== 2. BASE STYLES ===== */
+@import 'base/reset.css';
+@import 'base/typography.css';
+
+/* ===== 3. COMPONENTS ===== */
+@import 'components/buttons.css';
+@import 'components/cards.css';
+@import 'components/forms.css';
+@import 'components/modals.css';
+@import 'components/alerts.css';
+@import 'components/badges.css';
+@import 'components/tables.css';
+@import 'components/tabs.css';
+@import 'components/filters.css';
+
+/* ===== 4. LAYOUT ===== */
+@import 'layout/header.css';
+@import 'layout/content.css';
+@import 'layout/footer.css';
+
+/* ===== 5. PAGE-SPECIFIC STYLES ===== */
+/* These will be added as we build each page */
+@import 'pages/portal.css';
+@import 'pages/auth.css';
+@import 'pages/user-profile.css';
+@import 'pages/user-management.css';
+
+/* ===== 6. UTILITIES ===== */
+@import 'utilities/helpers.css';
+
+/* ===== 7. RESPONSIVE ===== */
+@import 'responsive/breakpoints.css';
+
+/* ========================================
+   GLOBAL STYLES
+   ======================================== */
+
+/* App wrapper - ensures footer stays at bottom */
+#app,
+.app-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-wrapper > .main {
+  flex: 1;
+}
+
+/* Background pattern */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200' opacity='0.03'%3E%3Cpath d='M100 0 L200 200 L0 200 Z' fill='%231b4b72'/%3E%3C/svg%3E");
+  background-size: 100px;
+  background-repeat: repeat;
+  pointer-events: none;
+  z-index: -1;
+}
+
+[data-theme="dark"] body::before {
+  opacity: 0.02;
+}
+
+/* Bike network: same mountain pattern, tinted green instead of the default blue.
+   body[data-network="bike"] is set by Network.setUser()/usePublic() (js/core/network.js). */
+body[data-network="bike"]::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200' opacity='0.07'%3E%3Cpath d='M100 0 L200 200 L0 200 Z' fill='%233b8f5c'/%3E%3C/svg%3E");
+}
+
+/* Focus outline for accessibility */
+:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+
+/* Skip link for accessibility */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  background-color: var(--theme-accent);
+  color: var(--color-white);
+  border-radius: var(--border-radius-md);
+  z-index: var(--z-max);
+  transition: top var(--transition-fast);
+}
+
+.skip-link:focus {
+  top: var(--space-4);
+}
+
+/* Status message container */
+#status-messages {
+  position: fixed;
+  top: calc(var(--header-height) + var(--space-4));
+  right: var(--space-4);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 400px;
+}
+
+@media (max-width: 640px) {
+  #status-messages {
+    left: var(--space-4);
+    max-width: none;
+  }
+}

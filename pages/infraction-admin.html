@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Gestion des infractions">
+  <meta name="theme-color" content="#dc2626">
+  <title>Gestion des infractions</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚨</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    /* Filters row */
+    .filters-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; margin-bottom: 1rem; }
+    .filters-row .form-group { margin-bottom: 0; min-width: 140px; }
+    .filters-row .form-check { display: flex; align-items: center; gap: 0.5rem; }
+
+    /* Table */
+    .table-container { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .data-table th, .data-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--theme-border); }
+    .data-table th { background: var(--theme-surface-alt); font-weight: 600; color: var(--theme-text-secondary); white-space: nowrap; }
+    .data-table tbody tr { cursor: pointer; transition: background 0.15s; }
+    .data-table tbody tr:hover { background: var(--theme-surface-alt); }
+    .data-table .badge { font-size: 0.75rem; }
+
+    /* Status badges */
+    .status-active { background: #dcfce7; color: #166534; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; }
+    .status-archived { background: #f3f4f6; color: #6b7280; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; }
+
+    /* Modal detail sections */
+    .detail-section { margin-bottom: 1.5rem; }
+    .detail-section:last-child { margin-bottom: 0; }
+    .detail-section h4 { font-size: 0.8rem; font-weight: 600; color: var(--theme-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem; }
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.75rem; }
+    .detail-item { font-size: 0.875rem; }
+    .detail-item strong { color: var(--theme-text-secondary); font-weight: 500; }
+    .detail-description { background: var(--theme-surface-alt); padding: 1rem; border-radius: var(--radius-md); white-space: pre-wrap; font-size: 0.875rem; }
+    .detail-photo { max-width: 100%; max-height: 300px; border-radius: var(--radius-md); border: 1px solid var(--theme-border); cursor: pointer; }
+    .detail-qr { max-width: 150px; border-radius: var(--radius-md); border: 1px solid var(--theme-border); }
+    
+    /* Photo location links */
+    .photo-location { margin-top: 0.5rem; font-size: 0.8rem; }
+    .photo-location a { color: var(--theme-accent); margin-right: 1rem; }
+
+    /* Admin editable field */
+    .admin-field { margin-top: 1rem; }
+    .admin-field label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--theme-text-secondary); margin-bottom: 0.5rem; }
+    .admin-field textarea, .admin-field input { width: 100%; }
+    .admin-note { font-size: 0.75rem; color: var(--theme-text-secondary); margin-top: 0.25rem; }
+
+    /* Photo location modal (same styles as signalisation-admin) */
+    .detail-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+    .detail-modal.show { display: flex; }
+    .detail-modal__content { background: var(--theme-surface); border-radius: var(--radius-lg); max-width: 600px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
+    .detail-modal__header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--theme-border); }
+    .detail-modal__title { font-size: 1.125rem; font-weight: 600; }
+    .detail-modal__close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--theme-text-secondary); }
+    .detail-modal__body { padding: 1rem; overflow-y: auto; flex: 1; }
+    .detail-modal__footer { display: flex; gap: 1rem; justify-content: flex-end; padding: 1rem; border-top: 1px solid var(--theme-border); align-items: center; }
+    
+    @media (max-width: 768px) {
+      .filters-row { flex-direction: column; align-items: stretch; }
+      .data-table { font-size: 0.8rem; }
+      .data-table th, .data-table td { padding: 0.5rem; }
+    }
+  </style>
+</head>
+<body data-theme="light" data-module="infraction" data-nav="infraction" data-page="infraction-admin">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <!-- Loading -->
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <!-- Main Content -->
+  <main id="main-content" class="main" style="display: none;">
+    <div class="page-header"><div class="page-header__content"><h1 class="page-title">Gestion des infractions</h1><p class="page-subtitle">Consulter et gérer les infractions signalées</p></div></div>
+
+    <section class="content-section">
+      <div class="section-card">
+        <div class="section-card__header">
+          <h2 class="section-card__title">📋 Liste des infractions</h2>
+        </div>
+        <div class="section-card__body">
+          <!-- Filters -->
+          <div class="filters-row">
+            <div class="form-group">
+              <label class="form-label" for="sort-by">Trier par</label>
+              <select class="form-select" id="sort-by">
+                <option value="date">Date</option>
+                <option value="offender">Contrevenant</option>
+              </select>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" id="show-archived">
+              <label for="show-archived">Afficher les archivées</label>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="refresh-btn">🔄 Actualiser</button>
+          </div>
+
+          <!-- Table -->
+          <div class="table-container">
+            <table class="data-table" id="infractions-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Contrevenant</th>
+                  <th>Infraction</th>
+                  <th>Localisation</th>
+                  <th>Photos</th>
+                  <th>Patrouilleur</th>
+                  <th>Statut</th>
+                </tr>
+              </thead>
+              <tbody id="infractions-tbody">
+                <tr><td colspan="7" style="text-align:center;">Chargement...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Detail Modal -->
+  <div class="modal" id="detail-modal">
+    <div class="modal__container" style="max-width: 700px;">
+      <div class="modal__header">
+        <h3 class="modal__title">Détails de l'infraction</h3>
+        <button class="modal__close" id="modal-close">&times;</button>
+      </div>
+      <div class="modal__body" id="modal-body">
+        <!-- Loaded dynamically -->
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn-warning" id="archive-btn">Archiver</button>
+        <button class="btn btn-primary" id="save-btn">Enregistrer et fermer</button>
+        <button class="btn btn-secondary" id="close-btn">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+
+  <!-- Scripts -->
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/photo-service.js"></script>
+  <script src="../js/services/map-service.js"></script>
+  <script src="../js/services/photo-map-modal.js"></script>
+  <script src="../js/services/sector-service.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/weather-service.js"></script>
+  <script src="../js/services/weather-context.js"></script>
+
+  <script>
+    // Fault types and practices of the current activity (APP_CONFIG.networks[..].infractions),
+    // set once the user (and so the activity) is known
+    let FAULT_LABELS = {};
+    let PRACTICE_LABELS = {};
+
+    let infractionsData = [];
+    let showArchived = false;
+    let sortBy = 'date';
+    let currentInfractionId = null;
+    let sectors = []; // this activity's sectors, with their trails (SectorService.load) - names, and geoMapFor
+
+    // Infractions store the sector id only. If the sectors cannot be loaded the page
+    // falls back to showing that id.
+    const sectorNameOf = inf => SectorService.nameOf(sectors, inf.sector, inf.sectorName);
+
+    // Which map a record's photos should default to: its own trail's kind, else its sector's kind
+    // when every trail of that sector shares one (e.g. a sector used only for backcountry/
+    // randonnée alpine reports, with no specific trail selected) - else null (network default).
+    // See js/services/photo-map-modal.js for how `preferred` is used.
+    function geoMapFor(record) {
+      const sector = SectorService.find(sectors, record.sector);
+      const trail = sector && sector.items.find(i => i.id === record.trailId);
+      if (trail) return TrailService.geoMapIdOf(trail.kind);
+      if (sector && sector.items.length) {
+        const kinds = new Set(sector.items.map(i => i.kind));
+        if (kinds.size === 1) return TrailService.geoMapIdOf([...kinds][0]);
+      }
+      return null;
+    }
+
+    function initInfractionAdmin() {
+      checkAuthStatus({
+        requireAuth: true,
+        requiredRoles: ['admin', 'system_admin'],
+        onAuthenticated: async () => {
+          ({ faults: FAULT_LABELS, practices: PRACTICE_LABELS } = Network.config().infractions);
+          bindEvents();
+          try {
+            sectors = await SectorService.load();
+          } catch (e) {
+            console.error('Error loading sectors:', e);
+          }
+          loadInfractions();
+        }
+      });
+    }
+
+    function bindEvents() {
+      document.getElementById('sort-by').addEventListener('change', (e) => {
+        sortBy = e.target.value;
+        renderInfractions();
+      });
+      
+      document.getElementById('show-archived').addEventListener('change', (e) => {
+        showArchived = e.target.checked;
+        loadInfractions();
+      });
+      
+      document.getElementById('refresh-btn').addEventListener('click', loadInfractions);
+      
+      // Modal
+      document.getElementById('modal-close').addEventListener('click', closeModal);
+      document.getElementById('close-btn').addEventListener('click', closeModal);
+      document.getElementById('archive-btn').addEventListener('click', toggleArchive);
+      document.getElementById('save-btn').addEventListener('click', saveChanges);
+      document.getElementById('detail-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'detail-modal') closeModal();
+      });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+    }
+
+    async function loadInfractions() {
+      const tbody = document.getElementById('infractions-tbody');
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Chargement...</td></tr>';
+      
+      try {
+        let query = db.collection('infractions').orderBy('createdAt', 'desc');
+        
+        if (!showArchived) {
+          query = query.where('archived', '==', false);
+        }
+        
+        const snap = await query.get();
+        infractionsData = [];
+        snap.forEach(doc => {
+          const data = { id: doc.id, ...doc.data() };
+          if (Network.matches(data)) infractionsData.push(data); // this activity's infractions only
+        });
+
+        renderInfractions();
+      } catch (e) {
+        console.error('Error loading infractions:', e);
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--color-danger);">Erreur de chargement</td></tr>';
+      }
+    }
+
+    function renderInfractions() {
+      const tbody = document.getElementById('infractions-tbody');
+      
+      if (infractionsData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Aucune infraction trouvée</td></tr>';
+        return;
+      }
+      
+      // Sort
+      let sorted = [...infractionsData];
+      if (sortBy === 'date') {
+        sorted.sort((a, b) => {
+          const dateA = a.offenceTimestamp?.toDate?.() || a.createdAt?.toDate?.() || new Date(0);
+          const dateB = b.offenceTimestamp?.toDate?.() || b.createdAt?.toDate?.() || new Date(0);
+          return dateB - dateA;
+        });
+      } else if (sortBy === 'offender') {
+        sorted.sort((a, b) => (a.offenderName || '').localeCompare(b.offenderName || '', 'fr'));
+      }
+      
+      tbody.innerHTML = sorted.map(inf => {
+        const date = inf.offenceTimestamp?.toDate?.() || inf.createdAt?.toDate?.();
+        const dateStr = date ? date.toLocaleDateString('fr-CA') : '-';
+        const location = inf.trail ? `${inf.trail}${inf.offPiste ? ' (HP)' : ''}` : sectorNameOf(inf);
+        const status = inf.archived ? '<span class="status-archived">Archivée</span>' : '<span class="status-active">Active</span>';
+        
+        return `
+          <tr data-id="${inf.id}">
+            <td>${dateStr}</td>
+            <td>${escapeHtml(inf.offenderName || '-')}</td>
+            <td>${FAULT_LABELS[inf.fault] || inf.fault || '-'}</td>
+            <td>${escapeHtml(location)}</td>
+            <td><span class="badge badge-secondary">📷 ${PhotoService.photosFrom(inf).length}</span></td>
+            <td>${escapeHtml(inf.patrolName || '-')}</td>
+            <td>${status}</td>
+          </tr>
+        `;
+      }).join('');
+      
+      // Bind row clicks
+      tbody.querySelectorAll('tr[data-id]').forEach(row => {
+        row.addEventListener('click', () => openDetail(row.dataset.id));
+      });
+    }
+
+    async function openDetail(id) {
+      currentInfractionId = id;
+      const inf = infractionsData.find(i => i.id === id);
+      if (!inf) return;
+      
+      const date = inf.offenceTimestamp?.toDate?.();
+      const dateStr = date ? date.toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const createdStr = inf.createdAt?.toDate?.()?.toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) || '-';
+      const modifiedStr = inf.modifiedAt?.toDate?.()?.toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) || '';
+      
+      const location = inf.trail
+        ? `${sectorNameOf(inf)} - ${inf.trail}${inf.offPiste ? ' (Hors-piste)' : ''}`
+        : sectorNameOf(inf) + (inf.offPiste ? ' (Hors-piste)' : '');
+      
+      // Photos.
+      // PhotoService.photosFrom() normalises the photos array and de-duplicates by URL.
+      // The QR image is NOT a patrol photo and is handled separately below.
+      let photoHtml = '<p style="color:var(--theme-text-secondary);">Aucune photo</p>';
+      const photos = PhotoService.photosFrom(inf);
+      
+      if (photos.length > 0) {
+        const preferredMap = geoMapFor(inf);
+        photoHtml = '<div class="photo-gallery" style="display:flex;flex-wrap:wrap;gap:0.5rem;">';
+        photos.forEach((photo, idx) => {
+          const locationHtml = PhotoMapModal.locationLinks(photo, { collection: 'infractions', docId: inf.id, record: inf, preferredMap, onChanged: async () => { await loadInfractions(); await openDetail(id); } });
+          photoHtml += `<div class="photo-gallery-item" style="position:relative;">
+            <img src="${photo.url}" class="detail-photo" alt="Photo ${idx + 1}" onclick="window.open('${photo.url}', '_blank')" style="max-width:150px;max-height:150px;">
+            ${locationHtml}
+          </div>`;
+        });
+        photoHtml += '</div>';
+      }
+      
+      // QR Code
+      let qrHtml = '<p style="color:var(--theme-text-secondary);">Aucun QR code</p>';
+      if (inf.offenderQRCode) {
+        qrHtml = `<div class="qr-data-display"><span class="qr-data-label">Données</span><span class="qr-data-value">${escapeHtml(inf.offenderQRCode)}</span></div>`;
+        if (inf.offenderQRImageUrl) {
+          qrHtml += `<img src="${inf.offenderQRImageUrl}" class="detail-qr" alt="QR Code" style="margin-top:0.5rem;">`;
+        }
+      }
+      
+      const modalBody = document.getElementById('modal-body');
+      modalBody.innerHTML = `
+        <div class="detail-section">
+          <h4>Informations générales</h4>
+          <div class="detail-grid">
+            <div class="detail-item"><strong>Date/Heure:</strong> ${dateStr}</div>
+            <div class="detail-item"><strong>Patrouilleur:</strong> ${escapeHtml(inf.patrolName || '-')}</div>
+            <div class="detail-item"><strong>Infraction:</strong> ${inf.faultDisplayName || FAULT_LABELS[inf.fault] || inf.fault || '-'}</div>
+            <div class="detail-item"><strong>Pratique:</strong> ${PRACTICE_LABELS[inf.practice] || inf.practice || 'Non spécifié'}</div>
+            <div class="detail-item"><strong>Localisation:</strong> ${escapeHtml(location)}</div>
+            <div class="detail-item"><strong>Statut:</strong> ${inf.archived ? 'Archivée' : 'Active'}</div>
+          </div>
+          <p style="font-size:0.75rem;color:var(--theme-text-secondary);margin-top:0.5rem;">
+            Créé le: ${createdStr}${modifiedStr ? ` • Modifié le: ${modifiedStr}` : ''}
+          </p>
+        </div>
+        
+        <div class="detail-section">
+          <h4>Contrevenant</h4>
+          <div class="admin-field">
+            <label for="admin-offender-name">Nom du contrevenant</label>
+            <input type="text" class="form-input" id="admin-offender-name" value="${escapeHtml(inf.offenderName || '')}">
+          </div>
+        </div>
+        
+        <div class="detail-section">
+          <h4>QR Code du pass</h4>
+          ${qrHtml}
+        </div>
+        
+        ${inf.offenceType ? `
+        <div class="detail-section">
+          <h4>Commentaires du patrouilleur</h4>
+          <div class="detail-description">${escapeHtml(inf.offenceType)}</div>
+        </div>
+        ` : ''}
+        
+        <div class="detail-section">
+          <h4>Photos (${photos.length})</h4>
+          ${photoHtml}
+        </div>
+        
+        <div class="detail-section">
+          <h4>Sanction et commentaires administratifs</h4>
+          <div class="admin-field">
+            <textarea class="form-input" id="admin-comments" rows="4" placeholder="Entrez les commentaires et sanctions...">${escapeHtml(inf.adminComments || '')}</textarea>
+            ${inf.timestampModificationAdmin ? `<p class="admin-note">Dernière modification admin: ${inf.timestampModificationAdmin.toDate?.()?.toLocaleDateString('fr-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) || ''}</p>` : ''}
+          </div>
+        </div>
+      `;
+      
+      WeatherContext.attach(modalBody, date);   // the weather nearest in time to the offence (if the admin switch is on)
+
+      // Update archive button
+      const archiveBtn = document.getElementById('archive-btn');
+      if (inf.archived) {
+        archiveBtn.textContent = 'Désarchiver';
+        archiveBtn.classList.remove('btn-warning');
+        archiveBtn.classList.add('btn-secondary');
+      } else {
+        archiveBtn.textContent = 'Archiver';
+        archiveBtn.classList.remove('btn-secondary');
+        archiveBtn.classList.add('btn-warning');
+      }
+      
+      document.getElementById('detail-modal').classList.add('is-active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('detail-modal').classList.remove('is-active');
+      document.body.style.overflow = '';
+      currentInfractionId = null;
+    }
+
+    async function saveChanges() {
+      if (!currentInfractionId) return;
+      
+      const offenderName = document.getElementById('admin-offender-name').value.trim();
+      const adminComments = document.getElementById('admin-comments').value.trim();
+      
+      try {
+        await db.collection('infractions').doc(currentInfractionId).update({
+          offenderName: offenderName,
+          adminComments: adminComments,
+          timestampModificationAdmin: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        showToast('Modifications enregistrées', 'success');
+        closeModal(); // save and close
+        loadInfractions();
+      } catch (e) {
+        console.error('Error saving:', e);
+        showToast('Erreur lors de l\'enregistrement', 'error');
+      }
+    }
+
+    async function toggleArchive() {
+      if (!currentInfractionId) return;
+      
+      const inf = infractionsData.find(i => i.id === currentInfractionId);
+      if (!inf) return;
+      
+      const newStatus = !inf.archived;
+      
+      try {
+        const updateData = { archived: newStatus };
+        if (newStatus) {
+          updateData.timestampArchivedAdmin = firebase.firestore.FieldValue.serverTimestamp();
+        }
+        
+        await db.collection('infractions').doc(currentInfractionId).update(updateData);
+        
+        showToast(newStatus ? 'Infraction archivée' : 'Infraction désarchivée', 'success');
+        closeModal();
+        loadInfractions();
+      } catch (e) {
+        console.error('Error archiving:', e);
+        showToast('Erreur lors de l\'archivage', 'error');
+      }
+    }
+
+    // escapeHtml and showToast are now provided by utils.js
+
+    // PhotoMapModal (the location pop-up, with its map switch) lives in js/services/photo-map-modal.js
+
+    onFirebaseReady( initInfractionAdmin);
+  </script>
+</body>
+</html>

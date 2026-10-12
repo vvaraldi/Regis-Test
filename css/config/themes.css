@@ -1,0 +1,157 @@
+/* ========================================
+   THEMES.CSS - Global Theme Definitions
+   ========================================
+   Defines light/dark modes and seasonal variations.
+   Use data-theme attribute on <body> to switch.
+   
+   Example: <body data-theme="dark">
+   ======================================== */
+
+/* ===== LIGHT THEME (Default) ===== */
+[data-theme="light"],
+:root {
+  --theme-bg: #f8fafc;
+  --theme-bg-alt: #f1f5f9;
+  --theme-surface: #ffffff;
+  --theme-surface-alt: #f8fafc;
+  --theme-surface-hover: #f1f5f9;
+  --theme-text: #1e293b;
+  --theme-text-light: #64748b;
+  --theme-text-lighter: #94a3b8;
+  --theme-border: #e2e8f0;
+  --theme-border-light: #f1f5f9;
+  
+  /* Shadows for light theme */
+  --theme-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --theme-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --theme-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  
+  /* Input backgrounds */
+  --theme-input-bg: #ffffff;
+  --theme-input-border: #d1d5db;
+  --theme-input-focus: var(--theme-accent);
+  
+  /* Modal/Overlay */
+  --theme-overlay: rgba(15, 23, 42, 0.5);
+  --theme-modal-bg: #ffffff;
+}
+
+/* ===== DARK THEME ===== */
+[data-theme="dark"] {
+  --theme-bg: #0f172a;
+  --theme-bg-alt: #1e293b;
+  --theme-surface: #1e293b;
+  --theme-surface-alt: #334155;
+  --theme-surface-hover: #334155;
+  --theme-text: #f1f5f9;
+  --theme-text-light: #94a3b8;
+  --theme-text-lighter: #64748b;
+  --theme-border: #334155;
+  --theme-border-light: #1e293b;
+  
+  /* Shadows for dark theme (more subtle) */
+  --theme-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --theme-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --theme-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  
+  /* Input backgrounds */
+  --theme-input-bg: #1e293b;
+  --theme-input-border: #475569;
+  --theme-input-focus: var(--theme-accent);
+  
+  /* Modal/Overlay */
+  --theme-overlay: rgba(0, 0, 0, 0.7);
+  --theme-modal-bg: #1e293b;
+  
+  /* Adjusted status colors for dark mode - more vibrant */
+  --color-success: #34d399;
+  --color-success-light: rgba(52, 211, 153, 0.2);
+  --color-success-dark: #10b981;
+  
+  --color-warning: #fbbf24;
+  --color-warning-light: rgba(251, 191, 36, 0.2);
+  --color-warning-dark: #f59e0b;
+  
+  --color-danger: #f87171;
+  --color-danger-light: rgba(248, 113, 113, 0.2);
+  --color-danger-dark: #ef4444;
+  
+  --color-info: #60a5fa;
+  --color-info-light: rgba(96, 165, 250, 0.2);
+  --color-info-dark: #3b82f6;
+}
+
+/* ===== SEASONAL THEME: SUMMER ===== */
+[data-theme="summer"] {
+  --theme-bg: #f0fdf4;
+  --theme-bg-alt: #dcfce7;
+  --theme-surface: #ffffff;
+  --theme-surface-alt: #f0fdf4;
+  --theme-surface-hover: #dcfce7;
+  --theme-border: #bbf7d0;
+  --theme-border-light: #dcfce7;
+  
+  /* Slightly warmer text */
+  --theme-text: #14532d;
+  --theme-text-light: #166534;
+  --theme-text-lighter: #22c55e;
+}
+
+/* ===== SEASONAL THEME: AUTUMN ===== */
+[data-theme="autumn"] {
+  --theme-bg: #fffbeb;
+  --theme-bg-alt: #fef3c7;
+  --theme-surface: #ffffff;
+  --theme-surface-alt: #fffbeb;
+  --theme-surface-hover: #fef3c7;
+  --theme-border: #fde68a;
+  --theme-border-light: #fef3c7;
+  
+  /* Warmer tones */
+  --theme-text: #78350f;
+  --theme-text-light: #92400e;
+  --theme-text-lighter: #b45309;
+}
+
+/* ===== SEASONAL THEME: WINTER ===== */
+[data-theme="winter"] {
+  --theme-bg: #f0f9ff;
+  --theme-bg-alt: #e0f2fe;
+  --theme-surface: #ffffff;
+  --theme-surface-alt: #f0f9ff;
+  --theme-surface-hover: #e0f2fe;
+  --theme-border: #bae6fd;
+  --theme-border-light: #e0f2fe;
+  
+  /* Cool tones */
+  --theme-text: #0c4a6e;
+  --theme-text-light: #0369a1;
+  --theme-text-lighter: #0ea5e9;
+}
+
+/* ========================================
+   THEME TRANSITION
+   ======================================== 
+   Smooth transition when switching themes
+   ======================================== */
+body {
+  transition: 
+    background-color var(--transition-slow),
+    color var(--transition-slow);
+}
+
+/* Elements that should transition smoothly */
+.theme-transition,
+.card,
+.btn,
+.header,
+.modal,
+input,
+select,
+textarea {
+  transition: 
+    background-color var(--transition-normal),
+    border-color var(--transition-normal),
+    color var(--transition-normal),
+    box-shadow var(--transition-normal);
+}

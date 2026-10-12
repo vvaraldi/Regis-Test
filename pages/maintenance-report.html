@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Rapport d'entretien">
+  <meta name="theme-color" content="#166534">
+  <title>Rapport d'entretien</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪏</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <!-- EXIF Library for GPS extraction -->
+  <script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.min.js"></script>
+  <style>
+    /* Form Row */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
+
+    /* Photo upload area */
+    .photo-upload-area {
+      border: 2px dashed var(--theme-border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--theme-surface-alt);
+    }
+    .photo-upload-area:hover, .photo-upload-area.drag-over {
+      border-color: var(--theme-accent);
+      background: rgba(var(--theme-accent-rgb), 0.05);
+    }
+    .photo-upload-area__icon { font-size: 1.75rem; margin-bottom: 0.4rem; }
+    .photo-upload-area__text { font-weight: 500; color: var(--theme-text); }
+    .photo-upload-area__hint { font-size: 0.8rem; color: var(--theme-text-secondary); margin-top: 0.25rem; }
+    .photo-preview-container { margin-top: 0.75rem; }
+
+    /* Invalid styling */
+    .is-invalid { border-color: var(--color-danger) !important; box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2) !important; }
+
+    /* One job entry */
+    .entry-block {
+      border: 1px solid var(--theme-border);
+      border-radius: var(--radius-lg);
+      padding: 1rem;
+      margin-bottom: 1rem;
+      background: var(--theme-surface-alt);
+    }
+    .entry-block__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .entry-block__title { font-weight: 600; }
+
+    /* Support builders: tap-to-toggle pills. Volunteers: the chosen ones as chips, and a search to add more */
+    .picker-list__empty { color: var(--theme-text-secondary); font-size: 0.875rem; padding: 0.25rem 0; }
+    .pills, .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .chips { margin-bottom: 0.5rem; }
+    .pill { padding: 0.5rem 0.9rem; border-radius: 999px; border: 1px solid var(--theme-border); background: var(--theme-surface); color: inherit; font-size: 0.875rem; cursor: pointer; }
+    .pill[aria-pressed="true"] { background: var(--theme-accent, #059669); border-color: var(--theme-accent, #059669); color: #fff; font-weight: 600; }
+    .chip { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.3rem 0.25rem 0.8rem; border-radius: 999px; background: rgba(5, 150, 105, 0.14); border: 1px solid var(--theme-accent, #059669); font-size: 0.875rem; }
+    .chip button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 1rem; line-height: 1; padding: 0.25rem 0.45rem; border-radius: 999px; }
+    .chip button:hover { background: rgba(0, 0, 0, 0.12); }
+    .chips__empty { color: var(--theme-text-secondary); font-size: 0.875rem; }
+    #reuse-last-btn { display: inline-flex; width: auto; margin: 0.6rem 0 0.4rem; }
+    .support-group, .volunteer-group { margin-top: 0.9rem; }
+    .picker-search { position: relative; }
+    .picker-results { position: absolute; z-index: 30; left: 0; right: 0; top: 100%; margin: 2px 0 0; padding: 0.25rem; list-style: none; max-height: 280px; overflow-y: auto; background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-md); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
+    .picker-results li { padding: 0.6rem 0.75rem; border-radius: var(--radius-sm); cursor: pointer; }
+    .picker-results li[aria-selected="true"], .picker-results li:hover { background: var(--theme-surface-alt); }
+    .picker-results li.picker-results__note { cursor: default; color: var(--theme-text-secondary); font-size: 0.8rem; background: transparent; }  </style>
+</head>
+<body data-theme="light" data-module="maintenance" data-nav="maintenance" data-page="maintenance-report">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <!-- Loading -->
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <!-- Main Content -->
+  <main id="main-content" class="main" style="display: none;">
+    <div class="page-header"><div class="page-header__content"><h1 class="page-title">Rapport d'entretien</h1><p class="page-subtitle">Enregistrer le travail d'entretien de sentiers du jour (réseau vélo)</p></div></div>
+
+    <!-- Report Selector -->
+    <section class="content-section">
+      <div class="section-card">
+        <div class="section-card__header"><h2 class="section-card__title">📋 Rapport existant ou nouveau</h2></div>
+        <div class="section-card__body">
+          <div class="form-group">
+            <select class="form-select" id="report-selector">
+              <option value="new">+ Nouveau rapport</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Report Form -->
+    <section class="content-section">
+      <form id="maintenance-form" class="section-card">
+        <div class="section-card__header"><h2 class="section-card__title">📝 Détails du rapport</h2></div>
+        <div class="section-card__body">
+
+          <!-- Trail builder responsable (auto) -->
+          <div class="form-group">
+            <label class="form-label">Artisan de sentiers responsable</label>
+            <input type="text" class="form-input" id="builder-name" readonly>
+          </div>
+
+          <!-- Date -->
+          <div class="form-group">
+            <label class="form-label" for="log-date">Date <span class="form-required">*</span></label>
+            <input type="date" class="form-input" id="log-date" required>
+          </div>
+
+          <!-- The same team as the last report, in one tap -->
+          <div class="form-group">
+            <button type="button" class="btn btn-secondary btn-sm" id="reuse-last-btn" style="display:inline-flex;width:auto;max-width:100%;" title="Ajoute les artisans en support et les bénévoles de votre rapport précédent">↺ Reprendre l'équipe du dernier rapport</button>
+          </div>
+
+          <!-- Support builders: touch a name to add or remove it -->
+          <div class="form-group support-group">
+            <label class="form-label">Artisans de sentiers en support <span class="form-hint" id="support-count"></span> <span class="form-hint">(optionnel, touchez un nom pour l'ajouter ou le retirer)</span></label>
+            <div class="pills" id="support-builder-list" role="group" aria-label="Artisans de sentiers en support"></div>
+          </div>
+
+          <!-- Volunteers: chosen ones as chips, a search to add more -->
+          <div class="form-group volunteer-group">
+            <label class="form-label" for="volunteer-filter">Bénévoles présents <span class="form-hint" id="volunteer-count"></span> <span class="form-hint">(optionnel)</span></label>
+            <div class="chips" id="volunteer-chips" aria-live="polite"></div>
+            <div class="picker-search">
+              <input type="text" class="form-input" id="volunteer-filter" placeholder="Ajouter un bénévole : taper un nom..." autocomplete="off" role="combobox" aria-expanded="false" aria-controls="volunteer-list" aria-autocomplete="list">
+              <ul class="picker-results" id="volunteer-list" role="listbox" hidden></ul>
+            </div>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <!-- Job entries -->
+    <section class="content-section">
+      <div class="section-card">
+        <div class="section-card__header"><h2 class="section-card__title">🛠️ Travaux effectués</h2></div>
+        <div class="section-card__body">
+          <div id="entries-container"></div>
+          <button type="button" class="btn btn-secondary" id="add-entry-btn">+ Ajouter un travail</button>
+        </div>
+        <div class="section-card__footer">
+          <button type="button" class="btn btn-secondary" id="reset-btn">Réinitialiser</button>
+          <button type="button" class="btn btn-primary" id="save-btn">Enregistrer</button>
+          <button type="button" class="btn btn-primary" id="modify-btn" style="display:none;">Modifier</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+
+  <!-- Scripts -->
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/utils/photo-picker.js"></script>
+  <script src="../js/services/photo-service.js"></script>
+  <script src="../js/services/map-service.js"></script>
+  <script src="../js/services/photo-map-modal.js"></script>
+  <script src="../js/services/sector-service.js"></script>
+
+  <script>
+    // State
+    let currentLogId = null;
+    let isNewReport = true;
+    let userLogs = [];
+    let sectors = [];       // SectorService.load() result
+    let volunteers = [];    // volunteers/{id} docs (the 1000 most recent), network=bike
+    let selectedVolunteers = new Set();   // ids of the chosen volunteers (shown as chips)
+    let selectedSupport = new Set();      // ids of the chosen support builders (pills pressed)
+    let resultIndex = -1;                 // the highlighted line of the volunteer search results
+    let supportBuilders = []; // other allowMaintenance users of this network: { id, name, role }
+    let entries = [];       // [{ rowId, el, sectorSelect, trailSelect, jobTextEl, picker }]
+    let entryCounter = 0;
+    // Storage URLs the loaded log showed; used to clean up removed photos on modify.
+    let loadedFileUrls = [];
+
+    // Elements
+    let reportSelector, builderName, logDate, supportBuilderListEl;
+    let volunteerFilter, volunteerListEl, volunteerChipsEl;
+    let entriesContainer, addEntryBtn;
+    let saveBtn, modifyBtn, resetBtn;
+
+    function initMaintenanceReport() {
+      bindElements();
+      bindEvents();
+      setupOfflineDetection();
+
+      checkAuthStatus({
+        requireAuth: true,
+        requiredPermission: 'allowMaintenance',
+        permissionDefault: false,
+        onAuthenticated: async (userData) => {
+          if (Network.current() !== 'bike') {
+            showAccessDenied('Le rapport d\'entretien est réservé au réseau vélo. Changez d\'activité pour y accéder.');
+            return;
+          }
+          if (userData.role === 'admin' || userData.role === 'system_admin') {
+            document.querySelectorAll('.nav__link--admin, .mobile-nav__link--admin').forEach(el => el.style.display = '');
+          }
+          setDefaultValues();
+          await Promise.all([loadSectors(), loadSupportBuilders(), loadVolunteers()]);
+          await loadUserLogs();
+          resetForm();
+        }
+      });
+    }
+
+    function bindElements() {
+      reportSelector = document.getElementById('report-selector');
+      builderName = document.getElementById('builder-name');
+      logDate = document.getElementById('log-date');
+      supportBuilderListEl = document.getElementById('support-builder-list');
+      volunteerFilter = document.getElementById('volunteer-filter');
+      volunteerListEl = document.getElementById('volunteer-list');
+      volunteerChipsEl = document.getElementById('volunteer-chips');
+      entriesContainer = document.getElementById('entries-container');
+      addEntryBtn = document.getElementById('add-entry-btn');
+      saveBtn = document.getElementById('save-btn');
+      modifyBtn = document.getElementById('modify-btn');
+      resetBtn = document.getElementById('reset-btn');
+    }
+
+    function bindEvents() {
+      reportSelector.addEventListener('change', handleReportChange);
+      volunteerFilter.addEventListener('input', () => { resultIndex = -1; renderVolunteerResults(); });
+      volunteerFilter.addEventListener('focus', () => { resultIndex = -1; renderVolunteerResults(); });
+      volunteerFilter.addEventListener('blur', hideVolunteerResults);
+      volunteerFilter.addEventListener('keydown', handleVolunteerKey);
+      document.getElementById('reuse-last-btn').addEventListener('click', reuseLastTeam);
+      addEntryBtn.addEventListener('click', () => addEntryRow());
+      saveBtn.addEventListener('click', handleSubmit);
+      modifyBtn.addEventListener('click', handleModify);
+      resetBtn.addEventListener('click', resetForm);
+    }
+
+    function setDefaultValues() {
+      builderName.value = currentUserData.name || currentUser.email;
+      const { date } = getLocalDateTime();
+      logDate.value = date;
+    }
+
+    async function loadSectors() {
+      try {
+        sectors = await SectorService.load();
+      } catch (e) {
+        console.error('Error loading sectors:', e);
+        showToast('Impossible de charger les secteurs. Rechargez la page.', 'error');
+      }
+    }
+
+    // Other trail builders (allowMaintenance) of this network, for the support picker
+    async function loadSupportBuilders() {
+      try {
+        const snap = await db.collection('inspectors').where('allowMaintenance', '==', true).get();
+        supportBuilders = [];
+        snap.forEach(doc => {
+          if (doc.id === currentUser.uid) return;
+          const data = doc.data();
+          if (data.status !== 'active') return;
+          if (!Array.isArray(data.networks) || !data.networks.includes('bike')) return;
+          supportBuilders.push({ id: doc.id, name: data.name || data.email || doc.id, role: data.role });
+        });
+        renderSupportBuilderList();
+      } catch (e) {
+        console.error('Error loading support builders:', e);
+      }
+    }
+
+    async function loadVolunteers() {
+      try {
+        const snap = await db.collection('volunteers')
+          .where('network', '==', 'bike')
+          .orderBy('createdAt', 'desc')
+          .limit(1000)
+          .get();
+        volunteers = [];
+        snap.forEach(doc => {
+          const data = doc.data();
+          volunteers.push({ id: doc.id, name: `${data.prenom || ''} ${data.nom || ''}`.trim() || doc.id });
+        });
+        renderVolunteerChips();
+      } catch (e) {
+        console.error('Error loading volunteers:', e);
+      }
+    }
+
+    // Adds ids missing from `items` (e.g. a builder/volunteer removed since the report was saved),
+    // so a report being edited never silently drops who it named, mirroring how
+    // SectorService.selectTrail keeps an unknown trail as an extra option.
+    function addMissingItems(items, ids, names) {
+      (ids || []).forEach((id, i) => {
+        if (!items.find(x => x.id === id)) {
+          items.push({ id, name: (names && names[i]) || id });
+        }
+      });
+    }
+
+    // ─── Support builders: pills, a touch adds or removes ──────────────────
+    // Order: the other trail builders first (A to Z), then the administrators, then the system admins
+    const ROLE_RANK = { admin: 1, system_admin: 2 };
+
+    function renderSupportBuilderList() {
+      supportBuilders.sort((a, b) => (ROLE_RANK[a.role] || 0) - (ROLE_RANK[b.role] || 0) || a.name.localeCompare(b.name, 'fr'));
+      supportBuilderListEl.replaceChildren();
+      if (supportBuilders.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'picker-list__empty';
+        empty.textContent = 'Aucun autre artisan disponible.';
+        supportBuilderListEl.appendChild(empty);
+      }
+      supportBuilders.forEach(b => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'pill';
+        pill.dataset.id = b.id;
+        pill.textContent = b.name;
+        pill.setAttribute('aria-pressed', String(selectedSupport.has(b.id)));
+        pill.addEventListener('click', () => {
+          if (selectedSupport.has(b.id)) selectedSupport.delete(b.id); else selectedSupport.add(b.id);
+          renderSupportBuilderList();
+        });
+        supportBuilderListEl.appendChild(pill);
+      });
+      document.getElementById('support-count').textContent = selectedSupport.size ? `(${selectedSupport.size})` : '';
+    }
+
+    function checkedSupportBuilders() {
+      return supportBuilders.filter(b => selectedSupport.has(b.id)).map(b => ({ id: b.id, name: b.name }));
+    }
+
+    function setCheckedSupportBuilders(ids, names) {
+      addMissingItems(supportBuilders, ids, names);
+      selectedSupport = new Set(ids || []);
+      renderSupportBuilderList();
+    }
+
+    // ─── Volunteers: chips for the chosen ones, a search to add ────────────
+    const MAX_RESULTS = 8;
+    let shownResults = [];   // the volunteers on the lines of the results list
+
+    // Not chosen yet, every typed word found in the name (accents and case ignored), A to Z
+    function volunteerMatches() {
+      const words = SectorService.norm(volunteerFilter.value).split(' ').filter(Boolean);
+      return volunteers
+        .filter(v => !selectedVolunteers.has(v.id) && words.every(w => SectorService.norm(v.name).includes(w)))
+        .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    }
+
+    function renderVolunteerChips() {
+      volunteerChipsEl.replaceChildren();
+      const chosen = checkedVolunteers();
+      if (chosen.length === 0) {
+        const empty = document.createElement('span');
+        empty.className = 'chips__empty';
+        empty.textContent = 'Aucun bénévole sélectionné';
+        volunteerChipsEl.appendChild(empty);
+      }
+      chosen.forEach(v => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.dataset.id = v.id;
+        const name = document.createElement('span');
+        name.textContent = v.name;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = '✕';
+        remove.setAttribute('aria-label', 'Retirer ' + v.name);
+        remove.addEventListener('click', () => removeVolunteer(v.id));
+        chip.append(name, remove);
+        volunteerChipsEl.appendChild(chip);
+      });
+      document.getElementById('volunteer-count').textContent = chosen.length ? `(${chosen.length})` : '';
+    }
+
+    function renderVolunteerResults() {
+      const matches = volunteerMatches();
+      shownResults = matches.slice(0, MAX_RESULTS);
+      volunteerListEl.replaceChildren();
+      shownResults.forEach((v, i) => {
+        const li = document.createElement('li');
+        li.setAttribute('role', 'option');
+        li.setAttribute('aria-selected', String(i === resultIndex));
+        li.dataset.id = v.id;
+        li.textContent = v.name;
+        li.addEventListener('mousedown', e => { e.preventDefault(); addVolunteer(v.id); });   // before the field loses focus
+        li.addEventListener('click', () => addVolunteer(v.id));
+        volunteerListEl.appendChild(li);
+      });
+      const note = text => {
+        const li = document.createElement('li');
+        li.className = 'picker-results__note';
+        li.setAttribute('role', 'presentation');
+        li.textContent = text;
+        volunteerListEl.appendChild(li);
+      };
+      if (!shownResults.length) note(volunteers.length ? (volunteerFilter.value.trim() ? 'Aucun bénévole trouvé.' : 'Tous les bénévoles sont déjà ajoutés.') : 'Aucun bénévole inscrit.');
+      else if (matches.length > shownResults.length) note(`+ ${matches.length - shownResults.length} autres : précisez le nom`);
+      volunteerListEl.hidden = false;
+      volunteerFilter.setAttribute('aria-expanded', 'true');
+    }
+
+    function hideVolunteerResults() {
+      volunteerListEl.hidden = true;
+      volunteerFilter.setAttribute('aria-expanded', 'false');
+      resultIndex = -1;
+    }
+
+    function addVolunteer(id) {
+      selectedVolunteers.add(id);
+      volunteerFilter.value = '';
+      resultIndex = -1;
+      renderVolunteerChips();
+      renderVolunteerResults();   // stays open, so several people can be added in a row
+    }
+
+    function removeVolunteer(id) {
+      selectedVolunteers.delete(id);
+      renderVolunteerChips();
+      if (!volunteerListEl.hidden) renderVolunteerResults();
+    }
+
+    // Arrow keys move in the results, Enter adds the highlighted one (or the first), Escape closes
+    function handleVolunteerKey(e) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (volunteerListEl.hidden) renderVolunteerResults();
+        const n = shownResults.length;
+        if (!n) return;
+        resultIndex = e.key === 'ArrowDown' ? (resultIndex + 1) % n : (resultIndex - 1 + n) % n;
+        renderVolunteerResults();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();   // never submits the report
+        const pick = shownResults[resultIndex >= 0 ? resultIndex : 0];
+        if (pick && (resultIndex >= 0 || volunteerFilter.value.trim())) addVolunteer(pick.id);
+      } else if (e.key === 'Escape') {
+        hideVolunteerResults();
+      }
+    }
+
+    function checkedVolunteers() {
+      return Array.from(selectedVolunteers).map(id => {
+        const v = volunteers.find(x => x.id === id);
+        return { id, name: v ? v.name : id };
+      });
+    }
+
+    function setCheckedVolunteers(ids, names) {
+      // A volunteer named on a report being edited may not be in the loaded list any more
+      addMissingItems(volunteers, ids, names);
+      selectedVolunteers = new Set(ids || []);
+      renderVolunteerChips();
+      hideVolunteerResults();
+    }
+
+    // The team of the user's previous report (the latest one other than the one being edited), added to what is chosen
+    function reuseLastTeam() {
+      const last = userLogs.find(l => l.id !== currentLogId);
+      if (!last) { showToast('Aucun rapport précédent à reprendre.', 'warning'); return; }
+      let builders = 0, helpers = 0;
+      (last.supportBuilderIds || []).forEach(id => {
+        if (supportBuilders.some(b => b.id === id) && !selectedSupport.has(id)) { selectedSupport.add(id); builders++; }
+      });
+      (last.volunteerIds || []).forEach((id, i) => {
+        if (selectedVolunteers.has(id)) return;
+        addMissingItems(volunteers, [id], [(last.volunteerNames || [])[i]]);
+        selectedVolunteers.add(id); helpers++;
+      });
+      renderSupportBuilderList();
+      renderVolunteerChips();
+      showToast(builders + helpers ? `Équipe reprise : ${builders} artisan(s) en support, ${helpers} bénévole(s).` : 'L\'équipe du dernier rapport est déjà choisie.', builders + helpers ? 'success' : 'warning');
+    }
+    // ─── Job entries ────────────────────────────────────────────────────────
+
+    function addEntryRow(entryData) {
+      const rowId = ++entryCounter;
+      const el = document.createElement('div');
+      el.className = 'entry-block';
+      el.innerHTML = `
+        <div class="entry-block__header">
+          <span class="entry-block__title">Travail #${entries.length + 1}</span>
+          <button type="button" class="btn btn-danger btn-sm entry-remove-btn">✕ Supprimer</button>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Secteur <span class="form-required">*</span></label>
+            <select class="form-select entry-sector-select">
+              <option value="">-- Sélectionner un secteur --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Piste / Sentier <span class="form-required">*</span></label>
+            <select class="form-select entry-trail-select">
+              <option value="">-- Sélectionner d'abord un secteur --</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Travaux effectués <span class="form-required">*</span></label>
+          <textarea class="form-input entry-job-text" rows="2" placeholder="Description des travaux..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Photos <span class="form-hint">(optionnel)</span></label>
+          <div class="photo-upload-area entry-photo-upload" id="entry-photo-upload-${rowId}">
+            <div class="photo-upload-area__icon">📷</div>
+            <div class="photo-upload-area__text">Cliquez ou déposez des photos ici</div>
+            <div class="photo-upload-area__hint">Format accepté: JPG, PNG • Max 10 photos</div>
+          </div>
+          <div class="photo-preview-container" id="entry-photo-preview-${rowId}"></div>
+        </div>
+      `;
+      entriesContainer.appendChild(el);
+
+      const sectorSelect = el.querySelector('.entry-sector-select');
+      const trailSelect = el.querySelector('.entry-trail-select');
+      const jobTextEl = el.querySelector('.entry-job-text');
+
+      SectorService.fillSectors(sectorSelect, sectors, '-- Sélectionner un secteur --');
+      sectorSelect.addEventListener('change', () => {
+        const sector = SectorService.find(sectors, sectorSelect.value);
+        SectorService.fillTrails(trailSelect, sector, '-- Sélectionner une piste --');
+      });
+
+      const picker = new PhotoPicker({
+        dropZone: el.querySelector(`#entry-photo-upload-${rowId}`),
+        previewContainer: el.querySelector(`#entry-photo-preview-${rowId}`),
+        multiple: true,
+        maxPhotos: 10,
+        locationEditing: true // the builder can place / correct a photo on the map (saved with the log)
+      });
+
+      const entry = { rowId, el, sectorSelect, trailSelect, jobTextEl, picker };
+      entries.push(entry);
+
+      el.querySelector('.entry-remove-btn').addEventListener('click', () => removeEntryRow(rowId));
+
+      if (entryData) {
+        SectorService.selectSector(sectorSelect, sectors, entryData.sector);
+        const sector = SectorService.find(sectors, entryData.sector);
+        SectorService.fillTrails(trailSelect, sector, '-- Sélectionner une piste --');
+        SectorService.selectTrail(trailSelect, entryData.trailName, entryData.trailId);
+        jobTextEl.value = entryData.jobText || '';
+        if (entryData.photos && entryData.photos.length) picker.setPhotos(entryData.photos);
+      }
+
+      renumberEntries();
+      return entry;
+    }
+
+    function removeEntryRow(rowId) {
+      const index = entries.findIndex(e => e.rowId === rowId);
+      if (index === -1) return;
+      entries[index].picker.destroy();
+      entries[index].el.remove();
+      entries.splice(index, 1);
+      renumberEntries();
+    }
+
+    function renumberEntries() {
+      entries.forEach((e, i) => {
+        e.el.querySelector('.entry-block__title').textContent = `Travail #${i + 1}`;
+      });
+    }
+
+    function clearEntries() {
+      entries.forEach(e => e.picker.destroy());
+      entries.forEach(e => e.el.remove());
+      entries = [];
+    }
+
+    // ─── Load / reset / report selector ────────────────────────────────────
+
+    async function loadUserLogs() {
+      try {
+        const snap = await db.collection('maintenance_logs')
+          .where('builderId', '==', currentUser.uid)
+          .orderBy('createdAt', 'desc')
+          .limit(50)
+          .get();
+
+        userLogs = [];
+        reportSelector.innerHTML = '<option value="new">+ Nouveau rapport</option>';
+
+        snap.forEach(doc => {
+          const data = doc.data();
+          userLogs.push({ id: doc.id, ...data });
+
+          const d = data.date?.toDate?.();
+          const dateStr = d ? d.toLocaleDateString('fr-CA') : 'Date inconnue';
+          const count = (data.entries || []).length;
+          const label = `${dateStr} - ${count} ${count > 1 ? 'travaux' : 'travail'}`;
+
+          const opt = document.createElement('option');
+          opt.value = doc.id;
+          opt.textContent = label;
+          reportSelector.appendChild(opt);
+        });
+      } catch (e) {
+        console.error('Error loading maintenance logs:', e);
+      }
+    }
+
+    function handleReportChange() {
+      const selectedId = reportSelector.value;
+      if (selectedId === 'new') {
+        resetForm();
+        return;
+      }
+
+      const log = userLogs.find(l => l.id === selectedId);
+      if (!log) return;
+
+      currentLogId = selectedId;
+      isNewReport = false;
+
+      const d = log.date?.toDate?.();
+      if (d) {
+        const year = d.getFullYear();
+        const month = (d.getMonth() + 1).toString().padStart(2, '0');
+        const day = d.getDate().toString().padStart(2, '0');
+        logDate.value = `${year}-${month}-${day}`;
+      }
+
+      setCheckedSupportBuilders(log.supportBuilderIds || [], log.supportBuilderNames || []);
+      setCheckedVolunteers(log.volunteerIds || [], log.volunteerNames || []);
+
+      clearEntries();
+      (log.entries || []).forEach(entryData => addEntryRow(entryData));
+      if (!log.entries || log.entries.length === 0) addEntryRow();
+
+      loadedFileUrls = flattenPhotoUrls(log.entries || []);
+
+      saveBtn.style.display = 'none';
+      modifyBtn.style.display = '';
+
+      clearValidation();
+    }
+
+    function resetForm() {
+      currentLogId = null;
+      isNewReport = true;
+      loadedFileUrls = [];
+      reportSelector.value = 'new';
+
+      setDefaultValues();
+      setCheckedSupportBuilders([], []);
+      setCheckedVolunteers([], []);
+
+      clearEntries();
+      addEntryRow();
+
+      clearValidation();
+
+      saveBtn.style.display = '';
+      modifyBtn.style.display = 'none';
+    }
+
+    function flattenPhotoUrls(entryList) {
+      const urls = [];
+      (entryList || []).forEach(e => (e.photos || []).forEach(p => { if (p && p.url) urls.push(p.url); }));
+      return urls;
+    }
+
+    // ─── Validation ─────────────────────────────────────────────────────────
+
+    function validateForm() {
+      let isValid = true;
+      const errors = [];
+      clearValidation();
+
+      if (!logDate.value) {
+        isValid = false;
+        errors.push('La date est requise');
+        logDate.classList.add('is-invalid');
+      }
+
+      if (entries.length === 0) {
+        isValid = false;
+        errors.push('Au moins un travail doit être ajouté');
+      }
+
+      entries.forEach((entry, i) => {
+        if (!entry.trailSelect.value) {
+          isValid = false;
+          errors.push(`Travail #${i + 1}: la piste / le sentier est requis`);
+          entry.trailSelect.classList.add('is-invalid');
+        }
+        if (!entry.jobTextEl.value.trim()) {
+          isValid = false;
+          errors.push(`Travail #${i + 1}: la description des travaux est requise`);
+          entry.jobTextEl.classList.add('is-invalid');
+        }
+      });
+
+      if (!isValid) {
+        showToast(errors.join('<br>'), 'error');
+      }
+
+      return isValid;
+    }
+
+    function clearValidation() {
+      logDate.classList.remove('is-invalid');
+      entries.forEach(entry => {
+        entry.trailSelect.classList.remove('is-invalid');
+        entry.jobTextEl.classList.remove('is-invalid');
+      });
+    }
+
+    // ─── Save / modify ──────────────────────────────────────────────────────
+
+    async function buildEntriesPayload() {
+      const baseStamp = Date.now();
+      const payload = [];
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        const photos = await PhotoService.uploadFromPicker(entry.picker, 'maintenance', {
+          userId: currentUser.uid,
+          stamp: baseStamp + i
+        });
+        const trail = SectorService.readTrail(entry.trailSelect);
+        payload.push({
+          sector: entry.sectorSelect.value || null,
+          trailId: trail.id,
+          trailName: trail.name,
+          jobText: entry.jobTextEl.value.trim(),
+          photos: PhotoService.toFirestore(photos)
+        });
+      }
+      return payload;
+    }
+
+    async function handleSubmit() {
+      if (!isNewReport) return;
+      if (!validateForm()) return;
+
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Enregistrement...';
+
+      try {
+        const entriesPayload = await buildEntriesPayload();
+        const supportBuildersChecked = checkedSupportBuilders();
+        const volunteersChecked = checkedVolunteers();
+
+        const [year, month, day] = logDate.value.split('-');
+        const logDateValue = new Date(year, month - 1, day);
+
+        const logData = {
+          network: 'bike',
+          date: firebase.firestore.Timestamp.fromDate(logDateValue),
+          builderId: currentUser.uid,
+          builderName: builderName.value,
+          supportBuilderIds: supportBuildersChecked.map(b => b.id),
+          supportBuilderNames: supportBuildersChecked.map(b => b.name),
+          volunteerIds: volunteersChecked.map(v => v.id),
+          volunteerNames: volunteersChecked.map(v => v.name),
+          entries: entriesPayload,
+          archived: false,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          modifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        const docRef = await db.collection('maintenance_logs').add(logData);
+
+        showToast('Rapport enregistré avec succès', 'success');
+        // Stay on this report (switch to "Modifier" mode) instead of resetting to a blank
+        // form, so entries can keep being added the same day without reselecting it.
+        await loadUserLogs();
+        reportSelector.value = docRef.id;
+        handleReportChange();
+
+      } catch (e) {
+        console.error('Error saving maintenance log:', e);
+        showToast('Erreur lors de l\'enregistrement: ' + e.message, 'error');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Enregistrer';
+      }
+    }
+
+    async function handleModify() {
+      if (!currentLogId) return;
+      if (!validateForm()) return;
+
+      modifyBtn.disabled = true;
+      modifyBtn.textContent = 'Modification...';
+
+      try {
+        const entriesPayload = await buildEntriesPayload();
+        const supportBuildersChecked = checkedSupportBuilders();
+        const volunteersChecked = checkedVolunteers();
+
+        const [year, month, day] = logDate.value.split('-');
+        const logDateValue = new Date(year, month - 1, day);
+
+        const updateData = {
+          date: firebase.firestore.Timestamp.fromDate(logDateValue),
+          supportBuilderIds: supportBuildersChecked.map(b => b.id),
+          supportBuilderNames: supportBuildersChecked.map(b => b.name),
+          volunteerIds: volunteersChecked.map(v => v.id),
+          volunteerNames: volunteersChecked.map(v => v.name),
+          entries: entriesPayload,
+          modifiedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection('maintenance_logs').doc(currentLogId).update(updateData);
+
+        const keptUrls = flattenPhotoUrls(entriesPayload);
+        await cleanupRemovedPhotos(loadedFileUrls, keptUrls, currentLogId);
+        loadedFileUrls = keptUrls;
+
+        showToast('Rapport modifié avec succès', 'success');
+        await loadUserLogs();
+
+      } catch (e) {
+        console.error('Error updating maintenance log:', e);
+        showToast('Erreur lors de la modification: ' + e.message, 'error');
+      } finally {
+        modifyBtn.disabled = false;
+        modifyBtn.textContent = 'Modifier';
+      }
+    }
+
+    // Deletes photos the edit dropped, unless another of the builder's own logs still
+    // references them (e.g. two entries pointing at the same photo). PhotoService.deleteRemoved
+    // cannot be reused as-is here: it only looks at a top-level `photos` field, and this
+    // collection nests photos inside `entries[]`.
+    async function cleanupRemovedPhotos(before, after, excludeId) {
+      const kept = new Set(after);
+      const removed = [...new Set((before || []).filter(u => u && !kept.has(u)))];
+      if (!removed.length) return;
+
+      const inUse = new Set();
+      try {
+        const snap = await db.collection('maintenance_logs').where('builderId', '==', currentUser.uid).get();
+        snap.forEach(doc => {
+          if (doc.id === excludeId) return;
+          flattenPhotoUrls(doc.data().entries || []).forEach(u => inUse.add(u));
+        });
+      } catch (e) {
+        console.warn('Could not verify shared photos, skipping cleanup:', e);
+        return;
+      }
+
+      const doomed = removed.filter(u => !inUse.has(u));
+      if (doomed.length) await PhotoService.deletePhotos(doomed);
+    }
+
+    onFirebaseReady(initMaintenanceReport);
+  </script>
+</body>
+</html>

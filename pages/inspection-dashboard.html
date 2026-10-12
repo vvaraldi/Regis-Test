@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Tableau de bord des inspections">
+  <meta name="theme-color" content="#1b4b72">
+  <title>Inspection Dashboard</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    /* Map section */
+    .map-section { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.5rem; }
+    .map-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--theme-border); flex-wrap: wrap; gap: 1rem; }
+    .map-header__title { font-size: 1.125rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .map-controls { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-left: auto; }
+    .bulk-actions { display: none; gap: 0.5rem; }
+    .bulk-actions.show { display: flex; align-items: center; }
+    .map-header__season { font-size: 0.8125rem; font-weight: 400; color: var(--theme-text-secondary); }
+    .map-hint { font-size: 0.8125rem; color: var(--theme-text-secondary); margin-right: 0.5rem; }
+    .map-hint[hidden] { display: none; }
+    @media (hover: none) { .map-hint { display: none; } } /* touch screens have no right-click */
+    .view-toggle { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; }
+    .view-toggle__label { color: var(--theme-text-secondary); }
+    .view-toggle__label.is-active { color: var(--theme-accent); font-weight: 600; }
+    .toggle-switch { position: relative; width: 50px; height: 26px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-switch__slider { position: absolute; cursor: pointer; inset: 0; background: var(--theme-border); border-radius: 26px; transition: 0.3s; }
+    .toggle-switch__slider::before { content: ''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: var(--color-white); border-radius: 50%; transition: 0.3s; }
+    .toggle-switch input:checked + .toggle-switch__slider { background: var(--theme-accent); }
+    .toggle-switch input:checked + .toggle-switch__slider::before { transform: translateX(24px); }
+
+    /* Map container - scrollable with natural image size for correct marker positioning */
+    .map-container { position: relative; width: 100%; overflow: auto; background: var(--theme-surface-alt); max-height: 700px; }
+    .map-wrapper { position: relative; display: inline-block; }
+    .map-image { display: block; width: auto; height: auto; max-width: none; }
+
+    /* Map markers - positioned absolutely with pixel coordinates */
+    .map-marker { position: absolute; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; cursor: pointer; transform: translate(-50%, -50%); transition: transform 0.2s ease; z-index: 10; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+    .map-marker:hover { transform: translate(-50%, -50%) scale(1.1); z-index: 20; }
+    .map-marker--good { background: #10b981; }
+    .map-marker--warning { background: #f59e0b; }
+    .map-marker--critical { background: #ef4444; }
+    .map-marker--not-inspected { background: #6b7280; }
+    .map-marker--open { background: #10b981; }
+    .map-marker--closed { background: #ef4444; }
+    .map-marker--unknown { background: #6b7280; }
+    .map-marker--shelter { border-radius: 5px; font-size: 13px; }
+
+    /* Legend */
+    .map-legend { display: flex; gap: 1.5rem; padding: 0.75rem 1rem; background: var(--theme-surface-alt); border-top: 1px solid var(--theme-border); font-size: 0.75rem; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .legend-dot--good { background: #10b981; }
+    .legend-dot--warning { background: #f59e0b; }
+    .legend-dot--critical { background: #ef4444; }
+    .legend-dot--not-inspected { background: #6b7280; }
+    .legend-dot--open { background: #10b981; }
+    .legend-dot--closed { background: #ef4444; }
+    .legend-dot--unknown { background: #6b7280; }
+
+    /* Stats */
+    .dashboard-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); padding: 1rem; text-align: center; }
+    .stat-card__value { font-size: 2rem; font-weight: 700; color: var(--theme-accent); }
+    .stat-card__label { font-size: 0.75rem; color: var(--theme-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-card--success .stat-card__value { color: var(--color-success); }
+    .stat-card--warning .stat-card__value { color: var(--color-warning); }
+    .stat-card--danger .stat-card__value { color: var(--color-danger); }
+
+    /* Recent inspections */
+    .recent-section { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); overflow: hidden; }
+    .recent-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--theme-border); }
+    .recent-header__title { font-size: 1.125rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .inspection-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 1rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--theme-border); align-items: center; cursor: pointer; transition: background 0.15s ease; }
+    .inspection-row:hover { background: var(--theme-surface-alt); }
+    .inspection-row:last-child { border-bottom: none; }
+    .inspection-row__name { font-weight: 500; }
+    .inspection-row__type { font-size: 0.75rem; color: var(--theme-text-secondary); }
+    .inspection-row__date { font-size: 0.875rem; color: var(--theme-text-secondary); }
+
+    /* Status badges */
+    .status-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.5rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 500; }
+    .status-badge--good { background: rgba(16,185,129,0.15); color: #065f46; }
+    .status-badge--warning { background: rgba(245,158,11,0.15); color: #92400e; }
+    .status-badge--critical { background: rgba(239,68,68,0.15); color: #991b1b; }
+    .status-badge--not-inspected { background: rgba(107,114,128,0.15); color: #374151; }
+    .status-badge--open { background: rgba(16,185,129,0.15); color: #065f46; }
+    .status-badge--closed { background: rgba(239,68,68,0.15); color: #991b1b; }
+    .status-badge--unknown { background: rgba(107,114,128,0.15); color: #374151; }
+
+    /* Modal */
+    .inspection-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+    .inspection-modal.show { display: flex; }
+    .inspection-modal__content { background: var(--theme-surface); border-radius: var(--radius-lg); max-width: 600px; width: 100%; max-height: 90vh; overflow: auto; }
+    .inspection-modal__header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--theme-border); }
+    .inspection-modal__title { font-size: 1.25rem; font-weight: 600; }
+    .inspection-modal__close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--theme-text-secondary); }
+    .inspection-modal__body { padding: 1rem; }
+
+    /* Same rules under the .detail-modal names: the shared photo-location pop-up
+       (js/services/photo-map-modal.js) uses that markup, this page its own .inspection-modal one */
+    .detail-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+    .detail-modal.show { display: flex; }
+    .detail-modal__content { background: var(--theme-surface); border-radius: var(--radius-lg); max-width: 600px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
+    .detail-modal__header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--theme-border); }
+    .detail-modal__title { font-size: 1.25rem; font-weight: 600; }
+    .detail-modal__close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--theme-text-secondary); }
+    .detail-modal__body { padding: 1rem; overflow-y: auto; flex: 1; }
+    .detail-modal__footer { padding: 1rem; border-top: 1px solid var(--theme-border); display: flex; justify-content: flex-end; gap: 1rem; }
+    .detail-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--theme-border); }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row__label { color: var(--theme-text-secondary); }
+    .detail-section { margin-top: 1rem; }
+    .detail-section__title { font-weight: 600; margin-bottom: 0.5rem; }
+    .issues-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .issue-tag { background: rgba(245,158,11,0.15); color: #92400e; padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.75rem; }
+    .notes-box { background: var(--theme-surface-alt); padding: 0.75rem; border-radius: var(--radius-md); font-size: 0.875rem; }
+    .photos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.5rem; }
+    .photo-item { text-align: center; }
+    .photo-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-md); cursor: pointer; }
+    .photo-location { font-size: 0.7rem; margin-top: 0.25rem; display: flex; gap: 0.5rem; justify-content: center; }
+    .photo-location a { color: var(--theme-accent); }
+
+    @media (max-width: 768px) {
+      .map-header { flex-direction: column; align-items: stretch; }
+      .map-controls { justify-content: center; }
+      .inspection-row { grid-template-columns: 1fr; gap: 0.5rem; }
+    }
+  </style>
+</head>
+<body data-theme="light" data-module="inspection-rando" data-nav="inspection" data-page="inspection-dashboard">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/kind.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <!-- Loading -->
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement du tableau de bord...</p></div>
+
+  <!-- Main Content -->
+  <main id="main-content" class="main" style="display: none;">
+    <div class="page-header">
+      <div class="page-header__content">
+        <h1 class="page-title">Tableau de bord</h1>
+      </div>
+    </div>
+
+    <!-- Map Section (FIRST) -->
+    <section class="map-section">
+      <div class="map-header">
+        <h2 class="map-header__title">🗺️ Carte des sentiers <span class="map-header__season" id="season-note"></span></h2>
+        <div class="map-controls">
+          <span class="map-hint" id="map-hint" hidden></span>
+          <div class="bulk-actions" id="bulk-actions">
+            <button class="btn btn-sm btn-success" onclick="bulkSetStatus('open')">Tout ouvrir</button>
+            <button class="btn btn-sm btn-danger" onclick="bulkSetStatus('closed')">Tout fermer</button>
+          </div>
+          <div class="view-toggle">
+            <span class="view-toggle__label" id="label-inspection">Inspection</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="view-toggle" onchange="toggleMapView()">
+              <span class="toggle-switch__slider"></span>
+            </label>
+            <span class="view-toggle__label" id="label-status">Statut</span>
+          </div>
+        </div>
+      </div>
+      <div class="map-container">
+        <div class="map-wrapper" id="map-wrapper">
+          <img alt="Carte des sentiers" class="map-image" id="map-image"><!-- src set for the current activity -->
+          <!-- Markers will be inserted here by JS -->
+        </div>
+      </div>
+      <div class="map-legend" id="map-legend">
+        <!-- Legend items will be updated by JS -->
+      </div>
+    </section>
+
+    <!-- Stats (AFTER map) -->
+    <div class="dashboard-stats" id="dashboard-stats">
+      <div class="stat-card"><div class="stat-card__value" id="stat-total">-</div><div class="stat-card__label">Total sentiers</div></div>
+      <div class="stat-card stat-card--success"><div class="stat-card__value" id="stat-open">-</div><div class="stat-card__label">Ouverts</div></div>
+      <div class="stat-card stat-card--danger"><div class="stat-card__value" id="stat-closed">-</div><div class="stat-card__label">Fermés</div></div>
+      <div class="stat-card stat-card--warning"><div class="stat-card__value" id="stat-inspected">-</div><div class="stat-card__label">Inspectés aujourd'hui</div></div>
+    </div>
+
+    <!-- Recent Inspections -->
+    <section class="recent-section">
+      <div class="recent-header">
+        <h2 class="recent-header__title">📋 Inspections des 7 derniers jours</h2>
+      </div>
+      <div id="recent-inspections">
+        <div style="padding: 2rem; text-align: center; color: var(--theme-text-secondary);">Chargement...</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal -->
+  <div class="inspection-modal" id="inspection-modal">
+    <div class="inspection-modal__content">
+      <div class="inspection-modal__header">
+        <h3 class="inspection-modal__title" id="modal-title">-</h3>
+        <button class="inspection-modal__close" onclick="closeInspectionModal()">×</button>
+      </div>
+      <div class="inspection-modal__body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/photo-service.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/weather-service.js"></script>
+  <script src="../js/services/weather-context.js"></script>
+  <script src="../js/services/map-service.js"></script>
+  <script src="../js/services/photo-map-modal.js"></script>
+
+  <script>
+    // State
+    let allTrails = [];
+    let allShelters = [];
+    let trailInspections = {};
+    let shelterInspections = {};
+    let inspectorsMap = new Map();
+    let currentView = 'inspection'; // 'inspection' or 'status'
+    let currentKind = null; // which inspectionKind the map/stats show (null = the activity has only one)
+    let isAdmin = false;
+
+    // Init
+    function initDashboard() {
+      checkAuthStatus({
+        requireAuth: true,
+        requiredPermission: 'allowInspection',
+        onAuthenticated: async (userData) => {
+          isAdmin = userData.role === 'admin' || userData.role === 'system_admin';
+          // Show admin nav links if user is admin
+          if (isAdmin) {
+            document.querySelectorAll('.nav__link--admin, .mobile-nav__link--admin').forEach(el => el.style.display = '');
+          }
+          // Which kind of trail to show (uphill/downhill for ski): the shared header switcher
+          // (js/core/kind.js + layout.js), already resolved by the time onAuthenticated runs.
+          currentKind = Kind.current();
+          MapService.showImage(document.getElementById('map-image'), TrailService.mapIdOf(currentKind));
+          await loadDashboardData();
+        }
+      });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeInspectionModal(); });
+      document.getElementById('inspection-modal').addEventListener('click', e => { if (e.target.id === 'inspection-modal') closeInspectionModal(); });
+    }
+
+    async function loadDashboardData() {
+      try {
+        // Load inspectors
+        const inspSnap = await db.collection('inspectors').get();
+        inspSnap.forEach(doc => inspectorsMap.set(doc.id, doc.data().name));
+
+        // Load trails (this activity's only)
+        const trailsSnap = await db.collection('trails').get();
+        allTrails = [];
+        trailsSnap.forEach(doc => {
+          const trail = { id: doc.id, ...doc.data() };
+          if (Network.matches(trail) && TrailService.isActive(trail)) allTrails.push(trail); // inspected, not hidden
+        });
+
+        // Load shelters (only for activities that have shelters)
+        allShelters = [];
+        if (Network.feature('shelters')) {
+          const sheltersSnap = await db.collection('shelters').get();
+          sheltersSnap.forEach(doc => {
+            const shelter = { id: doc.id, ...doc.data() };
+            if (Network.matches(shelter) && !TrailService.isArchived(shelter)) allShelters.push(shelter); // a hidden shelter is gone from the map
+          });
+        }
+
+        // Inspections belong to a trail / shelter, so keep those of this activity's ones
+        const trailIds = new Set(allTrails.map(t => t.id));
+        const shelterIds = new Set(allShelters.map(s => s.id));
+
+        // Inspections: only the current season is read (not the whole history of every activity),
+        // the same rule for ski (1 Nov - 30 Apr) and bike (1 May - 31 Oct), see Network.seasonRange.
+        // Out of season it is the season that just ended. A trail not inspected since that season
+        // started shows as "not inspected" until its first inspection.
+        const seasonStart = firebase.firestore.Timestamp.fromDate(Network.seasonStart());
+        document.getElementById('season-note').textContent = `· ${Network.seasonLabel(Network.seasonRange())}`;
+
+        // Load trail inspections (most recent per trail)
+        const trailInspSnap = await db.collection('trail_inspections').where('date', '>=', seasonStart).orderBy('date', 'desc').get();
+        trailInspections = {};
+        trailInspSnap.forEach(doc => {
+          const data = doc.data();
+          if (!trailIds.has(data.trail_id)) return;
+          if (!trailInspections[data.trail_id]) trailInspections[data.trail_id] = { id: doc.id, ...data };
+        });
+
+        // Load shelter inspections (most recent per shelter)
+        shelterInspections = {};
+        if (shelterIds.size) {
+          const shelterInspSnap = await db.collection('shelter_inspections').where('date', '>=', seasonStart).orderBy('date', 'desc').get();
+          shelterInspSnap.forEach(doc => {
+            const data = doc.data();
+            if (!shelterIds.has(data.shelter_id)) return;
+            if (!shelterInspections[data.shelter_id]) shelterInspections[data.shelter_id] = { id: doc.id, ...data };
+          });
+        }
+
+        updateStatistics();
+        renderMapMarkers();
+        updateLegend();
+        loadRecentInspections();
+      } catch (e) {
+        console.error('Error loading data:', e);
+      }
+    }
+
+    function updateStatistics() {
+      const trails = visibleTrails();
+      document.getElementById('stat-total').textContent = trails.length;
+      const open = trails.filter(t => t.status === 'open').length;
+      const closed = trails.filter(t => t.status === 'closed').length;
+      document.getElementById('stat-open').textContent = open;
+      document.getElementById('stat-closed').textContent = closed;
+
+      const today = new Date(); today.setHours(0,0,0,0);
+      const ids = new Set(trails.map(t => t.id));
+      let inspectedToday = 0;
+      Object.entries(trailInspections).forEach(([trailId, i]) => {
+        if (!ids.has(trailId)) return;
+        const d = i.date?.toDate ? i.date.toDate() : new Date(i.date);
+        if (d >= today) inspectedToday++;
+      });
+      document.getElementById('stat-inspected').textContent = inspectedToday;
+    }
+
+    function renderMapMarkers() {
+      const wrapper = document.getElementById('map-wrapper');
+      // Remove existing markers
+      wrapper.querySelectorAll('.map-marker').forEach(m => m.remove());
+
+      // Trail markers (only the kind currently shown: the other kind's coordinates are for another map)
+      visibleTrails().forEach(trail => {
+        if (!trail.coordinates) return;
+        const marker = document.createElement('div');
+        // Label: the trail's `number` if it has one, else its id without the prefix (trail_3, bike_3 -> 3)
+        const num = TrailService.markerLabel(trail);
+        marker.className = 'map-marker';
+        marker.textContent = num;
+        marker.style.left = trail.coordinates.left + 'px';
+        marker.style.top = trail.coordinates.top + 'px';
+        
+        if (currentView === 'inspection') {
+          const insp = trailInspections[trail.id];
+          const cond = insp ? insp.condition : 'not-inspected';
+          marker.classList.add('map-marker--' + cond);
+        } else {
+          const status = trail.status || 'unknown';
+          marker.classList.add('map-marker--' + status);
+        }
+        
+        marker.onclick = () => openTrailModal(trail.id);
+        const withStatus = currentView === 'status';
+        marker.oncontextmenu = e => { e.preventDefault(); window.location.href = reportUrlForTrail(trail, withStatus); };
+        wrapper.appendChild(marker);
+      });
+
+      // Shelter markers (only in inspection view, and only on the network's own main map: shelters
+      // are not placed per kind, and their coordinates are pixels on that map specifically)
+      const showShelters = currentView === 'inspection' && TrailService.mapIdOf(currentKind) === Network.config().map;
+
+      // Right-click shortcut hint (all inspectors, both views): trails, and shelters where drawn
+      const hint = document.getElementById('map-hint');
+      const withShelters = showShelters && allShelters.some(s => s.coordinates);
+      hint.textContent = `Clic droit sur un sentier${withShelters ? ' ou un abri' : ''} pour créer rapidement un rapport`;
+      hint.hidden = false;
+
+      if (showShelters) {
+        allShelters.forEach(shelter => {
+          if (!shelter.coordinates) return;
+          const marker = document.createElement('div');
+          marker.className = 'map-marker map-marker--shelter';
+          marker.innerHTML = '🏠';
+          marker.style.left = shelter.coordinates.left + 'px';
+          marker.style.top = shelter.coordinates.top + 'px';
+          
+          const insp = shelterInspections[shelter.id];
+          const cond = insp ? insp.condition : 'not-inspected';
+          marker.classList.add('map-marker--' + cond);
+          
+          marker.onclick = () => openShelterModal(shelter.id);
+          marker.oncontextmenu = e => { e.preventDefault(); window.location.href = reportUrlForShelter(shelter); };
+          wrapper.appendChild(marker);
+        });
+      }
+    }
+
+    function toggleMapView() {
+      const toggle = document.getElementById('view-toggle');
+      currentView = toggle.checked ? 'status' : 'inspection';
+      document.getElementById('label-inspection').classList.toggle('is-active', currentView === 'inspection');
+      document.getElementById('label-status').classList.toggle('is-active', currentView === 'status');
+      document.getElementById('bulk-actions').classList.toggle('show', currentView === 'status' && isAdmin);
+      renderMapMarkers();
+      updateLegend();
+    }
+
+    // Only the trails of the kind currently shown (the map and pixel coordinates are per kind).
+    // Switching kind is done from the shared header switcher (kind.js + layout.js), which
+    // reloads the page - this dashboard only ever reads currentKind, never changes it live.
+    function visibleTrails() {
+      return currentKind ? allTrails.filter(t => TrailService.kindOf(t) === currentKind) : allTrails;
+    }
+
+    function updateLegend() {
+      const legend = document.getElementById('map-legend');
+      if (currentView === 'inspection') {
+        legend.innerHTML = ['good', 'warning', 'critical', 'not-inspected'].map(c =>
+          `<div class="legend-item"><span class="legend-dot legend-dot--${c}"></span><span>${TrailService.conditionText(c)}</span></div>`).join('');
+      } else {
+        legend.innerHTML = ['open', 'closed', 'unknown'].map(s =>
+          `<div class="legend-item"><span class="legend-dot legend-dot--${s}"></span><span>${TrailService.statusText(s)}</span></div>`).join('');
+      }
+    }
+
+    // Right-click on a trail marker (any inspector, in both views): straight to the trail report with
+    // that trail preselected. In the Statut view the status to change to is preselected too - the
+    // opposite of the current one (open -> closed, closed -> open; an unknown status leaves the
+    // choice to the form). The report then records the real condition, photos, notes... instead of
+    // a blind quick toggle. In the Inspection view only the trail is preselected.
+    function reportUrlForTrail(trail, withStatus = false) {
+      const params = new URLSearchParams({ trail: trail.id });
+      if (withStatus && trail.status === 'open') params.set('status', 'closed');
+      else if (withStatus && trail.status === 'closed') params.set('status', 'open');
+      return `inspection-trail-report.html?${params}`;
+    }
+
+    // Same for a shelter marker (inspection view, where shelters are drawn): the shelter report
+    // with that shelter preselected. Shelters have no open/closed status, so nothing else to pass.
+    function reportUrlForShelter(shelter) {
+      return `inspection-shelter-report.html?${new URLSearchParams({ shelter: shelter.id })}`;
+    }
+
+    async function bulkSetStatus(status) {
+      const trails = visibleTrails();
+      const action = status === 'open' ? 'ouvrir' : 'fermer';
+      const kindNote = currentKind ? ` (${TrailService.kindLabel(currentKind)})` : '';
+      if (!confirm(`Êtes-vous sûr de vouloir ${action} tous les ${trails.length} sentiers${kindNote}?\n\nCette action créera une inspection pour chaque sentier, avec l'état général « Non inspecté ».`)) return;
+
+      try {
+        const now = new Date();
+        const comment = status === 'open'
+          ? 'Ouverture de toutes les pistes en une seule fois pour réinitialiser la montagne'
+          : 'Fermeture de toutes les pistes en une seule fois pour réinitialiser la montagne';
+
+        // Firebase batch limit is 500 operations, we do 2 per trail
+        const BATCH_SIZE = 200;
+        const chunks = [];
+        for (let i = 0; i < trails.length; i += BATCH_SIZE) {
+          chunks.push(trails.slice(i, i + BATCH_SIZE));
+        }
+        
+        for (const chunk of chunks) {
+          const batch = db.batch();
+          
+          chunk.forEach(t => {
+            const lastInsp = trailInspections[t.id] || {};
+            
+            // Create inspection record for each trail
+            const inspectionData = {
+              network: Network.current(),
+              trail_id: t.id,
+              inspector_id: currentUser.uid,
+              inspector_name: window.currentUserData?.name || currentUser.email,
+              date: firebase.firestore.Timestamp.fromDate(now),
+              trail_status: status,
+              // A mass open/close says nothing about the trail's actual condition
+              condition: 'not-inspected',
+              snow_condition: Network.feature('snowCondition') ? (lastInsp.snow_condition || null) : null,
+              issues: lastInsp.issues || [],
+              notes: comment,
+              photos: [],
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              isBulkToggle: true
+            };
+            
+            const inspRef = db.collection('trail_inspections').doc();
+            batch.set(inspRef, inspectionData);
+            batch.update(db.collection('trails').doc(t.id), {
+              status: status,
+              lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+              lastInspectionId: inspRef.id
+            });
+            
+            // Update local state
+            t.status = status;
+            trailInspections[t.id] = { id: inspRef.id, ...inspectionData };
+          });
+          
+          await batch.commit();
+        }
+        
+        updateStatistics();
+        renderMapMarkers();
+        updateLegend();
+        loadRecentInspections();
+        alert(`✅ ${trails.length} sentiers ${status === 'open' ? 'ouverts' : 'fermés'} avec succès!\n\n${trails.length} inspections créées.`);
+      } catch (e) { 
+        console.error('Error:', e); 
+        alert('Erreur: ' + e.message); 
+      }
+    }
+
+    /**
+     * Photo gallery markup for an inspection document.
+     * PhotoService.photosFrom() normalises the photos, so this needs no per-photo shape checks.
+     * Shared by both modals below - the markup was previously duplicated.
+     * mapId: the map (js/services/photo-map-modal.js) a photo of THIS inspection opens on by
+     * default - a trail's kind's geolocalisation map for a trail inspection, the network's own
+     * geolocalisation map for a shelter one (null lets it fall back to the network default). The
+     * full report-maps switch is still offered either way.
+     */
+    function renderPhotosSection(insp, mapId, collection, reopen) {
+      const photos = PhotoService.photosFrom(insp);
+      if (!photos.length) return '';
+
+      const items = photos.map(p => {
+        // 📍 Carte / Google Maps, and ✏️ for the inspector who made it or an admin (hand-set position)
+        const loc = PhotoMapModal.locationLinks(p, {
+          collection, docId: insp.id, record: insp, preferredMap: mapId,
+          onChanged: async () => { await loadDashboardData(); reopen(); }
+        });
+        return `<div class="photo-item"><img src="${p.url}" class="photo-thumb" onclick="window.open('${p.url}','_blank')">${loc}</div>`;
+      }).join('');
+
+      return `<div class="detail-section"><div class="detail-section__title">📷 Photos (${photos.length})</div><div class="photos-grid">${items}</div></div>`;
+    }
+
+    // Modals
+    function openTrailModal(trailId) {
+      const trail = allTrails.find(t => t.id === trailId);
+      const insp = trailInspections[trailId];
+      if (!trail) return;
+      
+      document.getElementById('modal-title').textContent = trail.name;
+      const body = document.getElementById('modal-body');
+      
+      if (!insp) {
+        body.innerHTML = '<div style="padding:2rem;text-align:center;"><div style="font-size:2rem;margin-bottom:0.5rem;">📋</div><p>Aucune inspection disponible.</p></div>';
+      } else {
+        const date = insp.date?.toDate ? insp.date.toDate() : new Date(insp.date);
+        const formattedDate = date.toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+        const inspector = insp.inspector_name || inspectorsMap.get(insp.inspector_id) || 'Non spécifié';
+        const cond = insp.condition || 'unknown';
+        const status = trail.status || 'unknown';
+        
+        let html = `
+          <div class="detail-row"><span class="detail-row__label">Date d'inspection</span><span>${formattedDate}</span></div>
+          <div class="detail-row"><span class="detail-row__label">Inspecteur</span><span>${escapeHtml(inspector)}</span></div>
+          <div class="detail-row"><span class="detail-row__label">État général</span><span class="status-badge status-badge--${cond}">${TrailService.conditionText(cond, true)}</span></div>
+          <div class="detail-row"><span class="detail-row__label">Statut du sentier</span><span class="status-badge status-badge--${status}">${TrailService.statusText(status, true)}</span></div>
+        `;
+        
+        if (insp.issues && insp.issues.length > 0) {
+          html += `<div class="detail-section"><div class="detail-section__title">⚠️ Problèmes identifiés</div><div class="issues-list">${insp.issues.map(i => `<span class="issue-tag">${escapeHtml(i)}</span>`).join('')}</div></div>`;
+        }
+        if (insp.notes && insp.notes.trim()) {
+          html += `<div class="detail-section"><div class="detail-section__title">📝 Notes</div><div class="notes-box">${escapeHtml(insp.notes).replace(/\n/g, '<br>')}</div></div>`;
+        }
+        html += renderPhotosSection(insp, TrailService.geoMapIdOf(trail), 'trail_inspections', () => openTrailModal(trailId));
+        body.innerHTML = html;
+        WeatherContext.attach(body, date);   // the weather nearest in time to this inspection (if the admin switch is on)
+      }
+      document.getElementById('inspection-modal').classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function openShelterModal(shelterId) {
+      const shelter = allShelters.find(s => s.id === shelterId);
+      const insp = shelterInspections[shelterId];
+      if (!shelter) return;
+      
+      document.getElementById('modal-title').textContent = shelter.name;
+      const body = document.getElementById('modal-body');
+      
+      if (!insp) {
+        body.innerHTML = '<div style="padding:2rem;text-align:center;"><div style="font-size:2rem;margin-bottom:0.5rem;">📋</div><p>Aucune inspection disponible.</p></div>';
+      } else {
+        const date = insp.date?.toDate ? insp.date.toDate() : new Date(insp.date);
+        const formattedDate = date.toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+        const inspector = insp.inspector_name || inspectorsMap.get(insp.inspector_id) || 'Non spécifié';
+        const cond = insp.condition || 'unknown';
+
+        let html = `
+          <div class="detail-row"><span class="detail-row__label">Date d'inspection</span><span>${formattedDate}</span></div>
+          <div class="detail-row"><span class="detail-row__label">Inspecteur</span><span>${escapeHtml(inspector)}</span></div>
+          <div class="detail-row"><span class="detail-row__label">État général</span><span class="status-badge status-badge--${cond}">${TrailService.conditionText(cond, true)}</span></div>
+        `;
+        if (insp.issues && insp.issues.length > 0) {
+          html += `<div class="detail-section"><div class="detail-section__title">⚠️ Problèmes identifiés</div><div class="issues-list">${insp.issues.map(i => `<span class="issue-tag">${escapeHtml(i)}</span>`).join('')}</div></div>`;
+        }
+        if (insp.notes && insp.notes.trim()) {
+          html += `<div class="detail-section"><div class="detail-section__title">📝 Notes</div><div class="notes-box">${escapeHtml(insp.notes).replace(/\n/g, '<br>')}</div></div>`;
+        }
+        html += renderPhotosSection(insp, null, 'shelter_inspections', () => openShelterModal(shelterId)); // shelters are not kind-specific: network default
+        body.innerHTML = html;
+        WeatherContext.attach(body, date);   // the weather nearest in time to this inspection (if the admin switch is on)
+      }
+      document.getElementById('inspection-modal').classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeInspectionModal() {
+      document.getElementById('inspection-modal').classList.remove('show');
+      document.body.style.overflow = '';
+    }
+
+    // Photo location modal: js/services/photo-map-modal.js (shared with inspection-history.html,
+    // infraction-admin.html, signalisation-admin.html, signalisation-resume.html). Callers here
+    // pass the one map a photo's own trail/shelter belongs on (see renderPhotosSection above) -
+    // no switch, since there is nothing else it could sensibly be shown on.
+
+    // Recent inspections
+    async function loadRecentInspections() {
+      const container = document.getElementById('recent-inspections');
+      const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      try {
+        const recent = [];
+        // Trail inspections - of the kind shown (Montée / Descente), like the map and the stats
+        const kindTrails = visibleTrails();
+        const trailSnap = await db.collection('trail_inspections').where('date', '>=', firebase.firestore.Timestamp.fromDate(sevenDaysAgo)).orderBy('date', 'desc').limit(50).get();
+        trailSnap.forEach(doc => {
+          const d = doc.data();
+          const trail = kindTrails.find(t => t.id === d.trail_id);
+          if (!trail) return; // another activity's trail, or the other kind's
+          recent.push({ id: doc.id, type: 'trail', name: trail.name || d.trail_id, ...d });
+        });
+        // Shelter inspections (only activities that have shelters). Shelters are not kind-specific:
+        // they sit on the activity's main map only, so - like their map markers - they belong to
+        // the kind shown on that map (Montée), not to the other one.
+        if (allShelters.length && TrailService.mapIdOf(currentKind) === Network.config().map) {
+          const shelterSnap = await db.collection('shelter_inspections').where('date', '>=', firebase.firestore.Timestamp.fromDate(sevenDaysAgo)).orderBy('date', 'desc').limit(50).get();
+          shelterSnap.forEach(doc => {
+            const d = doc.data();
+            const shelter = allShelters.find(s => s.id === d.shelter_id);
+            if (!shelter) return;
+            recent.push({ id: doc.id, type: 'shelter', name: shelter.name || d.shelter_id, ...d });
+          });
+        }
+        
+        recent.sort((a, b) => {
+          const da = a.date?.toDate ? a.date.toDate() : new Date(a.date);
+          const db = b.date?.toDate ? b.date.toDate() : new Date(b.date);
+          return db - da;
+        });
+        
+        if (recent.length === 0) {
+          container.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--theme-text-secondary);">Aucune inspection dans les 7 derniers jours.</div>';
+          return;
+        }
+        
+        container.innerHTML = recent.map(i => {
+          const date = i.date?.toDate ? i.date.toDate() : new Date(i.date);
+          const formatted = date.toLocaleDateString('fr-CA');
+          const icon = i.type === 'trail' ? Network.config().icon : '🏠';
+          const cond = i.condition || 'unknown';
+          return `<div class="inspection-row" onclick="${i.type === 'trail' ? `openTrailModal('${i.trail_id}')` : `openShelterModal('${i.shelter_id}')`}">
+            <div class="inspection-row__name">${icon} ${escapeHtml(i.name)}</div>
+            <div class="inspection-row__type">${i.type === 'trail' ? 'Sentier' : 'Abri'}</div>
+            <div class="inspection-row__date">${formatted}</div>
+            <span class="status-badge status-badge--${cond}">${TrailService.conditionIcon(cond)}</span>
+          </div>`;
+        }).join('');
+      } catch (e) { console.error('Error:', e); container.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--theme-text-secondary);">Erreur de chargement.</div>'; }
+    }
+
+    function escapeHtml(str) { if (!str) return ''; return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    onFirebaseReady( initDashboard);
+  </script>
+</body>
+</html>

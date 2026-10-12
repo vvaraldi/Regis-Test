@@ -1,0 +1,2597 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Gestion des utilisateurs">
+  <meta name="theme-color" content="#1b4b72">
+  <title>Administration</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" data-brand href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔️</text></svg>">
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="../css/main.css">
+  
+  <!-- Page-specific styles -->
+  <style>
+    /* Larger clickable access badges */
+    .access-badge--clickable {
+      width: 36px;
+      height: 36px;
+      font-size: 1.25rem;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      opacity: 0.3;
+      filter: grayscale(100%);
+      background: var(--theme-surface-alt);
+      border: 2px solid transparent;
+    }
+    
+    .access-badge--clickable:hover {
+      transform: scale(1.1);
+      border-color: var(--theme-border);
+    }
+    
+    .access-badge--clickable.is-active {
+      opacity: 1;
+      filter: none;
+    }
+    
+    .access-badge--clickable.is-active.access-badge--inspection {
+      background: rgba(27, 75, 114, 0.15);
+      border-color: #1b4b72;
+    }
+    
+    .access-badge--clickable.is-active.access-badge--infraction {
+      background: rgba(220, 38, 38, 0.15);
+      border-color: #dc2626;
+    }
+    
+    .access-badge--clickable.is-active.access-badge--signalisation {
+      background: rgba(217, 119, 6, 0.15);
+      border-color: #d97706;
+    }
+
+    .access-badge--clickable.is-active.access-badge--maintenance {
+      background: rgba(22, 101, 52, 0.15);
+      border-color: #166534;
+    }
+
+    .access-badge--clickable.is-active.access-badge--meteo {
+      background: rgba(202, 138, 4, 0.15);
+      border-color: #ca8a04;
+    }
+
+    /* Activity (network) badges: icon + name, same on/off look as the app badges */
+    .access-badge--clickable.access-badge--network {
+      width: auto;
+      padding: 0 0.65rem;
+      gap: 0.35rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .access-badge--clickable.is-active.access-badge--network {
+      background: rgba(var(--theme-accent-rgb), 0.15);
+      border-color: var(--theme-accent);
+    }
+
+    /* Not editable by the current admin (outside their activities, or a system admin) */
+    .access-badge--locked,
+    .access-badge--locked:hover {
+      cursor: default;
+      transform: none;
+      border-color: transparent;
+    }
+
+    .user-table__access {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    /* Sectors tab */
+    
+    /* Pagination of the users list (same look as Inspections > Gestion) */
+    .page-size-select { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; }
+    .pagination-container { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-top: 1px solid var(--theme-border); flex-wrap: wrap; gap: 1rem; }
+    .pagination-info { font-size: 0.875rem; color: var(--theme-text-secondary); }
+    .pagination { display: flex; gap: 0.25rem; }
+    .page-btn { min-width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--theme-border); border-radius: var(--radius-md); background: var(--theme-surface); color: var(--theme-text); cursor: pointer; font-size: 0.875rem; transition: all 0.15s; }
+    .page-btn:hover:not(:disabled) { border-color: var(--theme-accent); color: var(--theme-accent); }
+    .page-btn.active { background: var(--theme-accent); border-color: var(--theme-accent); color: white; }
+    .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .page-ellipsis { display: flex; align-items: center; padding: 0 0.25rem; color: var(--theme-text-secondary); }
+    @media (max-width: 768px) { .pagination-container { flex-direction: column; align-items: center; } }
+
+    /* Tab styles */
+    .admin-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: var(--space-lg);
+      border-bottom: 2px solid var(--theme-border);
+      padding-bottom: 0;
+    }
+    
+    .admin-tabs__btn {
+      padding: 0.75rem 1.5rem;
+      background: none;
+      border: none;
+      color: var(--theme-text-secondary);
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s ease;
+    }
+    
+    .admin-tabs__btn:hover {
+      color: var(--theme-text);
+    }
+    
+    .admin-tabs__btn.is-active {
+      color: var(--theme-accent);
+      border-bottom-color: var(--theme-accent);
+    }
+    
+    .admin-tab-content {
+      display: none;
+    }
+    
+    .admin-tab-content.is-active {
+      display: block;
+    }
+    
+    /* Bénévoles tab: sign-up limits of the public registration page */
+    #vl-section { margin-top: var(--space-md); }   /* under the list of volunteers */
+    .vl-status { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+    .vl-stat { border: 1px solid var(--theme-border); border-radius: var(--radius-md); padding: 0.6rem 0.8rem; background: var(--theme-surface-alt); }
+    .vl-stat__label { font-size: 0.8rem; color: var(--theme-text-secondary); }
+    .vl-stat__value { font-size: 1.15rem; font-weight: 700; }
+    .vl-stat--full .vl-stat__value { color: var(--color-danger); }
+    .vl-stat__note { font-size: 0.75rem; color: var(--theme-text-secondary); }
+    .vl-closed { grid-column: 1 / -1; font-weight: 600; color: var(--color-danger); }
+    .vl-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem; }
+    .vl-switch { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; margin-top: 0.25rem; }
+
+    /* Liens et astuces tab */
+    .links-card { margin-bottom: var(--space-md); }
+    .links-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .links-url { font-family: monospace; font-size: 0.9375rem; word-break: break-all; color: var(--theme-accent); }
+    .links-qr { display: flex; align-items: flex-start; gap: var(--space-lg); flex-wrap: wrap; }
+    .links-qr__image { width: 220px; height: 220px; background: #fff; border: 1px solid var(--theme-border); border-radius: var(--radius-md); padding: 0.5rem; }
+    .links-qr__image svg { width: 100%; height: 100%; display: block; }
+    .links-qr__side { display: flex; flex-direction: column; gap: 0.75rem; align-items: flex-start; flex: 1; min-width: 220px; }
+
+    /* Export section styling */
+    .data-export-section {
+      background: var(--theme-surface);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      border: 1px solid var(--theme-border);
+    }
+    
+    .data-export-section__header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: var(--space-md);
+    }
+    
+    .data-export-section__header h3 {
+      margin: 0;
+      font-size: 1.125rem;
+    }
+    
+    .data-export-section__description {
+      color: var(--theme-text-secondary);
+      margin-bottom: var(--space-lg);
+    }
+    
+    .export-options {
+      display: grid;
+      gap: 0.75rem;
+      margin-bottom: var(--space-lg);
+    }
+    
+    .export-option {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: var(--theme-surface-alt);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    
+    .export-option:hover {
+      background: var(--theme-border);
+    }
+    
+    .export-option input {
+      width: 18px;
+      height: 18px;
+    }
+    
+    .export-option-label {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .export-option-name {
+      font-weight: 500;
+    }
+    
+    .export-option-desc {
+      font-size: 0.75rem;
+      color: var(--theme-text-secondary);
+    }
+    
+    .export-form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-md);
+      align-items: flex-end;
+      margin-top: var(--space-lg);
+    }
+    
+    .export-form-row .form-group {
+      margin-bottom: 0;
+    }
+    
+    .export-status {
+      margin-top: var(--space-md);
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-md);
+      display: none;
+    }
+    
+    .export-status.show {
+      display: block;
+    }
+    
+    .export-status.success {
+      background: rgba(16, 185, 129, 0.15);
+      color: #065f46;
+    }
+    
+    .export-status.error {
+      background: rgba(239, 68, 68, 0.15);
+      color: #991b1b;
+    }
+    
+    .export-status.info {
+      background: rgba(59, 130, 246, 0.15);
+      color: #1e40af;
+    }
+
+    /* Cartes tab: GPS calibration of the maps */
+    .cal-toolbar { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: flex-end; }
+    .cal-toolbar .form-group { margin-bottom: 0; min-width: 14rem; }
+    .cal-source { color: var(--theme-text-secondary); font-size: 0.875rem; margin: var(--space-md) 0 0; }
+    .cal-status { padding: 0.75rem 1rem; border-radius: var(--radius-md); margin: var(--space-md) 0; border-left: 4px solid; color: var(--theme-text); }
+    .cal-status.ok { background: rgba(16, 185, 129, 0.15); border-color: #10b981; }
+    .cal-status.error { background: rgba(239, 68, 68, 0.15); border-color: #ef4444; }
+    .cal-status.info { background: rgba(59, 130, 246, 0.15); border-color: #3b82f6; }
+    .cal-warning { padding: 0.75rem 1rem; border-radius: var(--radius-md); margin-bottom: var(--space-md); background: rgba(245, 158, 11, 0.18); border-left: 4px solid #f59e0b; color: var(--theme-text); }
+    .cal-row { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: flex-end; padding: 0.75rem; margin-bottom: 0.5rem; background: var(--theme-surface-alt); border: 2px solid transparent; border-radius: var(--radius-md); }
+    .cal-row.is-placing { border-color: #f59e0b; }
+    .cal-row .form-group { margin-bottom: 0; flex: 1 1 7rem; min-width: 6rem; }
+    .cal-row__num { flex: 0 0 auto; width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #dc2626; color: #fff; font-weight: 700; margin-bottom: 0.25rem; }
+    .cal-row__place { flex: 0 0 auto; margin-bottom: 0.25rem; }
+    .cal-actions { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: center; margin: var(--space-md) 0; }
+    .cal-test { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; margin-bottom: var(--space-sm); }
+    .cal-test .form-group { margin-bottom: 0; flex: 1 1 16rem; }
+    .cal-readout { min-height: 1.5rem; margin: 0.5rem 0; font-weight: 500; }
+    .cal-hint { color: var(--theme-text-secondary); font-size: 0.875rem; margin: 0 0 0.5rem; }
+    .cal-scroll { overflow: auto; max-height: 70vh; border: 1px solid var(--theme-border); border-radius: var(--radius-md); background: var(--theme-surface-alt); }
+    .cal-map { position: relative; display: inline-block; }
+    .cal-map.is-placing { cursor: crosshair; }
+    .cal-map img { display: block; width: auto; height: auto; max-width: none; }
+    .cal-map svg { position: absolute; left: 0; top: 0; pointer-events: none; }
+
+    /* Sentiers tab: the trail list, the editor and the markers on the map */
+    .trail-table-wrap { overflow-x: auto; margin-bottom: var(--space-md); }
+    .trail-table { width: 100%; border-collapse: collapse; }
+    .trail-table th, .trail-table td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--theme-border); white-space: nowrap; }
+    .trail-table th { background: var(--theme-surface-alt); font-size: 0.75rem; text-transform: uppercase; }
+    .trail-row:hover { background: var(--theme-surface-alt); }
+    .trail-row.is-archived { opacity: 0.55; }
+    .trail-group td { padding: 0.5rem 0.75rem; font-weight: 700; background: var(--theme-surface-alt); border-bottom: 1px solid var(--theme-border); }
+    .trail-group.is-orphan td, .trail-row.is-orphan { background: rgba(245, 158, 11, 0.16); }
+    .trail-group.is-orphan td { color: var(--theme-text); }
+    .trail-number-input { width: 4.5rem; padding: 0.25rem 0.5rem; }
+    .trail-orphans { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: var(--space-md); padding: 0.75rem 1rem; border-radius: var(--radius-md); background: rgba(245, 158, 11, 0.18); border-left: 4px solid #f59e0b; color: var(--theme-text); }
+    .trail-orphans[hidden], .trail-panel[hidden], .trail-bulk[hidden], th[hidden] { display: none; }
+    .trail-panel { margin-top: var(--space-md); padding: 0.75rem 1rem; border: 1px solid var(--theme-border); border-radius: var(--radius-md); background: var(--theme-surface-alt); }
+    .trail-panel summary { cursor: pointer; font-weight: 600; }
+    .trail-bulk { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-top: var(--space-md); }
+    .trail-bulk .form-select { width: auto; min-width: 14rem; }
+    .btn[hidden], .form-select[hidden] { display: none; } /* author display rules would otherwise win over [hidden] */
+    .trail-row.is-selected { background: rgba(var(--theme-accent-rgb), 0.12); }
+    .trail-editor { padding: var(--space-md); margin-bottom: var(--space-md); background: var(--theme-surface-alt); border: 1px solid var(--theme-border); border-radius: var(--radius-md); }
+    .trail-editor h4 { margin: 0 0 var(--space-md); }
+    .trail-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--space-md); }
+    .trail-form .form-group { margin-bottom: 0; }
+    .trail-position { display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; }
+    .trail-position .form-group { flex: 1 1 5rem; min-width: 5rem; }
+    .cal-map svg .trail-marker { pointer-events: all; cursor: pointer; }
+    .trail-marker circle { fill: #64748b; stroke: #fff; stroke-width: 3; }
+    .trail-marker text { fill: #fff; font-size: 10.5px; font-weight: 700; pointer-events: none; }
+    .trail-marker--current circle { fill: #dc2626; }
+    .cal-map.is-placing .trail-marker { cursor: crosshair; }  </style>
+</head>
+<body data-theme="light" data-module="admin" data-nav="admin" data-page="user-management">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <!-- Loading Screen -->
+  <div id="loading" class="page-loading">
+    <div class="loading-spinner"></div>
+    <p class="loading-text">Vérification des accès...</p>
+  </div>
+
+  <!-- Main Content -->
+  <main id="main-content" class="main" style="display: none;">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-header__content">
+        <h1 class="page-title">
+          <span class="page-title__icon">⚙️</span>
+          Administration
+        </h1>
+        <p class="page-subtitle">Gestion des utilisateurs et des données</p>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="admin-tabs">
+      <button class="admin-tabs__btn is-active" data-tab="users" onclick="switchTab('users')">
+        👥 Utilisateurs
+      </button>
+      <button class="admin-tabs__btn" data-tab="volunteers" id="volunteers-tab-btn" onclick="switchTab('volunteers')" style="display: none;">
+        🙋 Bénévoles
+      </button>
+      <button class="admin-tabs__btn" data-tab="trails" id="trails-tab-btn" onclick="switchTab('trails')" style="display: none;">
+        🧭 Sentiers
+      </button>
+      <button class="admin-tabs__btn" data-tab="maps" id="maps-tab-btn" onclick="switchTab('maps')" style="display: none;">
+        📍 Cartes
+      </button>
+      <button class="admin-tabs__btn" data-tab="data" id="data-tab-btn" onclick="switchTab('data')" style="display: none;">
+        📦 Données
+      </button>
+      <button class="admin-tabs__btn" data-tab="publication" id="publication-tab-btn" onclick="switchTab('publication')" style="display: none;">
+        🌐 Statut public
+      </button>
+      <button class="admin-tabs__btn" data-tab="links" onclick="switchTab('links')">
+        💡 Liens et astuces
+      </button>
+    </div>
+
+    <!-- TAB 1: USER MANAGEMENT -->
+    <div class="admin-tab-content is-active" id="users-tab">
+      <!-- Statistics Cards -->
+      <div class="quick-stats mb-6">
+        <div class="quick-stat">
+          <div class="quick-stat__icon">👥</div>
+          <div class="quick-stat__content">
+            <div class="quick-stat__value" id="stat-total">-</div>
+            <div class="quick-stat__label">Total utilisateurs</div>
+          </div>
+        </div>
+        <div class="quick-stat">
+          <div class="quick-stat__icon">✅</div>
+          <div class="quick-stat__content">
+            <div class="quick-stat__value" id="stat-active">-</div>
+            <div class="quick-stat__label">Actifs</div>
+          </div>
+        </div>
+        <div class="quick-stat">
+          <div class="quick-stat__icon">👑</div>
+          <div class="quick-stat__content">
+            <div class="quick-stat__value" id="stat-admins">-</div>
+            <div class="quick-stat__label">Administrateurs</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users Table -->
+      <div class="user-table-section">
+        <div class="user-table-section__header">
+          <h2 class="user-table-section__title">
+            <span>👥</span>
+            <span>Liste des utilisateurs</span>
+            <span class="user-table-section__count" id="users-count">(0)</span>
+          </h2>
+          <div class="user-table-section__actions">
+            <div class="search-input">
+              <span class="search-input__icon">🔍</span>
+              <input type="text" class="search-input__input" id="search-users" placeholder="Rechercher...">
+            </div>
+            <select class="form-select form-select--sm" id="filter-status" style="width: auto;">
+              <option value="">Tous les statuts</option>
+              <option value="active">Actifs</option>
+              <option value="inactive">Inactifs</option>
+            </select>
+            <select class="form-select form-select--sm" id="filter-network" style="width: auto;">
+              <option value="">Toutes les activités</option>
+            </select>
+            <select class="form-select form-select--sm" id="filter-app" style="width: auto;" title="Utilisateurs qui ont accès à cette application">
+              <option value="">Toutes les applications</option>
+              <option value="allowInspection">🔍 Inspections</option>
+              <option value="allowInfraction">🚨 Infractions</option>
+              <option value="allowSignalisation">🚧 Signalisations</option>
+              <option value="allowMaintenance">🪏 Entretien</option>
+              <option value="allowMeteo">🌦️ Météo</option>
+            </select>
+            <div class="page-size-select">
+              <label for="users-page-size">Afficher:</label>
+              <select class="form-select form-select--sm" id="users-page-size" style="width: auto;">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="openAddUserModal()">
+              <span>➕</span>
+              <span>Ajouter</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="data-table__body">
+          <table class="table table--hover table--responsive" id="users-table">
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Courriel</th>
+                <th>Rôle</th>
+                <th>Activités</th>
+                <th>Accès (cliquer pour modifier)</th>
+                <th>Statut</th>
+                <th class="table-cell--actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="pagination-container" id="users-pagination" style="display: none;">
+          <div class="pagination-info" id="users-pagination-info"></div>
+          <div class="pagination" id="users-pagination-buttons"></div>
+        </div>
+
+        <div class="empty-state" id="empty-state" style="display: none;">
+          <div class="empty-state__icon">👥</div>
+          <h3 class="empty-state__title">Aucun utilisateur trouvé</h3>
+          <p class="empty-state__description">Aucun utilisateur ne correspond à vos critères.</p>
+        </div>
+
+        <div class="loading-state" id="table-loading">
+          <div class="loading-spinner"></div>
+          <p class="loading-text">Chargement des utilisateurs...</p>
+        </div>
+      </div>
+
+      <!-- Bulk import (CSV) -->
+      <div class="data-export-section mt-6" id="import-section">
+        <div class="data-export-section__header">
+          <span>📥</span>
+          <h3>Importation en lot</h3>
+        </div>
+        <p class="data-export-section__description">
+          Importez plusieurs utilisateurs à partir d'un fichier CSV. Colonnes obligatoires :
+          <strong>name, email, password</strong>. Colonnes optionnelles :
+          <strong>role</strong> (<code>inspector</code> par défaut, ou <code>admin</code>),
+          <strong>phone</strong>,
+          <strong>allowInspection</strong> (vrai par défaut),
+          <strong>allowInfraction</strong>, <strong>allowSignalisation</strong>, <strong>allowMaintenance</strong>, <strong>allowMeteo</strong> (faux par défaut ; valeurs <code>true</code> ou <code>false</code>),
+          <strong>networks</strong> : activités séparées par « | », par exemple <code>ski|bike</code> (sans cette colonne, l'utilisateur reçoit l'activité par défaut : ski).
+          Les utilisateurs importés sont créés actifs.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label" for="csv-file">Fichier CSV</label>
+          <input type="file" class="form-input" id="csv-file" accept=".csv" onchange="handleCsvSelect(event)">
+          <span class="form-hint">Le modèle ci-dessous montre toutes les colonnes acceptées.</span>
+        </div>
+
+        <!-- CSV Preview -->
+        <div id="csv-preview" style="display: none;" class="mt-4">
+          <div class="data-export-section__header">
+            <span>👁️</span>
+            <h4>Aperçu (<span id="csv-count">0</span> utilisateurs)</h4>
+          </div>
+          <div class="data-table__body" style="max-height: 300px; overflow-y: auto;">
+            <table class="table table--sm">
+              <thead>
+                <tr>
+                  <th>Nom</th>
+                  <th>Email</th>
+                  <th>Rôle</th>
+                  <th>Activités</th>
+                  <th>Accès</th>
+                </tr>
+              </thead>
+              <tbody id="csv-preview-tbody"></tbody>
+            </table>
+          </div>
+          
+          <div class="export-form-row mt-4">
+            <button class="btn btn-primary" id="start-import-btn" onclick="startBulkImport()" disabled>
+              <span>🚀</span>
+              <span>Démarrer l'importation</span>
+            </button>
+            <button class="btn btn-secondary" id="cancel-import-btn" onclick="cancelBulkImport()" style="display: none;">
+              <span>❌</span>
+              <span>Annuler</span>
+            </button>
+          </div>
+
+          <!-- Progress -->
+          <div id="import-progress" style="display: none;" class="mt-4">
+            <div class="form-label">Progression</div>
+            <div style="background: var(--theme-border); border-radius: var(--radius-md); height: 8px; overflow: hidden;">
+              <div id="import-progress-bar" style="background: var(--theme-accent); height: 100%; width: 0%; transition: width 0.3s;"></div>
+            </div>
+            <p id="import-progress-text" class="form-hint mt-2">0 / 0</p>
+          </div>
+        </div>
+
+        <!-- Import Results -->
+        <div id="import-results" style="display: none;" class="mt-4">
+          <div class="quick-stats">
+            <div class="quick-stat">
+              <div class="quick-stat__icon">✅</div>
+              <div class="quick-stat__content">
+                <div class="quick-stat__value" id="import-success-count">0</div>
+                <div class="quick-stat__label">Créés</div>
+              </div>
+            </div>
+            <div class="quick-stat">
+              <div class="quick-stat__icon">⏭️</div>
+              <div class="quick-stat__content">
+                <div class="quick-stat__value" id="import-skipped-count">0</div>
+                <div class="quick-stat__label">Ignorés (doublons)</div>
+              </div>
+            </div>
+            <div class="quick-stat">
+              <div class="quick-stat__icon">❌</div>
+              <div class="quick-stat__content">
+                <div class="quick-stat__value" id="import-error-count">0</div>
+                <div class="quick-stat__label">Erreurs</div>
+              </div>
+            </div>
+          </div>
+          
+          <div id="import-errors-list" style="display: none;" class="mt-4">
+            <h5 style="color: var(--color-danger);">Détails des erreurs :</h5>
+            <ul id="import-errors-ul" style="font-size: 0.875rem; color: var(--theme-text-secondary);"></ul>
+          </div>
+        </div>
+
+        <!-- Sample CSV Template -->
+        <div class="mt-6" style="padding-top: var(--space-lg); border-top: 1px solid var(--theme-border);">
+          <div class="data-export-section__header">
+            <span>📄</span>
+            <h4>Modèle CSV</h4>
+          </div>
+          <p class="data-export-section__description">
+            Téléchargez un modèle CSV pour voir le format attendu.
+          </p>
+          <button class="btn btn-secondary" onclick="downloadCsvTemplate()">
+            <span>⬇️</span>
+            <span>Télécharger le modèle</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Export Users Section -->
+      <div class="data-export-section mt-6">
+        <div class="data-export-section__header">
+          <span>📊</span>
+          <h3>Exporter les utilisateurs</h3>
+        </div>
+        <div class="export-form-row">
+          <div class="form-group">
+            <label class="form-label">Format</label>
+            <select class="form-select" id="export-users-format" style="width: auto;">
+              <option value="csv">CSV</option>
+              <option value="json">JSON</option>
+            </select>
+          </div>
+          <button class="btn btn-secondary" onclick="exportUsers()">
+            <span>⬇️</span>
+            <span>Exporter utilisateurs</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: VOLUNTEERS (bike network) -->
+    <div class="admin-tab-content" id="volunteers-tab">
+      <div class="data-export-section">
+        <div class="data-export-section__header">
+          <span>🙋</span>
+          <h3>Bénévoles inscrits</h3>
+        </div>
+        <p class="data-export-section__description">
+          Bénévoles inscrits via la page d'inscription dédiée (réseau vélo). Supprimer un bénévole ici
+          ne modifie pas les rapports d'entretien déjà enregistrés : son nom y est copié, pas lié à cette liste.
+        </p>
+
+        <div style="display:flex; gap:0.75rem; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap;">
+          <button type="button" class="btn btn-danger btn-sm" id="delete-selected-volunteers-btn" disabled>🗑️ Supprimer la sélection</button>
+          <button type="button" class="btn btn-danger btn-sm" id="delete-all-volunteers-btn">🗑️ Supprimer tout</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="refresh-volunteers-btn">🔄 Actualiser</button>
+          <span id="volunteers-count" style="font-size:0.85rem; color:var(--theme-text-secondary);"></span>
+        </div>
+
+        <div class="data-table__body">
+          <table class="table table--hover table--responsive" id="volunteers-table">
+            <thead>
+              <tr>
+                <th style="width:2.5rem;"><input type="checkbox" id="volunteers-select-all"></th>
+                <th>Nom</th>
+                <th>Prénom</th>
+                <th>Date d'inscription</th>
+              </tr>
+            </thead>
+            <tbody id="volunteers-tbody"></tbody>
+          </table>
+        </div>
+
+        <div class="empty-state" id="volunteers-empty-state" style="display: none;">
+          <div class="empty-state__icon">🙋</div>
+          <h3 class="empty-state__title">Aucun bénévole inscrit</h3>
+          <p class="empty-state__description">Personne ne s'est encore inscrit via la page dédiée.</p>
+        </div>
+
+        <div class="loading-state" id="volunteers-loading">
+          <div class="loading-spinner"></div>
+          <p class="loading-text">Chargement des bénévoles...</p>
+        </div>
+      </div>
+
+      <div class="data-export-section" id="vl-section">
+        <div class="data-export-section__header">
+          <span>🛡️</span>
+          <h3>Limites d'inscription</h3>
+        </div>
+        <p class="data-export-section__description">
+          La page d'inscription est publique (sans connexion) : ces limites, communes à tous les visiteurs, la protègent
+          contre les inscriptions en rafale. Quand une limite est atteinte, le visiteur lit un message clair. Les compteurs
+          d'une minute, d'une heure et d'une journée repartent d'eux-mêmes; le total se remet à zéro avec le bouton
+          « Réinitialiser les compteurs » (par exemple au début d'une saison).
+        </p>
+
+        <div id="vl-status" class="vl-status" aria-live="polite">Chargement…</div>
+
+        <div class="vl-form">
+          <div class="form-group">
+            <label class="form-label" for="vl-per-minute">Par minute</label>
+            <input type="number" class="form-input" id="vl-per-minute" min="1" max="100000" step="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="vl-per-hour">Par heure</label>
+            <input type="number" class="form-input" id="vl-per-hour" min="1" max="100000" step="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="vl-per-day">Par jour</label>
+            <input type="number" class="form-input" id="vl-per-day" min="1" max="100000" step="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="vl-total">Au total</label>
+            <input type="number" class="form-input" id="vl-total" min="1" max="100000" step="1">
+          </div>
+        </div>
+        <label class="vl-switch"><input type="checkbox" id="vl-enabled" checked> Inscriptions ouvertes (décocher pour fermer la page d'inscription)</label>
+
+        <div style="display:flex; gap:0.75rem; align-items:center; margin-top:0.75rem; flex-wrap:wrap;">
+          <button type="button" class="btn btn-primary btn-sm" id="vl-save-btn">💾 Enregistrer les limites</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="vl-reset-btn">♻️ Réinitialiser les compteurs</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="vl-refresh-btn">🔄 Actualiser</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: TRAILS -->
+    <div class="admin-tab-content" id="trails-tab">
+      <div class="data-export-section">
+        <div class="data-export-section__header">
+          <span>🧭</span>
+          <h3>Sentiers <span id="trail-count" style="font-weight: 400; color: var(--theme-text-secondary);"></span></h3>
+        </div>
+        <p class="data-export-section__description">
+          Les sentiers de chaque activité : nom, numéro (affiché sur les repères de la carte), secteur, type, difficulté, longueur et position.
+          Le statut (ouvert ou fermé) est mis à jour par les inspections. La montée et la descente d'un même tracé sont deux sentiers distincts,
+          chacun avec son numéro, son statut et sa difficulté. Les secteurs regroupent les sentiers dans les formulaires d'infractions et de
+          signalisations : un system admin les gère et attribue le secteur de chaque sentier.
+        </p>
+
+        <div class="cal-toolbar">
+          <div class="form-group">
+            <label class="form-label" for="trail-network">Activité</label>
+            <select class="form-select" id="trail-network"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="trail-kind-filter">Type</label>
+            <select class="form-select" id="trail-kind-filter"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="trail-sector-filter">Secteur</label>
+            <select class="form-select" id="trail-sector-filter"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="trail-view">Afficher</label>
+            <select class="form-select" id="trail-view">
+              <option value="active">Sentiers actifs</option>
+              <option value="archived">Sentiers masqués</option>
+              <option value="all">Tous</option>
+            </select>
+          </div>
+          <button type="button" class="btn btn-primary" id="trail-new">➕ Nouveau sentier</button>
+        </div>
+
+        <div class="trail-orphans" id="trail-orphan-banner" hidden>
+          <span id="trail-orphan-text"></span>
+          <button type="button" class="btn btn-secondary btn-sm" id="trail-orphan-show">Les afficher</button>
+        </div>
+
+        <!-- System admin: sectors -->
+        <details class="trail-panel" id="sector-panel">
+          <summary>Secteurs de cette activité</summary>
+          <div class="trail-table-wrap">
+            <table class="trail-table">
+              <thead><tr><th>Ordre</th><th>Nom</th><th>Contenu</th><th></th></tr></thead>
+              <tbody id="sector-rows"></tbody>
+            </table>
+          </div>
+          <div class="trail-position" style="margin-top: 0.5rem;">
+            <div class="form-group"><input type="text" class="form-input" id="sector-new-name" placeholder="Nom du nouveau secteur" maxlength="60" aria-label="Nom du nouveau secteur"></div>
+            <button type="button" class="btn btn-secondary btn-sm" id="sector-new-add">Ajouter le secteur</button>
+          </div>
+        </details>
+
+        <!-- Shelters (activities that have them): hidden, never deleted -->
+        <details class="trail-panel" id="shelter-panel" hidden>
+          <summary>Abris de cette activité</summary>
+          <div class="trail-table-wrap">
+            <table class="trail-table">
+              <thead><tr><th>Nom</th><th>Statut</th><th></th></tr></thead>
+              <tbody id="shelter-rows"></tbody>
+            </table>
+          </div>
+        </details>
+
+        <!-- System admin: assign a sector to the ticked trails -->
+        <div class="trail-bulk" id="trail-bulk">
+          <select class="form-select" id="trail-bulk-sector" aria-label="Secteur à attribuer"></select>
+          <button type="button" class="btn btn-secondary btn-sm" id="trail-bulk-apply">Attribuer aux sentiers cochés</button>
+          <span id="trail-selected-count" class="cal-source" style="margin: 0;"></span>
+        </div>
+
+        <div class="trail-table-wrap" style="margin-top: var(--space-md);">
+          <table class="trail-table">
+            <thead><tr><th id="trail-th-select"><input type="checkbox" id="trail-select-all" aria-label="Tout cocher"></th><th>N°</th><th>Nom</th><th>Secteur</th><th>Type</th><th>Difficulté</th><th>Longueur</th><th>Statut</th><th>Position</th><th></th></tr></thead>
+            <tbody id="trail-rows"></tbody>
+          </table>
+        </div>
+
+        <div class="trail-editor" id="trail-editor" hidden>
+          <h4 id="trail-editor-title"></h4>
+          <div class="trail-form">
+            <div class="form-group">
+              <label class="form-label" for="tr-name">Nom <span class="form-required">*</span></label>
+              <input type="text" class="form-input" id="tr-name" maxlength="80">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="tr-number">Numéro <span class="form-hint">(repère de la carte)</span></label>
+              <input type="text" class="form-input" id="tr-number" maxlength="6">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="tr-kind">Type</label>
+              <select class="form-select" id="tr-kind"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="tr-sector">Secteur</label>
+              <select class="form-select" id="tr-sector"></select>
+            </div>
+            <div class="form-group" id="tr-difficulty-group">
+              <label class="form-label" for="tr-difficulty">Difficulté</label>
+              <select class="form-select" id="tr-difficulty"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="tr-length">Longueur (km) <span class="form-hint">(information)</span></label>
+              <input type="text" inputmode="decimal" class="form-input" id="tr-length">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Position sur la carte</label>
+              <div class="trail-position">
+                <div class="form-group"><input type="text" class="form-input" id="tr-x" placeholder="x" readonly aria-label="Position x"></div>
+                <div class="form-group"><input type="text" class="form-input" id="tr-y" placeholder="y" readonly aria-label="Position y"></div>
+              </div>
+              <div class="trail-position" style="margin-top: 0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" id="tr-place">📍 Placer sur la carte</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="tr-clear">Retirer la position</button>
+              </div>
+            </div>
+          </div>
+          <p class="cal-source" id="tr-status"></p>
+          <div class="cal-actions">
+            <button type="button" class="btn btn-primary" id="tr-save">Enregistrer</button>
+            <button type="button" class="btn btn-primary" id="tr-save-next" title="Enregistre, puis ouvre le sentier suivant de la liste (prêt à être placé sur la carte s'il n'a pas de position)">Enregistrer et suivant</button>
+            <button type="button" class="btn btn-secondary" id="tr-cancel">Annuler</button>
+            <button type="button" class="btn btn-secondary" id="tr-archive" hidden title="Le sentier n'existe plus dans le réseau : il disparaît de la carte et des listes, l'historique est conservé">Masquer ce sentier</button>
+            <button type="button" class="btn btn-secondary" id="tr-restore" hidden>Restaurer ce sentier</button>
+          </div>
+        </div>
+
+        <div class="cal-warning" id="trail-size-warning" hidden></div>
+        <p class="cal-source" id="trail-map-title" style="margin-bottom: 0.25rem;"></p>
+        <p class="cal-hint" id="trail-hint"></p>
+        <div class="cal-scroll" id="trail-scroll">
+          <div class="cal-map" id="trail-map">
+            <img id="trail-image" alt="Carte des sentiers">
+            <svg id="trail-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: MAP CALIBRATION (system admin) -->
+    <div class="admin-tab-content" id="maps-tab">
+      <div class="data-export-section">
+        <div class="data-export-section__header">
+          <span>📍</span>
+          <h3>Calibration GPS des cartes</h3>
+        </div>
+        <p class="data-export-section__description">
+          Relie les positions GPS (photos des rapports) aux pixels de chaque carte (une par activité, et une carte de descente pour le ski).
+          Choisissez <strong>3 points</strong> pour une carte plate et à l'échelle, ou <strong>4 points</strong> pour une carte dessinée en perspective.
+          Prenez des points éloignés les uns des autres, sur des repères précis (croisement de sentiers, bâtiment), et cherchez leur position GPS
+          en appuyant longuement sur ce lieu dans Google Maps. Avec 4 points, faites le tour du secteur sans croiser les lignes.
+        </p>
+
+        <div class="cal-toolbar">
+          <div class="form-group">
+            <label class="form-label" for="cal-network">Carte</label>
+            <select class="form-select" id="cal-network"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cal-mode">Méthode</label>
+            <select class="form-select" id="cal-mode">
+              <option value="affine">3 points : carte plate</option>
+              <option value="perspective">4 points : carte en perspective</option>
+            </select>
+          </div>
+        </div>
+        <p class="cal-source" id="cal-source"></p>
+        <div class="cal-status info" id="cal-status"></div>
+        <div class="cal-warning" id="cal-size-warning" hidden></div>
+
+        <div id="cal-points"></div>
+
+        <div class="cal-actions">
+          <button type="button" class="btn btn-primary" id="cal-save" disabled>Enregistrer la calibration</button>
+          <button type="button" class="btn btn-secondary" id="cal-reload">Annuler les modifications</button>
+          <label class="export-option" style="padding: 0.5rem 0.75rem;">
+            <input type="checkbox" id="cal-grid" checked>
+            <span>Afficher la grille GPS</span>
+          </label>
+        </div>
+
+        <div class="cal-test">
+          <div class="form-group">
+            <label class="form-label" for="cal-test">Tester une position GPS</label>
+            <input type="text" class="form-input" id="cal-test" placeholder="45.3116, -72.2408">
+          </div>
+          <button type="button" class="btn btn-secondary" id="cal-test-btn" disabled>Voir sur la carte</button>
+        </div>
+        <div class="cal-readout" id="cal-readout" aria-live="polite"></div>
+        <p class="cal-hint" id="cal-hint"></p>
+
+        <div class="cal-scroll" id="cal-scroll">
+          <div class="cal-map" id="cal-map">
+            <img id="cal-image" alt="Carte à calibrer">
+            <svg id="cal-overlay" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: DATA MANAGEMENT -->
+    <div class="admin-tab-content" id="data-tab">
+      <div class="data-export-section">
+        <div class="data-export-section__header">
+          <span>💾</span>
+          <h3>Exporter les données d'activité</h3>
+        </div>
+        <p class="data-export-section__description">
+          Exportez les données du système (inspections, infractions, signalisations, entretien) à partir d'une date de début.
+        </p>
+
+        <h4 style="font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem;">
+          Types de données à exporter :
+        </h4>
+        <div class="export-options">
+          <label class="export-option">
+            <input type="checkbox" id="export-trail-inspections" checked>
+            <div class="export-option-label">
+              <span class="export-option-name">🥾 Inspections de sentiers</span>
+              <span class="export-option-desc">trail_inspections + inspections</span>
+            </div>
+          </label>
+          <label class="export-option">
+            <input type="checkbox" id="export-shelter-inspections" checked>
+            <div class="export-option-label">
+              <span class="export-option-name">🏠 Inspections d'abris</span>
+              <span class="export-option-desc">shelter_inspections</span>
+            </div>
+          </label>
+          <label class="export-option">
+            <input type="checkbox" id="export-infractions" checked>
+            <div class="export-option-label">
+              <span class="export-option-name">🚨 Infractions</span>
+              <span class="export-option-desc">infractions</span>
+            </div>
+          </label>
+          <label class="export-option">
+            <input type="checkbox" id="export-signalisations" checked>
+            <div class="export-option-label">
+              <span class="export-option-name">🚧 Signalisations</span>
+              <span class="export-option-desc">signalisations</span>
+            </div>
+          </label>
+          <label class="export-option">
+            <input type="checkbox" id="export-maintenance" checked>
+            <div class="export-option-label">
+              <span class="export-option-name">🪏 Entretien</span>
+              <span class="export-option-desc">maintenance_logs (CSV : une ligne par travail)</span>
+            </div>
+          </label>
+          <label class="export-option">
+            <input type="checkbox" id="export-meteo" checked>
+            <div class="export-option-label">
+              <span class="export-option-name">🌦️ Météo</span>
+              <span class="export-option-desc">weather_records (CSV : une ligne par relevé, valeurs saisies et valeurs du web; hiver et été, sans filtre d'activité)</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="export-form-row">
+          <div class="form-group">
+            <label class="form-label" for="export-network">Activité</label>
+            <select class="form-select" id="export-network" style="width: auto;"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="export-start-date">Date de début</label>
+            <input type="date" class="form-input" id="export-start-date" style="width: auto;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Format</label>
+            <select class="form-select" id="export-data-format" style="width: auto;">
+              <option value="json">JSON (fichier unique)</option>
+              <option value="csv">CSV (fichiers séparés)</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="export-data-btn" onclick="exportData()">
+            <span>📥</span>
+            <span>Exporter les données</span>
+          </button>
+        </div>
+
+        <div class="export-status" id="export-status"></div>
+      </div>
+    </div>
+
+    <!-- TAB: PUBLIC STATUS (system admin): the schedule of the function that rewrites the public status file -->
+    <div class="admin-tab-content" id="publication-tab">
+      <style>#publication-tab .data-table th { text-align: left; font-weight: 600; padding-right: 1rem; } #publication-tab .data-table td { text-align: left; }</style>
+      <div class="data-export-section">
+        <div class="data-export-section__header">
+          <span>🌐</span>
+          <h3>Statut public : fichier mis à jour automatiquement</h3>
+        </div>
+        <p class="data-export-section__description">
+          Le statut des sentiers et la météo montrés au public (page publique et site de Mont Orford) sont lus dans <strong>un seul petit fichier</strong>,
+          réécrit automatiquement selon l'horaire ci-dessous. Les visiteurs ne lisent donc jamais la base de données : leur nombre ne change pas la facture.
+          Seule l'activité de la saison est publiée (ski du 1er novembre au 30 avril, vélo du 1er mai au 31 octobre) : l'autre activité n'est jamais dans le fichier.
+          Un sentier ouvert ou fermé par un inspecteur apparaît au public au prochain rafraîchissement.
+        </p>
+
+        <div class="export-form-row" style="align-items: center;">
+          <span class="badge badge-success" id="ps-state">…</span>
+          <button type="button" class="btn btn-secondary" id="ps-toggle-btn">⏸ Mettre en pause</button>
+          <button type="button" class="btn btn-secondary" id="ps-now-btn" title="Réécrit le fichier dans la minute qui suit, même en pause">🔄 Rafraîchir maintenant</button>
+        </div>
+        <p id="ps-pause-note" class="export-status" hidden style="display:block;">⏸ En pause : le fichier garde ses dernières données. La page publique les affiche et signale qu'elles ne sont plus à jour après un moment.</p>
+        <p id="ps-error" class="alert alert-danger" hidden></p>
+
+        <table class="data-table" style="max-width: 640px; margin-top: 1rem;">
+          <tbody>
+            <tr><th scope="row">Dernier passage de la fonction</th><td id="ps-last">…</td></tr>
+            <tr><th scope="row">Dernière publication réussie</th><td id="ps-published">—</td></tr>
+            <tr><th scope="row">Contenu publié</th><td id="ps-count">—</td></tr>
+            <tr><th scope="row">Le fichier</th><td><a id="ps-file-link" href="#" target="_blank" rel="noopener">Ouvrir le fichier public</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="data-export-section">
+        <div class="data-export-section__header">
+          <span>🕒</span>
+          <h3>Horaire (heure de l'Est)</h3>
+        </div>
+        <form id="ps-form" novalidate>
+          <div class="export-form-row">
+            <div class="form-group">
+              <label class="form-label" for="ps-day-from">Le jour, de</label>
+              <input type="time" class="form-input" id="ps-day-from" value="06:00" style="width: auto;">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="ps-day-to">à</label>
+              <input type="time" class="form-input" id="ps-day-to" value="18:00" style="width: auto;">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="ps-day-every">Toutes les (minutes)</label>
+              <input type="number" class="form-input" id="ps-day-every" min="1" max="60" step="1" value="1" style="width: 6rem;">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="ps-night-every">Le reste de la journée, toutes les (minutes)</label>
+              <input type="number" class="form-input" id="ps-night-every" min="1" max="60" step="1" value="10" style="width: 6rem;">
+            </div>
+            <button type="submit" class="btn btn-primary" id="ps-save-btn">💾 Enregistrer l'horaire</button>
+          </div>
+          <p id="ps-form-error" class="alert alert-danger" hidden></p>
+        </form>
+        <p class="form-hint">Intervalles de 1 à 60 minutes. L'horaire s'applique dès la minute suivante, sans rien redéployer. Les heures suivent l'heure de Montréal, heure d'été comprise.</p>
+      </div>
+
+      <div class="data-export-section" id="ps-estimate">
+        <div class="data-export-section__header">
+          <span>🧮</span>
+          <h3>Ce que cet horaire représente</h3>
+        </div>
+        <table class="data-table" style="max-width: 640px;">
+          <tbody>
+            <tr><th scope="row">Rafraîchissements le jour</th><td><span id="ps-est-day-runs">0</span> par jour</td></tr>
+            <tr><th scope="row">Rafraîchissements le reste de la journée</th><td><span id="ps-est-night-runs">0</span> par jour</td></tr>
+            <tr><th scope="row">Total</th><td><strong><span id="ps-est-per-day">0</span> par jour</strong> ≈ <strong><span id="ps-est-per-month">0</span> par mois</strong> (30 jours)</td></tr>
+            <tr><th scope="row">Lectures de la base par rafraîchissement</th><td><span id="ps-est-reads-refresh">0</span> (les sentiers de la saison + la météo ; 97 tant que le fichier n'existe pas, par prudence)</td></tr>
+            <tr><th scope="row">Lectures par jour</th><td><span id="ps-est-reads-day">0</span> (en comptant 1 440 lectures des réglages, une par minute)</td></tr>
+            <tr><th scope="row">Lectures gratuites par jour</th><td><span id="ps-est-free">50 000</span></td></tr>
+            <tr><th scope="row">Lectures au-dessus du gratuit</th><td><span id="ps-est-extra">0</span> par jour</td></tr>
+            <tr><th scope="row">Coût indicatif</th><td><span id="ps-est-cost">—</span> par mois</td></tr>
+          </tbody>
+        </table>
+        <p class="form-hint">
+          Quota gratuit de lectures Firestore : <a id="ps-quota-link" href="https://firebase.google.com/docs/firestore/quotas#free-quota" target="_blank" rel="noopener">page des quotas de Google (50 000 lectures par jour)</a>.
+          Tarif des lectures au-delà : <a id="ps-pricing-link" href="https://firebase.google.com/docs/firestore/pricing" target="_blank" rel="noopener">page des prix de Google</a>
+          (le coût affiché utilise 0,06 $ par 100 000 lectures, à titre indicatif). Le téléchargement du fichier par les visiteurs est facturé à part, quelques sous par mois.
+        </p>
+      </div>
+    </div>
+    <!-- TAB: LINKS AND TIPS -->
+    <div class="admin-tab-content" id="links-tab">
+      <div class="data-export-section links-card">
+        <div class="data-export-section__header">
+          <span>🗺️</span>
+          <h3>Statut public des sentiers</h3>
+        </div>
+        <p class="data-export-section__description">
+          Page publique, sans connexion. À partager ou à copier dans un navigateur.
+        </p>
+        <div class="links-row">
+          <a class="links-url" id="link-public-status" target="_blank" rel="noopener"></a>
+          <button class="btn btn-secondary btn-sm" type="button" data-copy="link-public-status">📋 Copier</button>
+        </div>
+      </div>
+
+      <div class="data-export-section links-card" id="links-volunteer-card">
+        <div class="data-export-section__header">
+          <span>🙋</span>
+          <h3>Inscription des bénévoles</h3>
+        </div>
+        <p class="data-export-section__description">
+          Page publique d'inscription (vélo). Imprimez le code QR pour l'afficher à l'entrée des sentiers.
+        </p>
+        <div class="links-qr">
+          <div class="links-qr__image" id="links-volunteer-qr" aria-label="Code QR de la page d'inscription des bénévoles"></div>
+          <div class="links-qr__side">
+            <div class="links-row">
+              <a class="links-url" id="link-volunteer" target="_blank" rel="noopener"></a>
+              <button class="btn btn-secondary btn-sm" type="button" data-copy="link-volunteer">📋 Copier</button>
+            </div>
+            <a class="btn btn-secondary btn-sm" id="links-volunteer-qr-download" download="qrcode-inscription-benevoles.svg" hidden>⬇️ Télécharger le code QR</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Add/Edit User Modal -->
+  <div class="modal" id="user-modal">
+    <div class="modal__container">
+      <div class="modal__header">
+        <h3 class="modal__title" id="modal-title">Ajouter un utilisateur</h3>
+        <button class="modal__close" onclick="closeUserModal()">✕</button>
+      </div>
+      <div class="modal__body">
+        <form class="edit-user-form" id="user-form" onsubmit="saveUser(event)">
+          <input type="hidden" id="user-id">
+          
+          <div class="edit-user-form__row">
+            <div class="form-group">
+              <label class="form-label form-label--required" for="user-name">Nom complet</label>
+              <input type="text" class="form-input" id="user-name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label form-label--required" for="user-email">Courriel</label>
+              <input type="email" class="form-input" id="user-email" required>
+              <span class="form-hint" id="user-email-hint" style="display: none;">Le courriel est l'identifiant de connexion : il ne peut pas être modifié ici.</span>
+            </div>
+          </div>
+
+          <div class="edit-user-form__row">
+            <div class="form-group">
+              <label class="form-label" for="user-phone">Téléphone</label>
+              <input type="tel" class="form-input" id="user-phone" placeholder="514-555-1234">
+            </div>
+            <div class="form-group">
+              <label class="form-label form-label--required" for="user-role">Rôle</label>
+              <select class="form-select" id="user-role" required>
+                <option value="inspector">Inspecteur</option>
+                <option value="admin">Administrateur</option>
+                <option value="system_admin" id="role-system-admin-option" style="display: none;">System Admin</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label form-label--required" for="user-status">Statut</label>
+            <select class="form-select" id="user-status" required>
+              <option value="active">Actif</option>
+              <option value="inactive">Inactif</option>
+            </select>
+          </div>
+
+          <div class="edit-user-form__access">
+            <div class="edit-user-form__access-title">Activités auxquelles l'utilisateur a accès</div>
+            <div id="network-checkboxes"><!-- built from APP_CONFIG.networks --></div>
+            <span class="form-hint" id="network-hint"></span>
+          </div>
+
+          <div class="edit-user-form__access">
+            <div class="edit-user-form__access-title">Permissions d'accès aux applications</div>
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="access-inspection" checked>
+              <label class="form-check-label" for="access-inspection">🔍 Inspections</label>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="access-infraction">
+              <label class="form-check-label" for="access-infraction">🚨 Infractions</label>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="access-signalisation">
+              <label class="form-check-label" for="access-signalisation">🚧 Signalisation</label>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="access-maintenance">
+              <label class="form-check-label" for="access-maintenance">🪏 Entretien</label>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="access-meteo">
+              <label class="form-check-label" for="access-meteo">🌦️ Météo</label>
+            </div>
+          </div>
+
+          <div class="form-group" id="password-group" style="display: none;">
+            <label class="form-label form-label--required" for="user-password">Mot de passe temporaire</label>
+            <input type="password" class="form-input" id="user-password" minlength="6">
+            <span class="form-hint">Communiquez-le à l'utilisateur : il pourra le changer depuis « Mon profil ».</span>
+          </div>
+        </form>
+      </div>
+      <div class="modal__footer">
+        <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Annuler</button>
+        <button type="submit" form="user-form" class="btn btn-primary" id="save-user-btn">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer footer--simple">
+    <div class="footer__content">
+      <p class="footer__copyright">© 2026 Regis for Mont Orford</p>
+    </div>
+  </footer>
+
+  <!-- Status Messages Container -->
+  <div id="status-messages"></div>
+
+  <!-- Firebase SDK -->
+
+  <!-- Core JS -->
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/sector-service.js"></script>
+  <script src="../js/services/volunteer-limits.js"></script>
+  <script src="../js/services/weather-service.js"></script>
+  <script src="../js/services/map-service.js"></script>
+  <script src="../js/admin/map-calibration.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/admin/trail-admin.js"></script>
+  <script src="../js/services/status-snapshot.js"></script>
+  <script src="../js/admin/public-status-admin.js"></script>
+  <!-- QR code drawing for the "Liens et astuces" tab (qrcode-generator 1.4.4, MIT, bundled) -->
+  <script src="../js/vendor/qrcode.js"></script>
+
+  <!-- Page JS -->
+  <script>
+    let users = [];
+    let filteredUsers = [];
+    let editingUserId = null;
+    let isCurrentUserSystemAdmin = false;
+
+    // ========================================
+    // ACTIVITIES (networks)
+    // ========================================
+    // A user's access is inspectors/{uid}.networks; system_admin always has every activity.
+    // These rules mirror the Firestore rules.
+
+    const NETWORK_IDS = Object.keys(APP_CONFIG.networks);
+
+    function networksOf(user) {
+      if (user.role === 'system_admin') return NETWORK_IDS;
+      return Array.isArray(user.networks) ? user.networks : [];
+    }
+
+    // Activities the current admin can grant, remove and manage
+    function myNetworks() {
+      return isCurrentUserSystemAdmin ? NETWORK_IDS : networksOf(currentUserData);
+    }
+
+    // An admin manages users who share at least one of their activities; only a
+    // system admin manages system admins
+    function canManage(user) {
+      if (isCurrentUserSystemAdmin) return true;
+      if (user.role === 'system_admin') return false;
+      return networksOf(user).some(id => myNetworks().includes(id));
+    }
+
+    // ========================================
+    // TAB NAVIGATION
+    // ========================================
+    
+    // Sentiers, Cartes, Données and Statut public are for the system admin only (the others never see these tabs)
+    const SYSTEM_ADMIN_TABS = ['trails', 'maps', 'data', 'publication'];
+
+    function switchTab(tabName) {
+      if (SYSTEM_ADMIN_TABS.includes(tabName) && !isCurrentUserSystemAdmin) return;
+      document.querySelectorAll('.admin-tabs__btn').forEach(btn => {
+        btn.classList.toggle('is-active', btn.dataset.tab === tabName);
+      });
+      document.querySelectorAll('.admin-tab-content').forEach(content => {
+        content.classList.toggle('is-active', content.id === `${tabName}-tab`);
+      });
+    }
+
+    // ========================================
+    // LINKS AND TIPS
+    // ========================================
+
+    // Absolute address of a sibling page of this one (works under any site root or sub-folder)
+    function pageLink(file) {
+      return new URL(file, window.location.href).href;
+    }
+
+    function setupLinksTab(showVolunteers) {
+      const status = document.getElementById('link-public-status');
+      status.href = status.textContent = pageLink('public-status.html');
+
+      document.getElementById('links-volunteer-card').hidden = !showVolunteers;
+      if (showVolunteers) {
+        const link = pageLink('maintenance-volunteer-register.html');
+        const volunteer = document.getElementById('link-volunteer');
+        volunteer.href = volunteer.textContent = link;
+        const holder = document.getElementById('links-volunteer-qr');
+        if (typeof qrcode === 'function') {
+          const qr = qrcode(0, 'M');
+          qr.addData(link);
+          qr.make();
+          const svg = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+          holder.innerHTML = svg;
+          const download = document.getElementById('links-volunteer-qr-download');
+          download.href = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+          download.hidden = false;
+        } else {
+          holder.textContent = 'Code QR indisponible (bibliothèque non chargée).';
+        }
+      }
+
+      document.querySelectorAll('[data-copy]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const text = document.getElementById(btn.dataset.copy).textContent;
+          try {
+            await navigator.clipboard.writeText(text);
+            const label = btn.textContent;
+            btn.textContent = '✅ Copié';
+            setTimeout(() => { btn.textContent = label; }, 1500);
+          } catch (e) {
+            window.prompt('Copiez le lien :', text);
+          }
+        });
+      });
+    }
+
+    // ========================================
+    // VOLUNTEERS (bike network)
+    // ========================================
+
+    // ---- Sign-up limits of the public registration page (rules: volunteerLimits, see js/services/volunteer-limits.js) ----
+    const VL_FIELDS = { perMinute: 'vl-per-minute', perHour: 'vl-per-hour', perDay: 'vl-per-day', total: 'vl-total' };
+
+    function renderVolunteerLimits(view) {
+      const stat = (label, w, note) => `<div class="vl-stat${w.used >= w.limit ? ' vl-stat--full' : ''}">
+          <div class="vl-stat__label">${label}</div>
+          <div class="vl-stat__value">${w.used} / ${w.limit}</div>
+          ${note ? `<div class="vl-stat__note">${note}</div>` : ''}</div>`;
+      const reset = w => w.resetAt ? `se remet à zéro vers ${new Date(w.resetAt).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' })}` : '';
+      document.getElementById('vl-status').innerHTML =
+        (view.enabled ? '' : '<div class="vl-closed">⛔ Les inscriptions sont fermées (interrupteur ci-dessous).</div>') +
+        stat('Cette minute', view.minute, reset(view.minute)) +
+        stat('Cette heure', view.hour, reset(view.hour)) +
+        stat("Aujourd'hui (24 h)", view.day, reset(view.day)) +
+        stat('Total depuis la dernière remise à zéro', view.total, view.total.used >= view.total.limit ? 'Limite atteinte : réinitialiser pour rouvrir' : '');
+    }
+
+    async function loadVolunteerLimits() {
+      const status = document.getElementById('vl-status');
+      try {
+        const [cfg, st] = await Promise.all([VolunteerLimits.config(db), VolunteerLimits.readState(db)]);
+        Object.entries(VL_FIELDS).forEach(([key, id]) => { document.getElementById(id).value = cfg[key]; });
+        document.getElementById('vl-enabled').checked = cfg.enabled;
+        renderVolunteerLimits(VolunteerLimits.view(cfg, st, Date.now()));
+      } catch (e) {
+        console.error('Error loading the sign-up limits:', e);
+        status.textContent = "Impossible de lire les limites. Vérifiez que les règles Firebase à jour sont publiées (volunteerLimits).";
+      }
+    }
+
+    async function saveVolunteerLimits() {
+      const input = { enabled: document.getElementById('vl-enabled').checked };
+      Object.entries(VL_FIELDS).forEach(([key, id]) => { input[key] = document.getElementById(id).value; });
+      const parsed = VolunteerLimits.parseConfig(input);
+      if (!parsed.ok) { showMessage(Object.values(parsed.errors)[0], 'error'); return; }
+      try {
+        await VolunteerLimits.saveConfig(db, firebase, input);
+        showMessage('Limites d\'inscription enregistrées.', 'success');
+        loadVolunteerLimits();
+      } catch (e) {
+        console.error('Error saving the sign-up limits:', e);
+        showMessage("Erreur lors de l'enregistrement des limites.", 'error');
+      }
+    }
+
+    async function resetVolunteerLimits() {
+      if (!confirm("Remettre à zéro tous les compteurs d'inscription (minute, heure, jour et total) ? Les bénévoles déjà inscrits ne sont pas touchés.")) return;
+      try {
+        await VolunteerLimits.reset(db, firebase);
+        showMessage("Compteurs d'inscription remis à zéro.", 'success');
+        loadVolunteerLimits();
+      } catch (e) {
+        console.error('Error resetting the sign-up counters:', e);
+        showMessage('Erreur lors de la remise à zéro.', 'error');
+      }
+    }
+
+    let volunteersData = [];
+
+    async function loadVolunteersTab() {
+      loadVolunteerLimits();
+      const loading = document.getElementById('volunteers-loading');
+      const emptyState = document.getElementById('volunteers-empty-state');
+      const tbody = document.getElementById('volunteers-tbody');
+
+      loading.style.display = 'flex';
+      emptyState.style.display = 'none';
+      tbody.innerHTML = '';
+
+      try {
+        const snap = await db.collection('volunteers')
+          .where('network', '==', 'bike')
+          .orderBy('createdAt', 'desc')
+          .get();
+
+        volunteersData = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderVolunteersTab();
+      } catch (e) {
+        console.error('Error loading volunteers:', e);
+        showMessage('Erreur lors du chargement des bénévoles.', 'error');
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+
+    function renderVolunteersTab() {
+      const tbody = document.getElementById('volunteers-tbody');
+      const emptyState = document.getElementById('volunteers-empty-state');
+      const countEl = document.getElementById('volunteers-count');
+
+      countEl.textContent = `${volunteersData.length} bénévole${volunteersData.length > 1 ? 's' : ''}`;
+
+      if (volunteersData.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.style.display = 'flex';
+        updateVolunteersSelectionState();
+        return;
+      }
+      emptyState.style.display = 'none';
+
+      tbody.innerHTML = volunteersData.map(v => {
+        const date = v.createdAt?.toDate?.();
+        const dateStr = date ? date.toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+        return `
+        <tr>
+          <td><input type="checkbox" class="volunteer-checkbox" value="${v.id}"></td>
+          <td data-label="Nom">${escapeHtml(v.nom || '-')}</td>
+          <td data-label="Prénom">${escapeHtml(v.prenom || '-')}</td>
+          <td data-label="Date d'inscription">${dateStr}</td>
+        </tr>
+      `;
+      }).join('');
+
+      tbody.querySelectorAll('.volunteer-checkbox').forEach(cb => {
+        cb.addEventListener('change', updateVolunteersSelectionState);
+      });
+      updateVolunteersSelectionState();
+    }
+
+    function updateVolunteersSelectionState() {
+      const checkboxes = Array.from(document.querySelectorAll('.volunteer-checkbox'));
+      const checked = checkboxes.filter(cb => cb.checked);
+      document.getElementById('delete-selected-volunteers-btn').disabled = checked.length === 0;
+
+      const selectAll = document.getElementById('volunteers-select-all');
+      selectAll.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+      selectAll.indeterminate = checked.length > 0 && checked.length < checkboxes.length;
+    }
+
+    function toggleAllVolunteers(checked) {
+      document.querySelectorAll('.volunteer-checkbox').forEach(cb => { cb.checked = checked; });
+      updateVolunteersSelectionState();
+    }
+
+    // Firestore batches cap at 500 writes; chunk deletes to stay under that.
+    async function deleteVolunteersByIds(ids) {
+      const CHUNK = 450;
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const batch = db.batch();
+        ids.slice(i, i + CHUNK).forEach(id => batch.delete(db.collection('volunteers').doc(id)));
+        await batch.commit();
+      }
+    }
+
+    async function deleteSelectedVolunteers() {
+      const ids = Array.from(document.querySelectorAll('.volunteer-checkbox:checked')).map(cb => cb.value);
+      if (ids.length === 0) return;
+      if (!confirm(`Supprimer ${ids.length} bénévole${ids.length > 1 ? 's' : ''} sélectionné${ids.length > 1 ? 's' : ''} ? Cette action est irréversible. Les rapports d'entretien existants ne sont pas affectés.`)) return;
+
+      try {
+        await deleteVolunteersByIds(ids);
+        showMessage(`${ids.length} bénévole${ids.length > 1 ? 's' : ''} supprimé${ids.length > 1 ? 's' : ''}.`, 'success');
+        loadVolunteersTab();
+      } catch (e) {
+        console.error('Error deleting volunteers:', e);
+        showMessage('Erreur lors de la suppression.', 'error');
+      }
+    }
+
+    async function deleteAllVolunteers() {
+      if (volunteersData.length === 0) return;
+      if (!confirm(`Supprimer TOUS les bénévoles inscrits (${volunteersData.length}) ? Cette action est irréversible. Les rapports d'entretien existants ne sont pas affectés.`)) return;
+
+      try {
+        await deleteVolunteersByIds(volunteersData.map(v => v.id));
+        showMessage('Tous les bénévoles ont été supprimés.', 'success');
+        loadVolunteersTab();
+      } catch (e) {
+        console.error('Error deleting all volunteers:', e);
+        showMessage('Erreur lors de la suppression.', 'error');
+      }
+    }
+
+    // ========================================
+    // USER MANAGEMENT
+    // ========================================
+
+    async function loadUsers() {
+      const tbody = document.getElementById('users-tbody');
+      const tableLoading = document.getElementById('table-loading');
+      const emptyState = document.getElementById('empty-state');
+
+      tableLoading.style.display = 'flex';
+      tbody.innerHTML = '';
+      emptyState.style.display = 'none';
+
+      try {
+        const snapshot = await db.collection('inspectors').orderBy('name').get();
+        users = [];
+        snapshot.forEach(doc => {
+          users.push({ id: doc.id, ...doc.data() });
+        });
+        updateStatistics();
+        filterAndRenderUsers(true); // a reload after an edit stays on the same page (the first load starts on page 1)
+      } catch (error) {
+        console.error('Error loading users:', error);
+        showMessage('Erreur lors du chargement des utilisateurs.', 'error');
+      } finally {
+        tableLoading.style.display = 'none';
+      }
+    }
+
+    function updateStatistics() {
+      document.getElementById('stat-total').textContent = users.length;
+      document.getElementById('stat-active').textContent = users.filter(u => u.status === 'active').length;
+      document.getElementById('stat-admins').textContent = users.filter(u => u.role === 'admin' || u.role === 'system_admin').length;
+    }
+
+    // The users list shows one page at a time (25 to start, like Inspections > Gestion)
+    let usersPage = 1;
+    let usersPageSize = 25;
+
+    // keepPage === true: the list was only refreshed (a user was edited, a badge clicked): stay on this page.
+    // Anything else (a search, a filter, the page size) starts again from page 1.
+    function filterAndRenderUsers(keepPage) {
+      if (keepPage !== true) usersPage = 1;
+      const search = document.getElementById('search-users').value.toLowerCase();
+      const statusFilter = document.getElementById('filter-status').value;
+      const networkFilter = document.getElementById('filter-network').value;
+      const appFilter = document.getElementById('filter-app').value;   // an allow* flag, or '' = every user
+
+      filteredUsers = users.filter(user => {
+        const matchesSearch = !search ||
+          user.name?.toLowerCase().includes(search) ||
+          user.email?.toLowerCase().includes(search);
+        const matchesStatus = !statusFilter || user.status === statusFilter;
+        const matchesNetwork = !networkFilter || networksOf(user).includes(networkFilter);
+        const matchesApp = !appFilter || user[appFilter] === true;
+        return matchesSearch && matchesStatus && matchesNetwork && matchesApp;
+      });
+      renderUsers();
+    }
+
+    function renderUsers() {
+      const tbody = document.getElementById('users-tbody');
+      const emptyState = document.getElementById('empty-state');
+      const countEl = document.getElementById('users-count');
+
+      countEl.textContent = `(${filteredUsers.length})`;
+
+      if (filteredUsers.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.style.display = 'flex';
+        document.getElementById('users-pagination').style.display = 'none';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+
+      // This page only (a page that no longer exists, after a filter or a deletion, falls back to the last one)
+      const totalPages = Math.max(1, Math.ceil(filteredUsers.length / usersPageSize));
+      if (usersPage > totalPages) usersPage = totalPages;
+      const pageUsers = filteredUsers.slice((usersPage - 1) * usersPageSize, usersPage * usersPageSize);
+
+      tbody.innerHTML = pageUsers.map(user => {
+        let roleBadgeClass = 'badge-inspector';
+        let roleLabel = 'Inspecteur';
+        if (user.role === 'system_admin') {
+          roleBadgeClass = 'badge-system-admin';
+          roleLabel = 'System Admin';
+        } else if (user.role === 'admin') {
+          roleBadgeClass = 'badge-admin';
+          roleLabel = 'Admin';
+        }
+        const manageable = canManage(user);
+
+        return `
+        <tr>
+          <td data-label="Nom">
+            <span class="user-table__name" ${manageable ? `onclick="editUser('${user.id}')"` : ''}>${escapeHtml(user.name || '-')}</span>
+          </td>
+          <td data-label="Courriel">${escapeHtml(user.email || '-')}</td>
+          <td data-label="Rôle">
+            <span class="badge ${roleBadgeClass}">
+              ${roleLabel}
+            </span>
+          </td>
+          <td data-label="Activités">
+            <div class="user-table__access">
+              ${NETWORK_IDS.map(id => networkBadge(user, id, manageable)).join('')}
+            </div>
+          </td>
+          <td data-label="Accès">
+            <div class="user-table__access">
+              ${appBadge(user, manageable, 'allowInspection', 'inspection', '🔍', 'Inspection')}
+              ${appBadge(user, manageable, 'allowInfraction', 'infraction', '🚨', 'Infraction')}
+              ${appBadge(user, manageable, 'allowSignalisation', 'signalisation', '🚧', 'Signalisation')}
+              ${appBadge(user, manageable, 'allowMaintenance', 'maintenance', '🪏', 'Entretien')}
+              ${appBadge(user, manageable, 'allowMeteo', 'meteo', '🌦️', 'Météo')}
+            </div>
+          </td>
+          <td data-label="Statut">
+            <span class="badge ${user.status === 'active' ? 'badge-success' : 'badge-secondary'}"
+                  ${manageable ? `style="cursor: pointer;" onclick="toggleUserStatus('${user.id}')" title="Cliquer pour ${user.status === 'active' ? 'désactiver' : 'activer'}"` : ''}>
+              ${user.status === 'active' ? 'Actif' : 'Inactif'}
+            </span>
+          </td>
+          <td class="table-cell--actions" data-label="Actions">
+            <div class="user-table__actions">
+              ${manageable
+                ? `<button class="btn btn-ghost btn-icon btn-icon--sm" onclick="editUser('${user.id}')" title="Modifier">✏️</button>`
+                : `<span title="En dehors de vos activités" style="opacity: 0.4;">🔒</span>`}
+            </div>
+          </td>
+        </tr>
+      `}).join('');
+
+      renderUsersPagination(totalPages);
+    }
+
+    function renderUsersPagination(totalPages) {
+      const box = document.getElementById('users-pagination');
+      if (totalPages <= 1) { box.style.display = 'none'; return; }
+      box.style.display = 'flex';
+
+      const first = (usersPage - 1) * usersPageSize + 1;
+      const last = Math.min(usersPage * usersPageSize, filteredUsers.length);
+      document.getElementById('users-pagination-info').textContent = `Affichage de ${first} à ${last} sur ${filteredUsers.length}`;
+
+      let html = `<button type="button" class="page-btn" aria-label="Page précédente" onclick="goToUsersPage(${usersPage - 1})" ${usersPage === 1 ? 'disabled' : ''}>‹</button>`;
+      const maxButtons = 5;
+      let startPage = Math.max(1, usersPage - Math.floor(maxButtons / 2));
+      let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+      if (endPage - startPage < maxButtons - 1) startPage = Math.max(1, endPage - maxButtons + 1);
+      if (startPage > 1) {
+        html += `<button type="button" class="page-btn" onclick="goToUsersPage(1)">1</button>`;
+        if (startPage > 2) html += `<span class="page-ellipsis">…</span>`;
+      }
+      for (let i = startPage; i <= endPage; i++) {
+        html += `<button type="button" class="page-btn ${i === usersPage ? 'active' : ''}" onclick="goToUsersPage(${i})">${i}</button>`;
+      }
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += `<span class="page-ellipsis">…</span>`;
+        html += `<button type="button" class="page-btn" onclick="goToUsersPage(${totalPages})">${totalPages}</button>`;
+      }
+      html += `<button type="button" class="page-btn" aria-label="Page suivante" onclick="goToUsersPage(${usersPage + 1})" ${usersPage === totalPages ? 'disabled' : ''}>›</button>`;
+      document.getElementById('users-pagination-buttons').innerHTML = html;
+    }
+
+    function goToUsersPage(page) {
+      const totalPages = Math.max(1, Math.ceil(filteredUsers.length / usersPageSize));
+      if (page < 1 || page > totalPages) return;
+      usersPage = page;
+      renderUsers();
+      document.getElementById('users-table').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // App permission badge (inspection / infraction / signalisation / maintenance / meteo)
+    function appBadge(user, manageable, field, cls, icon, label) {
+      const on = user[field] === true;
+      const attrs = manageable
+        ? `onclick="toggleAccess('${user.id}', '${field}', ${on})" title="${label} - Cliquer pour ${on ? 'désactiver' : 'activer'}"`
+        : `title="${label}"`;
+      return `<span class="access-badge--clickable access-badge--${cls} ${on ? 'is-active' : ''} ${manageable ? '' : 'access-badge--locked'}" ${attrs}>${icon}</span>`;
+    }
+
+    // Activity badge: clickable only for activities the current admin holds themselves
+    function networkBadge(user, id, manageable) {
+      const net = APP_CONFIG.networks[id];
+      const on = networksOf(user).includes(id);
+      const editable = manageable && user.role !== 'system_admin' && myNetworks().includes(id);
+      const attrs = editable
+        ? `onclick="toggleNetwork('${user.id}', '${id}')" title="${net.name} - Cliquer pour ${on ? 'retirer' : 'ajouter'}"`
+        : `title="${net.name}${user.role === 'system_admin' ? ' (System Admin : toutes les activités)' : ''}"`;
+      return `<span class="access-badge--clickable access-badge--network ${on ? 'is-active' : ''} ${editable ? '' : 'access-badge--locked'}" ${attrs}>${net.icon}<span>${net.name}</span></span>`;
+    }
+
+    async function toggleNetwork(userId, networkId) {
+      const user = users.find(u => u.id === userId);
+      if (!user || !canManage(user) || !myNetworks().includes(networkId)) return;
+
+      const current = networksOf(user);
+      const next = current.includes(networkId)
+        ? current.filter(id => id !== networkId)
+        : [...current, networkId];
+
+      if (next.length === 0) {
+        showMessage('Un utilisateur doit garder au moins une activité. Désactivez-le plutôt.', 'warning');
+        return;
+      }
+
+      try {
+        await db.collection('inspectors').doc(userId).update({
+          networks: next,
+          modifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          modifiedBy: currentUser.uid
+        });
+        user.networks = next;
+        filterAndRenderUsers(true);
+        const net = APP_CONFIG.networks[networkId];
+        showMessage(`${net.name} ${next.includes(networkId) ? 'ajouté' : 'retiré'} pour ${user.name || 'utilisateur'}.`, 'success');
+      } catch (error) {
+        console.error('Error toggling network:', error);
+        showMessage('Erreur lors de la modification.', 'error');
+      }
+    }
+
+    async function toggleAccess(userId, field, currentValue) {
+      const target = users.find(u => u.id === userId);
+      if (!target || !canManage(target)) return;
+
+      try {
+        const newValue = !currentValue;
+        await db.collection('inspectors').doc(userId).update({
+          [field]: newValue,
+          modifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          modifiedBy: currentUser.uid
+        });
+
+        const userIndex = users.findIndex(u => u.id === userId);
+        if (userIndex !== -1) users[userIndex][field] = newValue;
+
+        filterAndRenderUsers(true);
+        
+        const user = users.find(u => u.id === userId);
+        const fieldNames = { allowInspection: 'Inspection', allowInfraction: 'Infraction', allowSignalisation: 'Signalisation', allowMaintenance: 'Entretien', allowMeteo: 'Météo' };
+        showMessage(`${fieldNames[field]} ${newValue ? 'activé' : 'désactivé'} pour ${user?.name || 'utilisateur'}.`, 'success');
+      } catch (error) {
+        console.error('Error toggling access:', error);
+        showMessage('Erreur lors de la modification.', 'error');
+      }
+    }
+
+    // ----- Activity checkboxes in the user modal -----
+
+    function buildNetworkCheckboxes() {
+      document.getElementById('network-checkboxes').innerHTML = NETWORK_IDS.map(id => {
+        const net = APP_CONFIG.networks[id];
+        return `
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="network-${id}" value="${id}">
+            <label class="form-check-label" for="network-${id}">${net.icon} ${net.name}</label>
+          </div>`;
+      }).join('');
+    }
+
+    function setNetworkCheckboxes(selected) {
+      NETWORK_IDS.forEach(id => {
+        document.getElementById(`network-${id}`).checked = selected.includes(id);
+      });
+      applyNetworkLocks();
+    }
+
+    // Only activities the admin holds can be changed; a system admin always has all of them
+    function applyNetworkLocks() {
+      const systemAdminRole = document.getElementById('user-role').value === 'system_admin';
+      let someLocked = false;
+      NETWORK_IDS.forEach(id => {
+        const box = document.getElementById(`network-${id}`);
+        if (systemAdminRole) box.checked = true;
+        box.disabled = systemAdminRole || !myNetworks().includes(id);
+        if (box.disabled) someLocked = true;
+      });
+      document.getElementById('network-hint').textContent = systemAdminRole
+        ? 'Un System Admin a accès à toutes les activités.'
+        : (someLocked ? 'Vous ne pouvez modifier que vos propres activités.' : '');
+    }
+
+    function selectedNetworks() {
+      return NETWORK_IDS.filter(id => document.getElementById(`network-${id}`).checked);
+    }
+
+    function openAddUserModal() {
+      editingUserId = null;
+      document.getElementById('modal-title').textContent = 'Ajouter un utilisateur';
+      document.getElementById('user-form').reset();
+      document.getElementById('user-id').value = '';
+      document.getElementById('user-email').readOnly = false;
+      document.getElementById('user-email-hint').style.display = 'none';
+      document.getElementById('user-role').disabled = false;
+      document.getElementById('password-group').style.display = 'block';
+      document.getElementById('user-password').required = true;
+      document.getElementById('access-inspection').checked = true;
+      // Prefill the admin's own activity when they only have one
+      setNetworkCheckboxes(myNetworks().length === 1 ? myNetworks() : []);
+
+      document.getElementById('user-modal').classList.add('is-active');
+      document.body.classList.add('modal-open');
+    }
+
+    function editUser(userId) {
+      const user = users.find(u => u.id === userId);
+      if (!user) return;
+      if (!canManage(user)) {
+        showMessage('Cet utilisateur n\'appartient à aucune de vos activités.', 'warning');
+        return;
+      }
+
+      editingUserId = userId;
+      document.getElementById('modal-title').textContent = 'Modifier l\'utilisateur';
+      document.getElementById('user-id').value = userId;
+      document.getElementById('user-name').value = user.name || '';
+      document.getElementById('user-email').value = user.email || '';
+      // The email is the login: changing it here would only change the profile, not the login
+      document.getElementById('user-email').readOnly = true;
+      document.getElementById('user-email-hint').style.display = '';
+      document.getElementById('user-phone').value = user.phone || '';
+      document.getElementById('user-role').value = user.role || 'inspector';
+      document.getElementById('user-status').value = user.status || 'active';
+      document.getElementById('access-inspection').checked = user.allowInspection === true;
+      document.getElementById('access-infraction').checked = user.allowInfraction === true;
+      document.getElementById('access-signalisation').checked = user.allowSignalisation === true;
+      document.getElementById('access-maintenance').checked = user.allowMaintenance === true;
+      document.getElementById('access-meteo').checked = user.allowMeteo === true;
+      
+      document.getElementById('password-group').style.display = 'none';
+      document.getElementById('user-password').required = false;
+
+      // Handle role dropdown visibility and protection
+      const roleSelect = document.getElementById('user-role');
+      const systemAdminOption = document.getElementById('role-system-admin-option');
+      
+      // Show system_admin option only if current user is system_admin
+      if (isCurrentUserSystemAdmin) {
+        systemAdminOption.style.display = '';
+        
+        // If editing self and currently system_admin, disable the role dropdown to prevent self-demotion
+        if (userId === currentUser.uid && user.role === 'system_admin') {
+          roleSelect.disabled = true;
+          roleSelect.title = 'Vous ne pouvez pas modifier votre propre rôle de System Admin';
+        } else {
+          roleSelect.disabled = false;
+          roleSelect.title = '';
+        }
+      } else {
+        systemAdminOption.style.display = 'none';
+        roleSelect.disabled = false;
+        roleSelect.title = '';
+      }
+
+      setNetworkCheckboxes(networksOf(user));
+
+      document.getElementById('user-modal').classList.add('is-active');
+      document.body.classList.add('modal-open');
+    }
+
+    function closeUserModal() {
+      document.getElementById('user-modal').classList.remove('is-active');
+      document.body.classList.remove('modal-open');
+      editingUserId = null;
+    }
+
+    async function saveUser(e) {
+      e.preventDefault();
+      const btn = document.getElementById('save-user-btn');
+      const userId = document.getElementById('user-id').value;
+      const isNew = !userId;
+
+      const userData = {
+        name: document.getElementById('user-name').value.trim(),
+        email: document.getElementById('user-email').value.trim(),
+        phone: document.getElementById('user-phone').value.trim() || null,
+        role: document.getElementById('user-role').value,
+        status: document.getElementById('user-status').value,
+        networks: selectedNetworks(),
+        allowInspection: document.getElementById('access-inspection').checked,
+        allowInfraction: document.getElementById('access-infraction').checked,
+        allowSignalisation: document.getElementById('access-signalisation').checked,
+        allowMaintenance: document.getElementById('access-maintenance').checked,
+        allowMeteo: document.getElementById('access-meteo').checked
+      };
+
+      if (userData.networks.length === 0) {
+        showMessage('Choisissez au moins une activité.', 'warning');
+        return;
+      }
+      if (!isNew && userId === currentUser.uid && userData.status !== 'active') {
+        showMessage('Vous ne pouvez pas vous désactiver vous-même.', 'warning');
+        return;
+      }
+
+      setButtonLoading(btn, true, 'Enregistrement...');
+
+      try {
+        if (isNew) {
+          const password = document.getElementById('user-password').value;
+          // Create the account on a secondary app so the admin stays signed in;
+          // the inspectors doc is then written as the admin (required by Firestore rules)
+          const secondaryApp = firebase.initializeApp(APP_CONFIG.firebase, `secondary-${Date.now()}`);
+          try {
+            const userCredential = await secondaryApp.auth().createUserWithEmailAndPassword(userData.email, password);
+            await db.collection('inspectors').doc(userCredential.user.uid).set({
+              ...userData,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+              createdBy: currentUser.uid
+            });
+          } finally {
+            try { await secondaryApp.delete(); } catch (e) {}
+          }
+          showMessage('Utilisateur créé.', 'success');
+        } else {
+          const { email, ...changes } = userData; // the login email is never changed from here
+          await db.collection('inspectors').doc(userId).update({
+            ...changes,
+            modifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            modifiedBy: currentUser.uid
+          });
+          showMessage('Utilisateur mis à jour.', 'success');
+        }
+        closeUserModal();
+        loadUsers();
+      } catch (error) {
+        console.error('Error saving user:', error);
+        showMessage(getAuthErrorMessage(error), 'error');
+      } finally {
+        setButtonLoading(btn, false);
+      }
+    }
+
+    async function toggleUserStatus(userId) {
+      const user = users.find(u => u.id === userId);
+      if (!user || !canManage(user)) return;
+      if (userId === currentUser.uid) {
+        showMessage('Vous ne pouvez pas vous désactiver vous-même.', 'warning');
+        return;
+      }
+
+      const newStatus = user.status === 'active' ? 'inactive' : 'active';
+
+      try {
+        await db.collection('inspectors').doc(userId).update({
+          status: newStatus,
+          modifiedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          modifiedBy: currentUser.uid
+        });
+        showMessage(`Utilisateur ${newStatus === 'active' ? 'activé' : 'désactivé'}.`, 'success');
+        loadUsers();
+      } catch (error) {
+        console.error('Error toggling status:', error);
+        showMessage('Erreur lors de la modification.', 'error');
+      }
+    }
+
+    function exportUsers() {
+      const format = document.getElementById('export-users-format').value;
+      const data = filteredUsers.map(u => {
+        let roleLabel = 'Inspecteur';
+        if (u.role === 'system_admin') roleLabel = 'System Admin';
+        else if (u.role === 'admin') roleLabel = 'Administrateur';
+        
+        return {
+          Nom: u.name, Courriel: u.email, Téléphone: u.phone || '',
+          Rôle: roleLabel,
+          Activités: networksOf(u).map(id => APP_CONFIG.networks[id].name).join(' | '),
+          Statut: u.status === 'active' ? 'Actif' : 'Inactif',
+          Inspection: u.allowInspection === true ? 'Oui' : 'Non',
+          Infraction: u.allowInfraction === true ? 'Oui' : 'Non',
+          Signalisation: u.allowSignalisation === true ? 'Oui' : 'Non',
+          Entretien: u.allowMaintenance === true ? 'Oui' : 'Non',
+          Météo: u.allowMeteo === true ? 'Oui' : 'Non'
+        };
+      });
+
+      if (format === 'csv') {
+        const headers = Object.keys(data[0] || {}).join(',');
+        const rows = data.map(row => Object.values(row).map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
+        downloadFile('\uFEFF' + [headers, ...rows].join('\n'), 'utilisateurs.csv', 'text/csv;charset=utf-8');
+      } else {
+        downloadFile(JSON.stringify(data, null, 2), 'utilisateurs.json', 'application/json');
+      }
+      showMessage(`Export ${format.toUpperCase()} téléchargé.`, 'success');
+    }
+
+    // ========================================
+    // DATA EXPORT
+    // ========================================
+
+    // The export starts, by default, at the start of the latest season of the chosen activity
+    // (ski 1 Nov, bike 1 May); for "all activities", at the earliest of them. Editable.
+    function initializeExportDate() {
+      const chosen = document.getElementById('export-network').value;
+      const starts = (chosen ? [chosen] : NETWORK_IDS).map(id => Network.seasonStart(id));
+      const start = new Date(Math.min(...starts.map(d => d.getTime())));
+      const pad = n => String(n).padStart(2, '0');
+      document.getElementById('export-start-date').value = `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`;
+    }
+    function showExportStatus(message, type = 'info') {
+      const el = document.getElementById('export-status');
+      el.textContent = message;
+      el.className = `export-status show ${type}`;
+    }
+
+    function formatExportDate(value) {
+      if (!value) return null;
+      let date = value.toDate ? value.toDate() : value.seconds ? new Date(value.seconds * 1000) : new Date(value);
+      if (isNaN(date.getTime())) return value;
+      return `${String(date.getDate()).padStart(2,'0')}-${String(date.getMonth()+1).padStart(2,'0')}-${date.getFullYear()} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+    }
+
+    function formatDocumentDates(data) {
+      const result = { ...data };
+      const dateFields = ['date','createdAt','updatedAt','modifiedAt','archivedAt','resolvedAt','adminModifiedAt','offenceTimestamp'];
+      for (const key of Object.keys(result)) {
+        if (dateFields.includes(key) || (result[key] && (typeof result[key].toDate === 'function' || result[key].seconds))) {
+          result[key] = formatExportDate(result[key]);
+        }
+      }
+      return result;
+    }
+
+    // CSV of the Entretien logs: one row per work entry (a day's log holds several), the log's own
+    // fields repeated on each row; people and photo links joined with " | ". JSON keeps the nested logs.
+    function maintenanceCsvRows(logs) {
+      return logs.flatMap(log => {
+        const base = {
+          id: log.id, date: log.date, network: log.network,
+          builderName: log.builderName || '',
+          supportBuilderNames: (log.supportBuilderNames || []).join(' | '),
+          volunteerNames: (log.volunteerNames || []).join(' | '),
+          archived: log.archived ? 'Oui' : 'Non',
+          createdAt: log.createdAt, modifiedAt: log.modifiedAt
+        };
+        const entries = log.entries && log.entries.length ? log.entries : [{}];
+        return entries.map((entry, i) => ({
+          ...base,
+          entry: i + 1,
+          sector: entry.sector || '', trailId: entry.trailId || '', trailName: entry.trailName || '',
+          jobText: entry.jobText || '',
+          photoCount: (entry.photos || []).length,
+          photoUrls: (entry.photos || []).map(p => p.url).join(' | ')
+        }));
+      });
+    }
+
+    // CSV of the weather readings: one row per reading; for each measure the typed value (<mesure>) and the one read
+    // from Environment Canada (<mesure>_web); who entered it and when. JSON keeps the readings as stored.
+    function weatherCsvRows(readings) {
+      return readings.map(r => {
+        const row = {
+          id: r.id, recordedAt: r.recordedAt, locationId: r.locationId || '',
+          createdByName: r.createdByName || '', modifiedByName: r.modifiedByName || '',
+          comment: r.comment || '', createdAt: r.createdAt, modifiedAt: r.modifiedAt
+        };
+        WeatherService.KEYS.forEach(k => {
+          row[k] = r.manual && r.manual[k] !== null && r.manual[k] !== undefined ? r.manual[k] : '';
+          row[`${k}_web`] = r.web && r.web.fields && r.web.fields[k] ? r.web.fields[k].value : '';
+        });
+        row.webFetchedAt = r.web ? r.web.fetchedAt || '' : '';
+        return row;
+      });
+    }
+
+    async function exportData() {
+      const btn = document.getElementById('export-data-btn');
+      const format = document.getElementById('export-data-format').value;
+      
+      const opts = {
+        trail: document.getElementById('export-trail-inspections').checked,
+        shelter: document.getElementById('export-shelter-inspections').checked,
+        infraction: document.getElementById('export-infractions').checked,
+        signalisation: document.getElementById('export-signalisations').checked,
+        maintenance: document.getElementById('export-maintenance').checked,
+        meteo: document.getElementById('export-meteo').checked
+      };
+
+      if (!opts.trail && !opts.shelter && !opts.infraction && !opts.signalisation && !opts.maintenance && !opts.meteo) {
+        showExportStatus('Sélectionnez au moins un type de données.', 'error');
+        return;
+      }
+      
+      const startDateValue = document.getElementById('export-start-date').value;
+      if (!startDateValue) {
+        showExportStatus('Sélectionnez une date de début.', 'error');
+        return;
+      }
+
+      const startDate = new Date(startDateValue);
+      startDate.setHours(0, 0, 0, 0);
+      const startTimestamp = firebase.firestore.Timestamp.fromDate(startDate);
+
+      // Records of the chosen activity only ("" = every activity, system admin only).
+      const exportNetwork = document.getElementById('export-network').value;
+      const inNetwork = record => !exportNetwork || Network.of(record) === exportNetwork;
+
+      try {
+        setButtonLoading(btn, true, '⏳ Export...');
+        showExportStatus('Chargement...', 'info');
+
+        const exportResult = {
+          exportDate: formatExportDate(new Date()),
+          exportPeriod: { from: formatExportDate(startDate), to: formatExportDate(new Date()) },
+          summary: {}
+        };
+
+        // Load inspectors for name resolution
+        const inspectorsSnapshot = await db.collection('inspectors').get();
+        const inspectorsMap = new Map();
+        inspectorsSnapshot.docs.forEach(doc => inspectorsMap.set(doc.id, doc.data().name || doc.id));
+
+        if (opts.trail) {
+          showExportStatus('Chargement inspections sentiers...', 'info');
+          let data = [];
+          try {
+            const snap = await db.collection('trail_inspections').where('date', '>=', startTimestamp).orderBy('date', 'desc').get();
+            data = snap.docs.map(doc => ({ id: doc.id, ...formatDocumentDates(doc.data()) }));
+          } catch(e) {}
+          data = data.filter(inNetwork);
+          data.forEach(d => { if (d.inspector_id && !d.inspector_name) d.inspector_name = inspectorsMap.get(d.inspector_id) || d.inspector_id; });
+          exportResult.trailInspections = data;
+          exportResult.summary.trailInspectionsCount = data.length;
+        }
+
+        if (opts.shelter) {
+          showExportStatus('Chargement inspections abris...', 'info');
+          try {
+            const snap = await db.collection('shelter_inspections').where('date', '>=', startTimestamp).orderBy('date', 'desc').get();
+            const data = snap.docs.map(doc => ({ id: doc.id, ...formatDocumentDates(doc.data()) })).filter(inNetwork);
+            data.forEach(d => { if (d.inspector_id && !d.inspector_name) d.inspector_name = inspectorsMap.get(d.inspector_id) || d.inspector_id; });
+            exportResult.shelterInspections = data;
+            exportResult.summary.shelterInspectionsCount = data.length;
+          } catch(e) { exportResult.shelterInspections = []; exportResult.summary.shelterInspectionsCount = 0; }
+        }
+
+        if (opts.infraction) {
+          showExportStatus('Chargement infractions...', 'info');
+          try {
+            const snap = await db.collection('infractions').where('createdAt', '>=', startTimestamp).orderBy('createdAt', 'desc').get();
+            const data = snap.docs.map(doc => ({ id: doc.id, ...formatDocumentDates(doc.data()) })).filter(inNetwork);
+            data.forEach(d => { if (d.patrolId && !d.patrolName) d.patrolName = inspectorsMap.get(d.patrolId) || d.patrolId; });
+            exportResult.infractions = data;
+            exportResult.summary.infractionsCount = data.length;
+          } catch(e) { exportResult.infractions = []; exportResult.summary.infractionsCount = 0; }
+        }
+
+        if (opts.signalisation) {
+          showExportStatus('Chargement signalisations...', 'info');
+          try {
+            const snap = await db.collection('signalisations').where('createdAt', '>=', startTimestamp).orderBy('createdAt', 'desc').get();
+            const data = snap.docs.map(doc => ({ id: doc.id, ...formatDocumentDates(doc.data()) })).filter(inNetwork);
+            data.forEach(d => { if (d.inspectorId && !d.inspectorName) d.inspectorName = inspectorsMap.get(d.inspectorId) || d.inspectorId; });
+            exportResult.signalisations = data;
+            exportResult.summary.signalisationsCount = data.length;
+          } catch(e) { exportResult.signalisations = []; exportResult.summary.signalisationsCount = 0; }
+        }
+
+        if (opts.maintenance) {
+          showExportStatus('Chargement entretien...', 'info');
+          try {
+            // By day worked ("date"); the photos inside each work entry get readable timestamps too
+            const snap = await db.collection('maintenance_logs').where('date', '>=', startTimestamp).orderBy('date', 'desc').get();
+            const data = snap.docs.map(doc => {
+              const log = formatDocumentDates(doc.data());
+              log.entries = (log.entries || []).map(entry => ({ ...entry, photos: (entry.photos || []).map(formatDocumentDates) }));
+              return { id: doc.id, ...log };
+            }).filter(inNetwork);
+            exportResult.maintenanceLogs = data;
+            exportResult.summary.maintenanceLogsCount = data.length;
+          } catch(e) { exportResult.maintenanceLogs = []; exportResult.summary.maintenanceLogsCount = 0; }
+        }
+
+        if (opts.meteo) {
+          showExportStatus('Chargement météo...', 'info');
+          try {
+            // By time of the reading; the weather belongs to no activity (both seasons), so no activity filter
+            const snap = await db.collection('weather_records').where('recordedAt', '>=', startTimestamp).orderBy('recordedAt', 'desc').get();
+            const data = snap.docs.map(doc => {
+              const reading = formatDocumentDates(doc.data());
+              if (reading.web && reading.web.fields) {
+                reading.web = { ...reading.web, fetchedAt: formatExportDate(doc.data().web.fetchedAt), fields: Object.fromEntries(Object.entries(reading.web.fields).map(([k, f]) => [k, { ...f, observedAt: f.observedAt && f.observedAt.toDate ? formatExportDate(f.observedAt) : f.observedAt }])) };
+              }
+              return { id: doc.id, ...reading };
+            });
+            exportResult.weatherRecords = data;
+            exportResult.summary.weatherRecordsCount = data.length;
+          } catch(e) { exportResult.weatherRecords = []; exportResult.summary.weatherRecordsCount = 0; }
+        }
+
+        const fromStr = startDate.toISOString().split('T')[0];
+        const toStr = new Date().toISOString().split('T')[0];
+        const baseName = `Orford_Live-Export-${fromStr}-to-${toStr}`;
+
+        if (format === 'csv') {
+          const types = [
+            { key: 'trailInspections', label: 'Inspections-Sentiers' },
+            { key: 'shelterInspections', label: 'Inspections-Abris' },
+            { key: 'infractions', label: 'Infractions' },
+            { key: 'signalisations', label: 'Signalisations' },
+            { key: 'maintenanceLogs', label: 'Entretien', rows: maintenanceCsvRows },
+            { key: 'weatherRecords', label: 'Meteo', rows: weatherCsvRows }
+          ];
+          types.forEach((t, i) => {
+            const records = t.rows ? t.rows(exportResult[t.key] || []) : exportResult[t.key];
+            if (!records || !records.length) return;
+            const headers = [...new Set(records.flatMap(Object.keys))];
+            const csv = '\uFEFF' + [headers.join(','), ...records.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+            setTimeout(() => downloadFile(csv, `${baseName}_${t.label}.csv`, 'text/csv;charset=utf-8'), i * 500);
+          });
+        } else {
+          downloadFile(JSON.stringify(exportResult, null, 2), `${baseName}.json`, 'application/json');
+        }
+
+        const total = (exportResult.summary.trailInspectionsCount || 0) + (exportResult.summary.shelterInspectionsCount || 0) + 
+                      (exportResult.summary.infractionsCount || 0) + (exportResult.summary.signalisationsCount || 0) +
+                      (exportResult.summary.maintenanceLogsCount || 0) + (exportResult.summary.weatherRecordsCount || 0);
+        showExportStatus(`✓ Export réussi! ${total} enregistrements.`, 'success');
+
+      } catch (error) {
+        console.error('Export error:', error);
+        showExportStatus(`✗ Erreur: ${error.message}`, 'error');
+      } finally {
+        setButtonLoading(btn, false, '📥 Exporter les données');
+      }
+    }
+
+    function downloadFile(content, filename, type) {
+      const blob = new Blob([content], { type });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // ========================================
+    // BULK IMPORT
+    // ========================================
+
+    let parsedUsers = [];
+    let importCancelled = false;
+
+    function handleCsvSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        parseCsv(e.target.result);
+      };
+      reader.readAsText(file);
+    }
+
+    function parseCsv(csvText) {
+      const lines = csvText.trim().split('\n');
+      if (lines.length < 2) {
+        showMessage('Le fichier CSV doit contenir un en-tête et au moins une ligne de données.', 'error');
+        return;
+      }
+
+      // Parse header
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+      
+      // Validate required columns
+      const required = ['name', 'email', 'password'];
+      const missing = required.filter(r => !headers.includes(r));
+      if (missing.length > 0) {
+        showMessage(`Colonnes manquantes: ${missing.join(', ')}`, 'error');
+        return;
+      }
+
+      // Parse rows
+      parsedUsers = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        if (values.length < headers.length) continue;
+
+        const user = {};
+        headers.forEach((h, idx) => {
+          user[h] = values[idx] || '';
+        });
+
+        // Set defaults and validate role
+        user.role = (user.role || 'inspector').toLowerCase();
+        // Only system_admin can import system_admin users
+        if (user.role === 'system_admin' && !isCurrentUserSystemAdmin) {
+          user.role = 'admin'; // Downgrade to admin if not allowed
+        }
+        if (user.role !== 'admin' && user.role !== 'system_admin') {
+          user.role = 'inspector';
+        }
+        
+        user.allowInspection = user.allowinspection !== 'false' && user.allowinspection !== '0';
+        user.allowInfraction = user.allowinfraction === 'true' || user.allowinfraction === '1';
+        user.allowSignalisation = user.allowsignalisation === 'true' || user.allowsignalisation === '1';
+        user.allowMaintenance = user.allowmaintenance === 'true' || user.allowmaintenance === '1';
+        user.allowMeteo = user.allowmeteo === 'true' || user.allowmeteo === '1';
+
+        // Activities: "ski|bike". A system admin gets all of them; anyone else only gets
+        // activities the importing admin holds. Empty column = default activity.
+        // An empty result is reported per user when the import runs.
+        const requested = (user.networks || '').split(/[|;]/)
+          .map(id => id.trim().toLowerCase())
+          .filter(id => NETWORK_IDS.includes(id));
+        const granted = requested.filter(id => myNetworks().includes(id));
+        const fallback = APP_CONFIG.defaultNetworks.filter(id => myNetworks().includes(id));
+        if (user.role === 'system_admin') {
+          user.networks = [...NETWORK_IDS];
+        } else if (requested.length) {
+          user.networks = granted;
+        } else {
+          user.networks = fallback.length ? fallback : myNetworks().slice(0, 1);
+        }
+
+        if (user.name && user.email && user.password) {
+          parsedUsers.push(user);
+        }
+      }
+
+      renderCsvPreview();
+    }
+
+    function renderCsvPreview() {
+      const previewDiv = document.getElementById('csv-preview');
+      const tbody = document.getElementById('csv-preview-tbody');
+      const countSpan = document.getElementById('csv-count');
+      const startBtn = document.getElementById('start-import-btn');
+
+      if (parsedUsers.length === 0) {
+        previewDiv.style.display = 'none';
+        return;
+      }
+
+      tbody.innerHTML = parsedUsers.map(user => {
+        let roleBadgeClass = 'badge-inspector';
+        if (user.role === 'system_admin') roleBadgeClass = 'badge-system-admin';
+        else if (user.role === 'admin') roleBadgeClass = 'badge-admin';
+        
+        return `
+        <tr>
+          <td>${escapeHtml(user.name)}</td>
+          <td>${escapeHtml(user.email)}</td>
+          <td><span class="badge ${roleBadgeClass}">${user.role}</span></td>
+          <td>${user.networks.length
+            ? user.networks.map(id => `${APP_CONFIG.networks[id].icon} ${APP_CONFIG.networks[id].name}`).join(', ')
+            : '<span style="color: var(--color-danger);">⚠ aucune activité permise</span>'}</td>
+          <td>
+            <span class="access-badge--clickable access-badge--inspection ${user.allowInspection ? 'is-active' : ''}" style="width:24px;height:24px;font-size:0.875rem;">🔍</span>
+            <span class="access-badge--clickable access-badge--infraction ${user.allowInfraction ? 'is-active' : ''}" style="width:24px;height:24px;font-size:0.875rem;">🚨</span>
+            <span class="access-badge--clickable access-badge--signalisation ${user.allowSignalisation ? 'is-active' : ''}" style="width:24px;height:24px;font-size:0.875rem;">🚧</span>
+            <span class="access-badge--clickable access-badge--maintenance ${user.allowMaintenance ? 'is-active' : ''}" style="width:24px;height:24px;font-size:0.875rem;">🪏</span>
+            <span class="access-badge--clickable access-badge--meteo ${user.allowMeteo ? 'is-active' : ''}" style="width:24px;height:24px;font-size:0.875rem;">🌦️</span>
+          </td>
+        </tr>
+      `}).join('');
+
+      countSpan.textContent = parsedUsers.length;
+      previewDiv.style.display = 'block';
+      startBtn.disabled = false;
+      
+      // Hide previous results
+      document.getElementById('import-results').style.display = 'none';
+    }
+
+    async function startBulkImport() {
+      if (parsedUsers.length === 0) return;
+
+      importCancelled = false;
+      
+      const startBtn = document.getElementById('start-import-btn');
+      const cancelBtn = document.getElementById('cancel-import-btn');
+      const progressDiv = document.getElementById('import-progress');
+      const progressBar = document.getElementById('import-progress-bar');
+      const progressText = document.getElementById('import-progress-text');
+
+      startBtn.disabled = true;
+      cancelBtn.style.display = 'inline-block';
+      progressDiv.style.display = 'block';
+      document.getElementById('import-results').style.display = 'none';
+
+      // Get existing emails
+      let existingEmails = new Set();
+      try {
+        const snapshot = await db.collection('inspectors').get();
+        snapshot.forEach(doc => {
+          const email = doc.data().email?.toLowerCase();
+          if (email) existingEmails.add(email);
+        });
+      } catch (e) {
+        console.error('Error fetching existing users:', e);
+      }
+
+      const results = { success: [], skipped: [], errors: [] };
+
+      for (let i = 0; i < parsedUsers.length; i++) {
+        if (importCancelled) break;
+
+        const user = parsedUsers[i];
+        const progress = ((i + 1) / parsedUsers.length) * 100;
+        progressBar.style.width = `${progress}%`;
+        progressText.textContent = `${i + 1} / ${parsedUsers.length}`;
+
+        // Check duplicate
+        if (existingEmails.has(user.email.toLowerCase())) {
+          results.skipped.push({ email: user.email, reason: 'Email déjà existant' });
+          continue;
+        }
+
+        if (user.networks.length === 0) {
+          results.errors.push({ email: user.email, reason: 'Aucune activité que vous pouvez attribuer' });
+          continue;
+        }
+
+        // Create user using secondary Firebase app to avoid logging out current user
+        let secondaryApp = null;
+        try {
+          secondaryApp = firebase.initializeApp(APP_CONFIG.firebase, `secondary-${Date.now()}`);
+          const secondaryAuth = secondaryApp.auth();
+          
+          const userCredential = await secondaryAuth.createUserWithEmailAndPassword(user.email, user.password);
+          
+          await db.collection('inspectors').doc(userCredential.user.uid).set({
+            name: user.name,
+            email: user.email,
+            phone: user.phone || null,
+            role: user.role,
+            status: 'active',
+            networks: user.networks,
+            allowInspection: user.allowInspection,
+            allowInfraction: user.allowInfraction,
+            allowSignalisation: user.allowSignalisation,
+            allowMaintenance: user.allowMaintenance,
+            allowMeteo: user.allowMeteo,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            createdBy: currentUser.uid,
+            importedVia: 'bulk_import'
+          });
+
+          results.success.push({ email: user.email, name: user.name });
+          existingEmails.add(user.email.toLowerCase());
+
+        } catch (error) {
+          console.error('Error creating user:', user.email, error);
+          results.errors.push({ email: user.email, reason: getBulkImportErrorMessage(error) });
+        } finally {
+          if (secondaryApp) {
+            try { await secondaryApp.delete(); } catch (e) {}
+          }
+        }
+
+        // Small delay to prevent rate limiting
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      showImportResults(results);
+
+      startBtn.disabled = false;
+      cancelBtn.style.display = 'none';
+      progressDiv.style.display = 'none';
+
+      loadUsers();
+    }
+
+    function getBulkImportErrorMessage(error) {
+      switch (error.code) {
+        case 'auth/email-already-in-use': return 'Email déjà utilisé';
+        case 'auth/invalid-email': return 'Email invalide';
+        case 'auth/weak-password': return 'Mot de passe trop faible (min 6 caractères)';
+        case 'auth/operation-not-allowed': return 'Création de compte désactivée';
+        default: return error.message || 'Erreur inconnue';
+      }
+    }
+
+    function cancelBulkImport() {
+      importCancelled = true;
+    }
+
+    function showImportResults(results) {
+      const resultsDiv = document.getElementById('import-results');
+      document.getElementById('import-success-count').textContent = results.success.length;
+      document.getElementById('import-skipped-count').textContent = results.skipped.length;
+      document.getElementById('import-error-count').textContent = results.errors.length;
+
+      const errorsList = document.getElementById('import-errors-list');
+      const errorsUl = document.getElementById('import-errors-ul');
+
+      if (results.errors.length > 0) {
+        errorsUl.innerHTML = results.errors.map(e => `<li>${escapeHtml(e.email)}: ${escapeHtml(e.reason)}</li>`).join('');
+        errorsList.style.display = 'block';
+      } else {
+        errorsList.style.display = 'none';
+      }
+
+      resultsDiv.style.display = 'block';
+
+      if (results.success.length > 0) {
+        showMessage(`${results.success.length} utilisateur(s) importé(s) avec succès.`, 'success');
+      }
+    }
+
+    // One column per field of a user profile that an import can set (status is always "active")
+    const CSV_TEMPLATE = `name,email,password,role,phone,allowInspection,allowInfraction,allowSignalisation,allowMaintenance,allowMeteo,networks
+Jean Dupont,jean.dupont@example.com,MotDePasse123,inspector,514-555-1234,true,false,false,false,false,ski
+Sophie Gagnon,sophie.gagnon@example.com,MotDePasse789,inspector,,true,false,false,true,false,bike
+Marie Tremblay,marie.tremblay@example.com,MotDePasse456,admin,,true,true,true,false,true,ski|bike`;
+
+    function downloadCsvTemplate() {
+      downloadFile('\uFEFF' + CSV_TEMPLATE, 'modele_import_utilisateurs.csv', 'text/csv;charset=utf-8');
+      showMessage('Modèle CSV téléchargé.', 'success');
+    }
+
+    // ========================================
+    // INITIALIZATION
+    // ========================================
+
+    function initUserManagement() {
+      checkAuthStatus({
+        requireAuth: true,
+        requiredRoles: ['admin', 'system_admin'],
+        onAuthenticated: (userData) => {
+          // Check if current user is system_admin
+          isCurrentUserSystemAdmin = userData.role === 'system_admin';
+          
+          // Show system_admin option in dropdown only if current user is system_admin
+          if (isCurrentUserSystemAdmin) {
+            document.getElementById('role-system-admin-option').style.display = '';
+          }
+
+          buildNetworkCheckboxes();
+          // Data export (system admin only): every activity at once, or one of them
+          document.getElementById('export-network').innerHTML =
+            '<option value="">Toutes les activités</option>' +
+            myNetworks().map(id => `<option value="${id}">${APP_CONFIG.networks[id].icon} ${APP_CONFIG.networks[id].name}</option>`).join('');
+          // System admin only: Sentiers (trails and sectors), Cartes (GPS calibration of the maps) and Données (export)
+          if (isCurrentUserSystemAdmin) {
+            SYSTEM_ADMIN_TABS.forEach(tab => { document.getElementById(`${tab}-tab-btn`).style.display = ''; });
+            TrailAdmin.init(currentUser.uid, myNetworks());
+            MapCalibration.init(currentUser.uid);
+            PublicStatusAdmin.init(currentUser.uid);
+          }
+          // Volunteers (bike network only): shown to a system admin or an admin who works in bike
+          const bikeAdmin = isCurrentUserSystemAdmin || myNetworks().includes('bike');
+          if (bikeAdmin) {
+            document.getElementById('volunteers-tab-btn').style.display = '';
+            loadVolunteersTab();
+          }
+          setupLinksTab(bikeAdmin);
+          document.getElementById('volunteers-select-all').addEventListener('change', (e) => toggleAllVolunteers(e.target.checked));
+          document.getElementById('delete-selected-volunteers-btn').addEventListener('click', deleteSelectedVolunteers);
+          document.getElementById('delete-all-volunteers-btn').addEventListener('click', deleteAllVolunteers);
+          document.getElementById('refresh-volunteers-btn').addEventListener('click', loadVolunteersTab);
+          document.getElementById('vl-save-btn').addEventListener('click', saveVolunteerLimits);
+          document.getElementById('vl-reset-btn').addEventListener('click', resetVolunteerLimits);
+          document.getElementById('vl-refresh-btn').addEventListener('click', loadVolunteerLimits);
+          document.getElementById('filter-network').insertAdjacentHTML('beforeend',
+            NETWORK_IDS.map(id => `<option value="${id}">${APP_CONFIG.networks[id].icon} ${APP_CONFIG.networks[id].name}</option>`).join(''));
+          document.getElementById('user-role').addEventListener('change', applyNetworkLocks);
+
+          loadUsers();
+          initializeExportDate();
+          document.getElementById('export-network').addEventListener('change', initializeExportDate);
+          document.getElementById('search-users').addEventListener('input', debounce(() => filterAndRenderUsers(), 300));
+          document.getElementById('filter-status').addEventListener('change', () => filterAndRenderUsers());
+          document.getElementById('filter-network').addEventListener('change', () => filterAndRenderUsers());
+          document.getElementById('filter-app').addEventListener('change', () => filterAndRenderUsers());
+          document.getElementById('users-page-size').addEventListener('change', e => {
+            usersPageSize = parseInt(e.target.value, 10) || 25;
+            filterAndRenderUsers();
+          });
+        }
+      });
+    }
+
+    onFirebaseReady( initUserManagement);
+  </script>
+</body>
+</html>

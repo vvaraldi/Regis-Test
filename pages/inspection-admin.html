@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Administration">
+  <meta name="theme-color" content="#1b4b72">
+  <title>Administration</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    /* Tabs */
+    .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--theme-border); margin-bottom: 1.5rem; }
+    .tab-btn { padding: 0.75rem 1.5rem; background: none; border: none; font-size: 0.95rem; font-weight: 500; color: var(--theme-text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+    .tab-btn:hover { color: var(--theme-text); background: var(--theme-surface-alt); }
+    .tab-btn.active { color: var(--theme-accent); border-bottom-color: var(--theme-accent); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Season navigator (Statistiques tab only - Gestion des données keeps its own date range) */
+    .season-nav { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 1.25rem; }
+    .season-nav__btn { min-width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--theme-border); border-radius: var(--radius-md); background: var(--theme-surface); color: var(--theme-text); cursor: pointer; font-size: 1rem; transition: all 0.15s; }
+    .season-nav__btn:hover:not(:disabled) { border-color: var(--theme-accent); color: var(--theme-accent); }
+    .season-nav__btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .season-nav__label { font-weight: 600; font-size: 0.95rem; text-align: center; min-width: 260px; }
+
+    /* Stats Grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); padding: 1.25rem; }
+    .stat-card__label { font-size: 0.8rem; color: var(--theme-text-secondary); margin-bottom: 0.25rem; }
+    .stat-card__value { font-size: 1.75rem; font-weight: 700; color: var(--theme-text); }
+    .stat-card__sub { font-size: 0.75rem; color: var(--theme-text-secondary); margin-top: 0.25rem; }
+    .stat-card--highlight { border-left: 4px solid var(--theme-accent); }
+
+    /* Charts */
+    .chart-section { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.5rem; }
+    .chart-section__title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .chart-container { position: relative; height: 300px; }
+    .chart-container--tall { height: 400px; }
+
+    /* Tables */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .data-table th, .data-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--theme-border); }
+    .data-table th { background: var(--theme-surface-alt); font-weight: 600; color: var(--theme-text-secondary); }
+    .data-table tbody tr:hover { background: var(--theme-surface-alt); }
+    .rank-badge { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; font-weight: 600; font-size: 0.75rem; }
+    .rank-1 { background: #ffd700; color: #000; }
+    .rank-2 { background: #c0c0c0; color: #000; }
+    .rank-3 { background: #cd7f32; color: #fff; }
+    .rank-other { background: var(--theme-surface-alt); color: var(--theme-text-secondary); }
+
+    /* Data Management */
+    .management-section { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem; }
+    .management-section__title { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+    .management-section__desc { font-size: 0.875rem; color: var(--theme-text-secondary); margin-bottom: 1rem; }
+    .management-section--danger { border-color: var(--color-danger); }
+    .management-section--danger .management-section__title { color: var(--color-danger); }
+    .form-row { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+    .form-row .form-group { flex: 1; min-width: 200px; }
+    .db-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; }
+    .db-stat { text-align: center; padding: 1rem; background: var(--theme-surface-alt); border-radius: var(--radius-md); }
+    .db-stat__value { font-size: 1.5rem; font-weight: 700; }
+    .db-stat__label { font-size: 0.75rem; color: var(--theme-text-secondary); }
+
+    /* Alerts */
+    .alert { padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; display: none; }
+    .alert.show { display: block; }
+    .alert-success { background: rgba(16, 185, 129, 0.15); color: #065f46; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .alert-danger { background: rgba(239, 68, 68, 0.15); color: #991b1b; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .alert-warning { background: rgba(245, 158, 11, 0.15); color: #92400e; border: 1px solid rgba(245, 158, 11, 0.3); }
+
+    /* Loading */
+
+    @media (max-width: 768px) {
+      .tabs { overflow-x: auto; }
+      .tab-btn { white-space: nowrap; padding: 0.75rem 1rem; }
+      .form-row { flex-direction: column; }
+      .form-row .form-group { width: 100%; }
+    }
+  </style>
+</head>
+<body data-theme="light" data-module="inspection-rando" data-nav="inspection" data-page="inspection-admin">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/kind.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+  
+  <main id="main-content" class="main" style="display: none;">
+    <div class="page-header"><div class="page-header__content"><h1 class="page-title">Administration</h1><p class="page-subtitle">Statistiques et gestion des données</p></div></div>
+
+    <div class="alert alert-success" id="success-message"></div>
+    <div class="alert alert-danger" id="error-message"></div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="statistics">📊 Statistiques</button>
+      <button class="tab-btn" data-tab="management" id="tab-btn-management" style="display: none;">🗄️ Gestion des données</button>
+    </div>
+
+    <!-- Statistics Tab -->
+    <div class="tab-content active" id="tab-statistics">
+      <!-- Season navigator: every stat/chart/ranking below is for this one season only -->
+      <div class="season-nav" id="season-nav">
+        <button type="button" class="season-nav__btn" id="season-prev" aria-label="Saison précédente" title="Saison précédente">◀</button>
+        <span class="season-nav__label" id="season-label">-</span>
+        <button type="button" class="season-nav__btn" id="season-next" aria-label="Saison suivante" title="Saison suivante" disabled>▶</button>
+      </div>
+      <!-- General Stats -->
+      <div class="stats-grid">
+        <div class="stat-card stat-card--highlight">
+          <div class="stat-card__label">Total inspections</div>
+          <div class="stat-card__value" id="stat-total-inspections">-</div>
+          <div class="stat-card__sub">Sentiers + Abris</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Inspections sentiers</div>
+          <div class="stat-card__value" id="stat-trail-inspections">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Inspections abris</div>
+          <div class="stat-card__value" id="stat-shelter-inspections">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Photos téléversées</div>
+          <div class="stat-card__value" id="stat-total-photos">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Problèmes signalés</div>
+          <div class="stat-card__value" id="stat-total-issues">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Inspections avec problèmes</div>
+          <div class="stat-card__value" id="stat-inspections-with-issues">-</div>
+          <div class="stat-card__sub" id="stat-issues-percentage">-</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card__label">Moy. inspections/inspecteur</div>
+          <div class="stat-card__value" id="stat-avg-per-inspector">-</div>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem;">
+        <!-- Inspections Over Time -->
+        <div class="chart-section">
+          <div class="chart-section__title">📈 Inspections par semaine</div>
+          <div class="chart-container"><canvas id="chart-weekly"></canvas></div>
+        </div>
+
+        <!-- Most Common Issues -->
+        <div class="chart-section">
+          <div class="chart-section__title">⚠️ Problèmes les plus fréquents</div>
+          <div class="chart-container" id="chart-issues-container"><canvas id="chart-issues"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Trail Inspections Chart -->
+      <div class="chart-section">
+        <div class="chart-section__title">🏔️ Nombre d'inspections par sentier</div>
+        <div class="chart-container chart-container--tall"><canvas id="chart-trails"></canvas></div>
+      </div>
+
+      <!-- Inspector Ranking -->
+      <div class="chart-section">
+        <div class="chart-section__title">🏆 Classement des inspecteurs (par nombre d'inspections)</div>
+        <div style="overflow-x: auto;">
+          <table class="data-table" id="inspector-ranking">
+            <thead>
+              <tr>
+                <th style="width: 60px;">Rang</th>
+                <th>Inspecteur</th>
+                <th style="text-align: right;">Inspections</th>
+                <th style="text-align: right;">Photos</th>
+                <th style="text-align: right;">Problèmes signalés</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Word Count Ranking -->
+      <div class="chart-section">
+        <div class="chart-section__title">✍️ Classement des inspecteurs (par nombre de mots dans les notes)</div>
+        <div style="overflow-x: auto;">
+          <table class="data-table" id="word-count-ranking">
+            <thead>
+              <tr>
+                <th style="width: 60px;">Rang</th>
+                <th>Inspecteur</th>
+                <th style="text-align: right;">Total mots</th>
+                <th style="text-align: right;">Moy. mots/inspection</th>
+                <th style="text-align: right;">Inspections</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Data Management Tab -->
+    <div class="tab-content" id="tab-management">
+      <!-- Database Stats -->
+      <div class="management-section">
+        <div class="management-section__title">📊 État de la base de données</div>
+        <div class="management-section__desc" id="db-desc">Aperçu des données stockées</div>
+        <div class="db-stats" id="db-stats">
+          <div class="db-stat">
+            <div class="db-stat__value" id="db-trail-inspections">-</div>
+            <div class="db-stat__label">Inspections sentiers</div>
+          </div>
+          <div class="db-stat">
+            <div class="db-stat__value" id="db-shelter-inspections">-</div>
+            <div class="db-stat__label">Inspections abris</div>
+          </div>
+          <div class="db-stat">
+            <div class="db-stat__value" id="db-trails">-</div>
+            <div class="db-stat__label">Sentiers</div>
+          </div>
+          <div class="db-stat">
+            <div class="db-stat__value" id="db-shelters">-</div>
+            <div class="db-stat__label">Abris</div>
+          </div>
+          <div class="db-stat">
+            <div class="db-stat__value" id="db-inspectors">-</div>
+            <div class="db-stat__label">Inspecteurs</div>
+          </div>
+          <div class="db-stat">
+            <div class="db-stat__value" id="db-photos">-</div>
+            <div class="db-stat__label">Photos</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delete Old Inspections -->
+      <div class="management-section management-section--danger">
+        <div class="management-section__title">🗑️ Supprimer les anciennes inspections</div>
+        <div class="management-section__desc" id="delete-desc">Supprime toutes les inspections et leurs photos avant la date spécifiée. Un fichier de sauvegarde sera téléchargé automatiquement avant la suppression.</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="delete-before-date">Supprimer avant le</label>
+            <input type="date" class="form-input" id="delete-before-date">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="delete-type">Type d'inspection</label>
+            <select class="form-select" id="delete-type">
+              <option value="all">Tous (sentiers + abris)</option>
+              <option value="trail">Sentiers uniquement</option>
+              <option value="shelter">Abris uniquement</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex: 0 0 auto;">
+            <button class="btn btn-danger" id="btn-delete-old" disabled>Supprimer</button>
+          </div>
+        </div>
+        <div id="delete-preview" style="margin-top: 1rem; display: none;">
+          <p style="color: var(--color-danger); font-weight: 500;"><span id="delete-count">0</span> inspection(s) seront supprimées avec leurs photos.</p>
+        </div>
+      </div>
+
+      <!-- Orphan files: the shared tool (js/services/storage-cleanup.js) -->
+      <div id="orphan-section"></div>
+    </div>
+  </main>
+
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/photo-service.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/storage-cleanup.js"></script>
+
+  <script>
+    // Statistics cover one "season" at a time, as defined in config.js for each activity (ski 1 Nov -
+    // 30 Apr, bike 1 May - 31 Oct; Network.seasonRange). Season 0 is the latest one that started:
+    // the running one (its start to today) or, out of season, the one that just ended. Season 1 is
+    // the one before it (same dates, one year earlier), season 2 the one before that, etc. - down to
+    // config.js's earliestSeasonStart, before which nothing is reachable.
+    let seasonStart = null, seasonEnd = null, seasonOffset = 0;
+    function seasonBounds(offset) {
+      const current = Network.seasonRange();
+      const isCurrent = offset === 0;
+      const start = new Date(current.start.getFullYear() - offset, current.start.getMonth(), current.start.getDate());
+      // a running season ends today; any other ends on its own last day
+      const end = isCurrent && current.active
+        ? new Date()
+        : new Date(current.end.getFullYear() - offset, current.end.getMonth(), current.end.getDate());
+      end.setHours(23, 59, 59, 999);
+      return { start, end, isCurrent, active: isCurrent && current.active };
+    }
+    // The earliest season any activity can navigate back to (config.js: winter 2025-2026, when
+    // the app went live). A season is reachable only if it STARTS on or after this date.
+    function earliestSeasonStart() {
+      const e = APP_CONFIG.earliestSeasonStart;
+      return new Date(e.year, e.month - 1, e.day);
+    }
+
+    function seasonLabel(bounds) {
+      const fmt = d => d.toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' });
+      if (bounds.isCurrent) return Network.seasonLabel(bounds);
+      const years = bounds.start.getFullYear() === bounds.end.getFullYear()
+        ? String(bounds.start.getFullYear())
+        : `${bounds.start.getFullYear()}-${bounds.end.getFullYear()}`;
+      return `Saison ${years} (${fmt(bounds.start)} – ${fmt(bounds.end)})`;
+    }
+
+    // Applies seasonOffset to seasonStart/seasonEnd, updates the navigator's label and buttons.
+    // "Next" is capped at the current season (no future data exists); "Previous" is capped at
+    // earliestSeasonStart() - going one season further back would start before it.
+    function applySeason() {
+      const bounds = seasonBounds(seasonOffset);
+      seasonStart = bounds.start;
+      seasonEnd = bounds.end;
+      document.getElementById('season-label').textContent = seasonLabel(bounds);
+      document.getElementById('season-next').disabled = bounds.isCurrent;
+      document.getElementById('season-prev').disabled = seasonBounds(seasonOffset + 1).start < earliestSeasonStart();
+    }
+
+    async function changeSeason(offset) {
+      if (offset === seasonOffset || offset < 0) return;
+      if (seasonBounds(offset).start < earliestSeasonStart()) return; // before the earliest reachable season
+      seasonOffset = offset;
+      applySeason();
+      // Disabled while loading, so a second click can't overlap the in-flight reads
+      document.getElementById('season-prev').disabled = true;
+      document.getElementById('season-next').disabled = true;
+      await loadAllData();
+      renderStatistics();
+      renderCharts();
+      applySeason(); // restores both buttons' correct disabled state
+    }
+
+    // Spells out exactly what each tool in "Gestion des données" reaches, so nobody assumes a
+    // delete is limited to whatever kind (Montée/Descente) happens to be selected in the header
+    // when it is not. "Supprimer les anciennes inspections" is scoped to the CURRENT ACTIVITY
+    // (network) but covers every kind within it; the other two tools are not scoped at all -
+    // they read/act on the whole database, every activity together.
+    function updateManagementText() {
+      const kinds = Network.config().inspectionKinds || [];
+      const kindNote = kinds.length > 1 ? ` (${kinds.map(k => TrailService.kindLabel(k)).join(' et ')} ensemble, quelle que soit la vue sélectionnée dans l'en-tête)` : '';
+      document.getElementById('delete-desc').textContent =
+        `Supprime les inspections et leurs photos avant la date spécifiée, pour l'activité « ${Network.config().name} » uniquement${kindNote}. Un fichier de sauvegarde sera téléchargé automatiquement avant la suppression.`;
+      document.getElementById('db-desc').textContent =
+        `Aperçu de TOUTES les données stockées, tous réseaux confondus (Ski et Vélo) - pas seulement l'activité actuelle.`;
+    }
+
+    // Data
+    let trailInspections = [];
+    let shelterInspections = [];
+    let trails = new Map();
+    let shelters = new Map();
+    let inspectors = new Map();
+
+    // Charts
+    let chartWeekly, chartIssues, chartTrails;
+
+    // Init
+    function initAdmin() {
+      initTabs();
+      bindEvents();
+      checkAuthStatus({
+        requireAuth: true,
+        requiredRoles: ['admin', 'system_admin'],
+        onAuthenticated: async (userData) => {
+          // Show data management tab only for system_admin
+          if (userData.role === 'system_admin') {
+            document.getElementById('tab-btn-management').style.display = '';
+            StorageCleanup.mount(document.getElementById('orphan-section'), 'inspection', { onDone: () => updateDbStats() });
+          }
+
+          applySeason();
+          updateManagementText();
+          // No shelters for this activity: no shelter statistics
+          if (!Network.feature('shelters')) {
+            document.getElementById('stat-shelter-inspections').closest('.stat-card').style.display = 'none';
+          }
+          await loadAllData();
+          renderStatistics();
+          renderCharts();
+          updateDbStats();
+        },
+        onAccessDenied: () => {
+          window.location.href = 'inspection-dashboard.html';
+        }
+      });
+    }
+
+    function initTabs() {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+        });
+      });
+    }
+
+    function bindEvents() {
+      // Season navigator (Statistiques tab)
+      document.getElementById('season-prev').addEventListener('click', () => changeSeason(seasonOffset + 1));
+      document.getElementById('season-next').addEventListener('click', () => changeSeason(seasonOffset - 1));
+
+      // Delete old inspections
+      document.getElementById('delete-before-date').addEventListener('change', previewDelete);
+      document.getElementById('delete-type').addEventListener('change', previewDelete);
+      document.getElementById('btn-delete-old').addEventListener('click', deleteOldInspections);
+    }
+
+    async function loadAllData() {
+      try {
+        // Load trails (this activity's only)
+        const trailsSnap = await db.collection('trails').get();
+        trails = new Map();
+        trailsSnap.forEach(doc => { if (Network.matches(doc.data()) && TrailService.isInspected(doc.data())) trails.set(doc.id, { id: doc.id, ...doc.data() }); });
+
+        // Load shelters (only activities that have shelters)
+        shelters = new Map();
+        if (Network.feature('shelters')) {
+          const sheltersSnap = await db.collection('shelters').get();
+          sheltersSnap.forEach(doc => { if (Network.matches(doc.data())) shelters.set(doc.id, { id: doc.id, ...doc.data() }); });
+        }
+
+        // Load inspectors
+        const inspSnap = await db.collection('inspectors').get();
+        inspSnap.forEach(doc => inspectors.set(doc.id, doc.data().name));
+
+        // Load trail inspections (within the shown season). Statistics are scoped to the kind
+        // currently shown (kind.js + header switcher); "trails" itself stays unfiltered by kind -
+        // it is also used by the Gestion des données tab below, which must cover every kind.
+        const trailInspSnap = await db.collection('trail_inspections')
+          .where('date', '>=', firebase.firestore.Timestamp.fromDate(seasonStart))
+          .where('date', '<=', firebase.firestore.Timestamp.fromDate(seasonEnd))
+          .get();
+        trailInspections = trailInspSnap.docs.filter(doc => {
+          const t = trails.get(doc.data().trail_id);
+          return t && TrailService.kindOf(t) === Kind.current();
+        }).map(doc => { // this activity's trails of the shown kind only
+          const d = doc.data();
+          return {
+            id: doc.id,
+            type: 'trail',
+            ...d,
+            date: d.date?.toDate ? d.date.toDate() : new Date(d.date),
+            inspector_id: d.inspector_id || null,
+            inspector: inspectors.get(d.inspector_id) || d.inspector_name || 'Inconnu',
+            location: trails.get(d.trail_id)?.name || 'Inconnu'
+          };
+        });
+
+        // Load shelter inspections (within the shown season)
+        const shelterInspDocs = shelters.size
+          ? (await db.collection('shelter_inspections')
+              .where('date', '>=', firebase.firestore.Timestamp.fromDate(seasonStart))
+              .where('date', '<=', firebase.firestore.Timestamp.fromDate(seasonEnd))
+              .get()).docs
+          : [];
+        shelterInspections = shelterInspDocs.filter(doc => shelters.has(doc.data().shelter_id)).map(doc => { // this activity's shelters only
+          const d = doc.data();
+          return {
+            id: doc.id,
+            type: 'shelter',
+            ...d,
+            date: d.date?.toDate ? d.date.toDate() : new Date(d.date),
+            inspector_id: d.inspector_id || null,
+            inspector: inspectors.get(d.inspector_id) || d.inspector_name || 'Inconnu',
+            location: shelters.get(d.shelter_id)?.name || 'Inconnu'
+          };
+        });
+
+      } catch (e) {
+        console.error('Error loading data:', e);
+        showError('Erreur lors du chargement des données');
+      }
+    }
+
+    function renderStatistics() {
+      const allInspections = [...trailInspections, ...shelterInspections];
+      
+      // Total counts
+      document.getElementById('stat-total-inspections').textContent = allInspections.length;
+      document.getElementById('stat-trail-inspections').textContent = trailInspections.length;
+      document.getElementById('stat-shelter-inspections').textContent = shelterInspections.length;
+      
+      // Photos
+      const totalPhotos = allInspections.reduce((sum, i) => sum + (i.photos?.length || 0), 0);
+      document.getElementById('stat-total-photos').textContent = totalPhotos;
+      
+      // Issues
+      const totalIssues = allInspections.reduce((sum, i) => sum + (i.issues?.length || 0), 0);
+      const inspectionsWithIssues = allInspections.filter(i => i.issues && i.issues.length > 0).length;
+      document.getElementById('stat-total-issues').textContent = totalIssues;
+      document.getElementById('stat-inspections-with-issues').textContent = inspectionsWithIssues;
+      document.getElementById('stat-issues-percentage').textContent = 
+        allInspections.length > 0 ? `${Math.round(inspectionsWithIssues / allInspections.length * 100)}% des inspections` : '-';
+      
+      // Avg per inspector
+      const inspectorCounts = {};
+      allInspections.forEach(i => {
+        inspectorCounts[i.inspector] = (inspectorCounts[i.inspector] || 0) + 1;
+      });
+      const numInspectors = Object.keys(inspectorCounts).length;
+      document.getElementById('stat-avg-per-inspector').textContent = 
+        numInspectors > 0 ? (allInspections.length / numInspectors).toFixed(1) : '-';
+      
+      // Inspector ranking
+      renderInspectorRanking(allInspections);
+      
+      // Word count ranking
+      renderWordCountRanking(allInspections);
+    }
+
+    function renderInspectorRanking(allInspections) {
+      const stats = {};
+      allInspections.forEach(i => {
+        // Group by inspector_id, fallback to inspector name for old records without ID
+        const key = i.inspector_id || i.inspector;
+        if (!stats[key]) {
+          stats[key] = { name: i.inspector, inspections: 0, photos: 0, issues: 0 };
+        }
+        stats[key].inspections++;
+        stats[key].photos += i.photos?.length || 0;
+        stats[key].issues += i.issues?.length || 0;
+      });
+      
+      const sorted = Object.entries(stats)
+        .map(([id, data]) => ({ id, ...data }))
+        .sort((a, b) => b.inspections - a.inspections);
+      
+      const tbody = document.querySelector('#inspector-ranking tbody');
+      tbody.innerHTML = sorted.map((s, i) => {
+        const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other';
+        return `<tr>
+          <td><span class="rank-badge ${rankClass}">${i + 1}</span></td>
+          <td>${escapeHtml(s.name)}</td>
+          <td style="text-align: right; font-weight: 600;">${s.inspections}</td>
+          <td style="text-align: right;">${s.photos}</td>
+          <td style="text-align: right;">${s.issues}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function countWords(text) {
+      if (!text || typeof text !== 'string') return 0;
+      return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+    }
+
+    function renderWordCountRanking(allInspections) {
+      const stats = {};
+      allInspections.forEach(i => {
+        // Group by inspector_id, fallback to inspector name for old records without ID
+        const key = i.inspector_id || i.inspector;
+        if (!stats[key]) {
+          stats[key] = { name: i.inspector, totalWords: 0, inspections: 0 };
+        }
+        stats[key].inspections++;
+        // Count words in notes
+        stats[key].totalWords += countWords(i.notes);
+        // Also count words in detail fields for shelters
+        if (i.type === 'shelter') {
+          stats[key].totalWords += countWords(i.cleanliness_details);
+          stats[key].totalWords += countWords(i.accessibility_details);
+        }
+      });
+      
+      const sorted = Object.entries(stats)
+        .map(([id, data]) => ({ 
+          id,
+          name: data.name, 
+          totalWords: data.totalWords,
+          inspections: data.inspections,
+          avgWords: data.inspections > 0 ? (data.totalWords / data.inspections).toFixed(1) : 0 
+        }))
+        .sort((a, b) => b.totalWords - a.totalWords);
+      
+      const tbody = document.querySelector('#word-count-ranking tbody');
+      tbody.innerHTML = sorted.map((s, i) => {
+        const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other';
+        return `<tr>
+          <td><span class="rank-badge ${rankClass}">${i + 1}</span></td>
+          <td>${escapeHtml(s.name)}</td>
+          <td style="text-align: right; font-weight: 600;">${s.totalWords.toLocaleString()}</td>
+          <td style="text-align: right;">${s.avgWords}</td>
+          <td style="text-align: right;">${s.inspections}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function renderCharts() {
+      renderWeeklyChart();
+      renderIssuesChart();
+      renderTrailsChart();
+    }
+
+    function renderWeeklyChart() {
+      const allInspections = [...trailInspections, ...shelterInspections];
+      
+      // Group by week
+      const weeklyData = {};
+      allInspections.forEach(insp => {
+        const weekStart = getWeekStart(insp.date);
+        const key = weekStart.toISOString().split('T')[0];
+        if (!weeklyData[key]) weeklyData[key] = { trail: 0, shelter: 0 };
+        if (insp.type === 'trail') weeklyData[key].trail++;
+        else weeklyData[key].shelter++;
+      });
+      
+      // Sort by date
+      const sortedWeeks = Object.keys(weeklyData).sort();
+      const labels = sortedWeeks.map(d => {
+        const date = new Date(d);
+        return date.toLocaleDateString('fr-CA', { month: 'short', day: 'numeric' });
+      });
+      
+      const ctx = document.getElementById('chart-weekly').getContext('2d');
+      if (chartWeekly) chartWeekly.destroy();
+      chartWeekly = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Sentiers',
+              data: sortedWeeks.map(w => weeklyData[w].trail),
+              borderColor: '#10b981',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: 'Abris',
+              data: sortedWeeks.map(w => weeklyData[w].shelter),
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.1)',
+              fill: true,
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom' } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+      });
+    }
+
+    function renderIssuesChart() {
+      const allInspections = [...trailInspections, ...shelterInspections];
+      
+      // Count issues
+      const issueCounts = {};
+      allInspections.forEach(insp => {
+        (insp.issues || []).forEach(issue => {
+          issueCounts[issue] = (issueCounts[issue] || 0) + 1;
+        });
+      });
+      
+      // Sort and get top 5
+      const sorted = Object.entries(issueCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+      
+      const container = document.getElementById('chart-issues-container');
+      if (sorted.length === 0) {
+        if (chartIssues) { chartIssues.destroy(); chartIssues = null; }
+        container.innerHTML = '<p style="text-align: center; color: var(--theme-text-secondary); padding: 2rem;">Aucun problème signalé</p>';
+        return;
+      }
+
+      // A previous render may have replaced the canvas with the "no issues" message above
+      // (this one is re-run on every season change, not just once): put it back if needed.
+      if (!document.getElementById('chart-issues')) container.innerHTML = '<canvas id="chart-issues"></canvas>';
+      const ctx = document.getElementById('chart-issues').getContext('2d');
+      if (chartIssues) chartIssues.destroy();
+      chartIssues = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: sorted.map(s => s[0].length > 25 ? s[0].substring(0, 25) + '...' : s[0]),
+          datasets: [{
+            label: 'Occurrences',
+            data: sorted.map(s => s[1]),
+            backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: { legend: { display: false } },
+          scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+      });
+    }
+
+    function renderTrailsChart() {
+      // Count inspections per trail
+      const trailCounts = {};
+      trailInspections.forEach(insp => {
+        const trailName = insp.location || 'Inconnu';
+        trailCounts[trailName] = (trailCounts[trailName] || 0) + 1;
+      });
+      
+      // Sort by count descending
+      const sorted = Object.entries(trailCounts)
+        .sort((a, b) => b[1] - a[1]);
+      
+      const ctx = document.getElementById('chart-trails').getContext('2d');
+      if (chartTrails) chartTrails.destroy();
+      chartTrails = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: sorted.map(s => s[0]),
+          datasets: [{
+            label: 'Inspections',
+            data: sorted.map(s => s[1]),
+            backgroundColor: '#3b82f6'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+      });
+    }
+
+    function getWeekStart(date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(d.setDate(diff));
+    }
+
+    async function updateDbStats() {
+      try {
+        const [trailInspSnap, shelterInspSnap, trailsSnap, sheltersSnap, inspectorsSnap] = await Promise.all([
+          db.collection('trail_inspections').get(),
+          db.collection('shelter_inspections').get(),
+          db.collection('trails').get(),
+          db.collection('shelters').get(),
+          db.collection('inspectors').get()
+        ]);
+        
+        let totalPhotos = 0;
+        trailInspSnap.forEach(doc => {
+          totalPhotos += PhotoService.photosFrom(doc.data()).length;
+        });
+        shelterInspSnap.forEach(doc => {
+          totalPhotos += PhotoService.photosFrom(doc.data()).length;
+        });
+        
+        document.getElementById('db-trail-inspections').textContent = trailInspSnap.size;
+        document.getElementById('db-shelter-inspections').textContent = shelterInspSnap.size;
+        document.getElementById('db-trails').textContent = trailsSnap.size;
+        document.getElementById('db-shelters').textContent = sheltersSnap.size;
+        document.getElementById('db-inspectors').textContent = inspectorsSnap.size;
+        document.getElementById('db-photos').textContent = totalPhotos;
+      } catch (e) {
+        console.error('Error loading db stats:', e);
+      }
+    }
+
+    async function previewDelete() {
+      const dateStr = document.getElementById('delete-before-date').value;
+      const type = document.getElementById('delete-type').value;
+      const previewEl = document.getElementById('delete-preview');
+      const btnDelete = document.getElementById('btn-delete-old');
+      
+      if (!dateStr) {
+        previewEl.style.display = 'none';
+        btnDelete.disabled = true;
+        return;
+      }
+      
+      const beforeDate = new Date(dateStr);
+      beforeDate.setHours(23, 59, 59, 999);
+      
+      let count = 0;
+      
+      if (type === 'all' || type === 'trail') {
+        const snap = await db.collection('trail_inspections')
+          .where('date', '<=', firebase.firestore.Timestamp.fromDate(beforeDate))
+          .get();
+        count += snap.docs.filter(doc => trails.has(doc.data().trail_id)).length; // current activity only
+      }
+
+      if (type === 'all' || type === 'shelter') {
+        const snap = await db.collection('shelter_inspections')
+          .where('date', '<=', firebase.firestore.Timestamp.fromDate(beforeDate))
+          .get();
+        count += snap.docs.filter(doc => shelters.has(doc.data().shelter_id)).length; // current activity only
+      }
+      
+      document.getElementById('delete-count').textContent = count;
+      previewEl.style.display = 'block';
+      btnDelete.disabled = count === 0;
+    }
+
+    async function deleteOldInspections() {
+      const dateStr = document.getElementById('delete-before-date').value;
+      const type = document.getElementById('delete-type').value;
+      
+      if (!dateStr) return;
+      
+      const beforeDate = new Date(dateStr);
+      beforeDate.setHours(23, 59, 59, 999);
+      
+      const kinds = Network.config().inspectionKinds || [];
+      const kindNote = kinds.length > 1 ? ` (${kinds.map(k => TrailService.kindLabel(k)).join(' et ')} ensemble)` : '';
+      const typeLabel = (type === 'all' ? 'toutes les inspections' : type === 'trail' ? 'les inspections de sentiers' : 'les inspections d\'abris')
+        + ` de l'activité « ${Network.config().name} »${kindNote}`; // deletion never touches another activity, but every kind of this one
+
+      if (!confirm(`Êtes-vous sûr de vouloir supprimer ${typeLabel} avant le ${beforeDate.toLocaleDateString('fr-CA')}?\n\nUn fichier de sauvegarde sera téléchargé automatiquement.\n\nCette action est IRRÉVERSIBLE.`)) return;
+      
+      try {
+        showMessage('Création de la sauvegarde...', 'info');
+        
+        // Collect data to delete
+        const toDelete = [];
+        
+        if (type === 'all' || type === 'trail') {
+          const snap = await db.collection('trail_inspections')
+            .where('date', '<=', firebase.firestore.Timestamp.fromDate(beforeDate))
+            .get();
+          snap.forEach(doc => { if (trails.has(doc.data().trail_id)) toDelete.push({ collection: 'trail_inspections', id: doc.id, data: doc.data() }); }); // current activity only
+        }
+        
+        if (type === 'all' || type === 'shelter') {
+          const snap = await db.collection('shelter_inspections')
+            .where('date', '<=', firebase.firestore.Timestamp.fromDate(beforeDate))
+            .get();
+          snap.forEach(doc => { if (shelters.has(doc.data().shelter_id)) toDelete.push({ collection: 'shelter_inspections', id: doc.id, data: doc.data() }); }); // current activity only
+        }
+        
+        if (toDelete.length === 0) {
+          showSuccess('Aucune inspection à supprimer.');
+          return;
+        }
+        
+        // Create backup
+        const backup = {
+          exportDate: new Date().toISOString(),
+          beforeDate: beforeDate.toISOString(),
+          type: type,
+          count: toDelete.length,
+          inspections: toDelete.map(item => ({
+            collection: item.collection,
+            id: item.id,
+            ...item.data,
+            date: item.data.date?.toDate ? item.data.date.toDate().toISOString() : item.data.date
+          }))
+        };
+        
+        // Download backup
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `backup-inspections-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showMessage(`Suppression de ${toDelete.length} inspections...`, 'info');
+        
+        // Delete in batches
+        let deleted = 0;
+        for (const item of toDelete) {
+          // Delete photos - handles every stored format, and a missing file
+          // never blocks deleting the document that points at it.
+          await PhotoService.deletePhotosFrom(item.data);
+          
+          // Delete document
+          await db.collection(item.collection).doc(item.id).delete();
+          deleted++;
+          
+          if (deleted % 10 === 0) {
+            showMessage(`Suppression: ${deleted}/${toDelete.length}...`, 'info');
+          }
+        }
+        
+        showSuccess(`${deleted} inspection(s) supprimée(s) avec succès. Sauvegarde téléchargée.`);
+        
+        // Refresh stats
+        await loadAllData();
+        renderStatistics();
+        renderCharts();
+        updateDbStats();
+        previewDelete();
+        
+      } catch (e) {
+        console.error('Error deleting:', e);
+        showError('Erreur lors de la suppression: ' + e.message);
+      }
+    }
+
+    function showMessage(msg, type) {
+      hideMessages();
+      const el = type === 'error' ? document.getElementById('error-message') : document.getElementById('success-message');
+      if (type === 'info') {
+        el.className = 'alert alert-warning show';
+      } else {
+        el.className = `alert alert-${type === 'error' ? 'danger' : 'success'} show`;
+      }
+      el.textContent = msg;
+    }
+
+    function showSuccess(msg) { showMessage(msg, 'success'); }
+    function showError(msg) { showMessage(msg, 'error'); }
+    function hideMessages() {
+      document.getElementById('success-message').classList.remove('show');
+      document.getElementById('error-message').classList.remove('show');
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    onFirebaseReady( initAdmin);
+  </script>
+</body>
+</html>

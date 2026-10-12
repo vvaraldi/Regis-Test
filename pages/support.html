@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Support">
+  <meta name="theme-color" content="#1b4b72">
+  <title>Support</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    /* Page Header */
+    .support-guide { margin: 0 0 1rem; font-size: 0.9375rem; }
+    .support-guide a { font-weight: 600; color: var(--theme-accent); }
+    .page-header-row { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+    .page-header-left { flex: 1; }
+    .page-header-right { display: flex; gap: 0.5rem; }
+
+    /* Filters */
+    .filters-section { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+    .filters-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 0.25rem; min-width: 150px; }
+    .filter-group label { font-size: 0.8rem; font-weight: 500; color: var(--theme-text-secondary); }
+    .filter-actions { margin-left: auto; }
+
+    /* Request Count */
+    .request-count { font-size: 0.875rem; color: var(--theme-text-secondary); background: var(--theme-surface-alt); padding: 0.25rem 0.75rem; border-radius: 9999px; }
+
+    /* Requests List */
+    .requests-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    .empty-state { text-align: center; padding: 3rem; color: var(--theme-text-secondary); }
+
+    /* Request Card */
+    .request-card { display: flex; flex-direction: column; padding: 1rem 1.25rem; background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.2s; }
+    .request-card:hover { border-color: var(--theme-accent); box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+    .request-card__header { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.5rem; }
+    .request-card__title { font-size: 1rem; font-weight: 600; color: var(--theme-text); margin: 0; flex: 1; }
+    .request-card__badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .request-card__meta { font-size: 0.8rem; color: var(--theme-text-secondary); margin-bottom: 0.5rem; }
+    .request-card__description { font-size: 0.875rem; color: var(--theme-text-secondary); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .request-card__footer { display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--theme-border); }
+    .request-card__comments { font-size: 0.8rem; color: var(--theme-text-secondary); }
+
+    /* Badges */
+    .badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
+    .badge-type-bug { background: #fef2f2; color: #dc2626; }
+    .badge-type-question { background: #eff6ff; color: #2563eb; }
+    .badge-type-suggestion { background: #f0fdf4; color: #16a34a; }
+    .badge-priority-high { background: #fef2f2; color: #dc2626; }
+    .badge-priority-medium { background: #fffbeb; color: #d97706; }
+    .badge-priority-low { background: #f0fdf4; color: #16a34a; }
+    .badge-status-new { background: #dbeafe; color: #1d4ed8; }
+    .badge-status-in_progress { background: #fef3c7; color: #b45309; }
+    .badge-status-resolved { background: #d1fae5; color: #059669; }
+    .badge-status-archived { background: #e5e7eb; color: #6b7280; }
+
+    /* Detail View */
+    .detail-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .detail-meta { font-size: 0.875rem; color: var(--theme-text-secondary); margin-bottom: 1rem; }
+    .detail-description { background: var(--theme-surface-alt); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; white-space: pre-wrap; line-height: 1.6; }
+
+    /* Admin Controls */
+    .admin-controls { background: var(--theme-surface-alt); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.5rem; }
+    .admin-controls__title { font-size: 0.875rem; font-weight: 600; margin-bottom: 0.75rem; color: var(--theme-text-secondary); }
+    .admin-controls__row { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+    .admin-controls__row .form-group { flex: 1; min-width: 150px; }
+
+    /* Comments Section */
+    .comments-section { border-top: 1px solid var(--theme-border); padding-top: 1rem; }
+    .comments-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .comments-count { font-size: 0.8rem; color: var(--theme-text-secondary); font-weight: 400; }
+    .comments-list { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; max-height: 300px; overflow-y: auto; }
+    .comment { background: var(--theme-surface-alt); padding: 0.75rem 1rem; border-radius: var(--radius-md); }
+    .comment__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
+    .comment__author { font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .comment__role { font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 4px; }
+    .comment__role--admin { background: var(--theme-accent); color: white; }
+    .comment__role--system { background: #f59e0b; color: white; }
+    .comment__date { font-size: 0.7rem; color: var(--theme-text-secondary); }
+    .comment__text { font-size: 0.875rem; line-height: 1.5; white-space: pre-wrap; }
+    .comments-empty { text-align: center; padding: 1rem; color: var(--theme-text-secondary); font-size: 0.875rem; }
+
+    /* Add Comment */
+    .add-comment { display: flex; gap: 0.5rem; }
+    .add-comment textarea { flex: 1; min-height: 60px; resize: vertical; }
+
+    /* Form in Modal */
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    /* Alerts */
+    .alert { padding: 0.75rem 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; display: none; font-size: 0.875rem; }
+    .alert.show { display: block; }
+    .alert-success { background: rgba(16, 185, 129, 0.15); color: #065f46; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .alert-danger { background: rgba(239, 68, 68, 0.15); color: #991b1b; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+    @media (max-width: 768px) {
+      .support-guide { margin: 0 0 1rem; font-size: 0.9375rem; }
+    .support-guide a { font-weight: 600; color: var(--theme-accent); }
+    .page-header-row { flex-direction: column; }
+      .filters-row { flex-direction: column; }
+      .filter-group { width: 100%; }
+      .filter-actions { margin-left: 0; width: 100%; }
+      .form-row { grid-template-columns: 1fr; }
+      .admin-controls__row { flex-direction: column; }
+      .request-card__header { flex-direction: column; }
+      .request-card__badges { order: -1; }
+    }
+  </style>
+</head>
+<body data-theme="light" data-module="support" data-nav="support" data-page="support">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <main id="main-content" class="main" style="display: none;">
+    <div class="page-header">
+      <div class="page-header__content">
+        <h1 class="page-title">Support</h1>
+        <p class="page-subtitle">Signalez un bug, posez une question ou proposez une amélioration</p>
+      </div>
+    </div>
+
+    <div class="alert alert-success" id="success-message"></div>
+    <div class="alert alert-danger" id="error-message"></div>
+
+    <!-- The users' guide: the answer to a question is often there -->
+    <p class="support-guide">📖 <a href="../assets/Regis_3_Guide_utilisateurs.pdf" target="_blank" rel="noopener" data-guide-link>Guide d'utilisation (PDF)</a> : la réponse à votre question s'y trouve peut-être.</p>
+    <!-- Administrators only: the administrators' guide, kept in Storage (admin-docs/), readable by admins only (Storage rules). Hidden until its address is known. -->
+    <p class="support-guide" id="admin-guide" hidden>📘 <a id="admin-guide-link" href="#" target="_blank" rel="noopener">Guide de l'administrateur (PDF)</a> : réservé aux administrateurs.</p>
+
+    <!-- Page Header with New Request Button -->
+    <div class="page-header-row">
+      <div class="page-header-left">
+        <span class="request-count" id="request-count">0 demande(s)</span>
+      </div>
+      <div class="page-header-right">
+        <button class="btn btn-primary" id="new-request-btn">+ Nouvelle demande</button>
+      </div>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-section">
+      <div class="filters-row">
+        <div class="filter-group">
+          <label for="filter-type">Type</label>
+          <select id="filter-type" class="form-select">
+            <option value="all">Tous les types</option>
+            <option value="bug">🐛 Bug</option>
+            <option value="question">❓ Question</option>
+            <option value="suggestion">💡 Suggestion</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-status">Statut</label>
+          <select id="filter-status" class="form-select">
+            <option value="all">Tous les statuts</option>
+            <option value="new">🆕 Nouveau</option>
+            <option value="in_progress">🔄 En cours</option>
+            <option value="resolved">✅ Résolu</option>
+            <option value="archived">📦 Archivé</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-priority">Priorité</label>
+          <select id="filter-priority" class="form-select">
+            <option value="all">Toutes les priorités</option>
+            <option value="high">🔴 Haute</option>
+            <option value="medium">🟡 Moyenne</option>
+            <option value="low">🟢 Basse</option>
+          </select>
+        </div>
+        <div class="filter-group" id="filter-user-group" style="display: none;">
+          <label for="filter-user">Utilisateur</label>
+          <select id="filter-user" class="form-select">
+            <option value="all">Tous les utilisateurs</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="filter-archived" style="display: flex; gap: 0.5rem; align-items: center;"><input type="checkbox" id="filter-archived"> Inclure les archivées</label>
+        </div>
+        <div class="filter-group filter-actions">
+          <button class="btn btn-secondary btn-sm" id="reset-filters-btn">Réinitialiser</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Requests List -->
+    <div class="requests-list" id="requests-list">
+      <div class="empty-state">
+        <p>Chargement des demandes...</p>
+      </div>
+    </div>
+
+    <!-- E-mail settings, at the bottom of the page (system admin only, who can change them): who is told of a new request, and the on / off switch -->
+    <details class="filters-section" id="mail-settings" style="display: none; margin-top: 1.5rem;">
+      <summary style="cursor: pointer; font-weight: 600;">✉️ Courriels du support</summary>
+      <div class="filters-row" style="margin-top: 0.75rem; align-items: flex-end;">
+        <div class="filter-group">
+          <label for="mail-enabled" style="display: flex; gap: 0.5rem; align-items: center;"><input type="checkbox" id="mail-enabled"> Envoyer des courriels</label>
+        </div>
+        <div class="filter-group">
+          <label for="mail-admin">Administrateur qui reçoit les nouvelles demandes</label>
+          <select id="mail-admin" class="form-select"><option value="">— Personne (seul le créateur est averti) —</option></select>
+        </div>
+        <div class="filter-group filter-actions">
+          <button class="btn btn-primary btn-sm" id="mail-save-btn" type="button">Enregistrer</button>
+        </div>
+      </div>
+      <p style="font-size: 0.8125rem; color: var(--theme-text-secondary); margin: 0.5rem 0 0;">Nouvelle demande : l'administrateur choisi et le créateur. En cours / Résolu : le créateur. Nouveau commentaire : l'autre partie. Archivé : aucun courriel.</p>
+    </details>
+  </main>
+
+  <!-- New Request Modal -->
+  <div class="modal" id="new-request-modal">
+    <div class="modal__container">
+      <div class="modal__header">
+        <h2 class="modal__title">Nouvelle demande</h2>
+        <button class="modal__close" id="new-request-close">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div class="alert alert-danger" id="new-request-error"></div>
+        <form id="new-request-form">
+          <div class="form-group">
+            <label class="form-label" for="request-title">Titre *</label>
+            <input type="text" class="form-input" id="request-title" required placeholder="Résumé de votre demande">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="request-type">Type *</label>
+              <select class="form-select" id="request-type" required>
+                <option value="">Sélectionner...</option>
+                <option value="bug">🐛 Bug</option>
+                <option value="question">❓ Question</option>
+                <option value="suggestion">💡 Suggestion</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="request-priority">Priorité *</label>
+              <select class="form-select" id="request-priority" required>
+                <option value="">Sélectionner...</option>
+                <option value="low">🟢 Basse</option>
+                <option value="medium" selected>🟡 Moyenne</option>
+                <option value="high">🔴 Haute</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="request-description">Description *</label>
+            <textarea class="form-input" id="request-description" rows="5" required placeholder="Décrivez votre demande en détail..."></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn-secondary" id="new-request-cancel">Annuler</button>
+        <button class="btn btn-primary" id="new-request-submit">Soumettre</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Request Detail Modal -->
+  <div class="modal modal--lg" id="detail-modal">
+    <div class="modal__container">
+      <div class="modal__header">
+        <h2 class="modal__title" id="detail-title">Détail de la demande</h2>
+        <button class="modal__close" id="detail-close">&times;</button>
+      </div>
+      <div class="modal__body">
+        <!-- Badges -->
+        <div class="detail-badges" id="detail-badges"></div>
+        
+        <!-- Meta -->
+        <div class="detail-meta" id="detail-meta"></div>
+        
+        <!-- Description -->
+        <div class="detail-description" id="detail-description"></div>
+        
+        <!-- Admin Controls (hidden by default) -->
+        <div class="admin-controls" id="admin-controls" style="display: none;">
+          <div class="admin-controls__title">Actions administrateur</div>
+          <div class="admin-controls__row">
+            <div class="form-group">
+              <label class="form-label" for="admin-priority">Priorité</label>
+              <select class="form-select" id="admin-priority">
+                <option value="low">🟢 Basse</option>
+                <option value="medium">🟡 Moyenne</option>
+                <option value="high">🔴 Haute</option>
+              </select>
+            </div>
+            <div class="form-group" id="status-control-group" style="display: none;">
+              <label class="form-label" for="admin-status">Statut</label>
+              <select class="form-select" id="admin-status">
+                <option value="new">🆕 Nouveau</option>
+                <option value="in_progress">🔄 En cours</option>
+                <option value="resolved">✅ Résolu</option>
+                <option value="archived">📦 Archivé</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex: 0 0 auto; align-self: flex-end;">
+              <button class="btn btn-primary btn-sm" id="save-admin-changes">Enregistrer</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Comments Section -->
+        <div class="comments-section">
+          <h3 class="comments-title">💬 Commentaires <span class="comments-count" id="comments-count">(0)</span></h3>
+          <div class="comments-list" id="comments-list">
+            <div class="comments-empty">Aucun commentaire</div>
+          </div>
+          <div class="add-comment">
+            <textarea class="form-input" id="new-comment" placeholder="Ajouter un commentaire..." rows="2"></textarea>
+            <button class="btn btn-primary" id="submit-comment">Envoyer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/support-mail.js"></script>
+  <script>
+    // Data (currentUser and currentUserData are already defined in auth.js)
+    let allRequests = [];
+    let currentRequestId = null;
+
+    // Labels
+    const typeLabels = { bug: '🐛 Bug', question: '❓ Question', suggestion: '💡 Suggestion' };
+    const priorityLabels = { high: '🔴 Haute', medium: '🟡 Moyenne', low: '🟢 Basse' };
+    const statusLabels = { new: '🆕 Nouveau', in_progress: '🔄 En cours', resolved: '✅ Résolu', archived: '📦 Archivé' };
+
+    // Init
+    function initSupport() {
+      bindEvents();
+      checkAuthStatus({
+        requireAuth: true,
+        onAuthenticated: async (userData) => {
+          currentUser = firebase.auth().currentUser;
+          currentUserData = userData;
+          setupAdminFeatures();
+          showAdminGuide();   // not awaited: the list of requests does not wait for it
+          await loadRequests();
+        }
+      });
+    }
+
+    // The administrators' guide (for an administrator or a system admin): its Storage address, which carries a token. If the file is not there yet
+    // (not uploaded) or cannot be read, the line stays hidden instead of showing a broken link.
+    const ADMIN_GUIDE_PATH = 'admin-docs/Regis_1_Guide_administrateurs.pdf';
+    async function showAdminGuide() {
+      const isAdmin = currentUserData && (currentUserData.role === 'admin' || currentUserData.role === 'system_admin');
+      const box = document.getElementById('admin-guide');
+      box.hidden = true;
+      if (!isAdmin) return;
+      try {
+        document.getElementById('admin-guide-link').href = await window.storage.ref(ADMIN_GUIDE_PATH).getDownloadURL();
+        box.hidden = false;
+      } catch (e) {
+        console.warn('Administrators guide not available:', e && e.code ? e.code : e);
+      }
+    }
+
+    function bindEvents() {
+      // New request
+      document.getElementById('new-request-btn').addEventListener('click', openNewRequestModal);
+      document.getElementById('new-request-close').addEventListener('click', closeNewRequestModal);
+      document.getElementById('new-request-cancel').addEventListener('click', closeNewRequestModal);
+      document.getElementById('new-request-submit').addEventListener('click', submitNewRequest);
+      document.getElementById('new-request-modal').addEventListener('click', e => { if (e.target.id === 'new-request-modal') closeNewRequestModal(); });
+
+      // Detail modal
+      document.getElementById('detail-close').addEventListener('click', closeDetailModal);
+      document.getElementById('detail-modal').addEventListener('click', e => { if (e.target.id === 'detail-modal') closeDetailModal(); });
+      document.getElementById('save-admin-changes').addEventListener('click', saveAdminChanges);
+      document.getElementById('submit-comment').addEventListener('click', submitComment);
+
+      // Filters
+      document.getElementById('filter-type').addEventListener('change', applyFilters);
+      document.getElementById('filter-status').addEventListener('change', applyFilters);
+      document.getElementById('filter-priority').addEventListener('change', applyFilters);
+      document.getElementById('filter-user').addEventListener('change', applyFilters);
+      document.getElementById('filter-archived').addEventListener('change', applyFilters);
+      document.getElementById('reset-filters-btn').addEventListener('click', resetFilters);
+
+      // Escape key
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+          closeNewRequestModal();
+          closeDetailModal();
+        }
+      });
+    }
+
+    function setupAdminFeatures() {
+      const isAdmin = currentUserData.role === 'admin' || currentUserData.role === 'system_admin';
+      if (isAdmin) {
+        document.getElementById('filter-user-group').style.display = 'block';
+        loadUsersForFilter();
+        if (currentUserData.role === 'system_admin') {
+          document.getElementById('mail-settings').style.display = 'block';
+          document.getElementById('mail-save-btn').addEventListener('click', saveMailSettings);
+        }
+      }
+    }
+
+    // E-mail settings (see js/services/support-mail.js): the switch and the admin who receives the new requests
+    async function loadMailSettings() {
+      const s = await SupportMail.readSettings(db);
+      document.getElementById('mail-enabled').checked = s.enabled;
+      const select = document.getElementById('mail-admin');
+      select.value = s.adminUid;
+      if (select.value !== s.adminUid) select.value = '';   // an account that is no longer an active admin
+    }
+
+    async function saveMailSettings() {
+      try {
+        await SupportMail.saveSettings(db, firebase, {
+          enabled: document.getElementById('mail-enabled').checked,
+          adminUid: document.getElementById('mail-admin').value
+        }, { uid: currentUser.uid, name: currentUserData.name || currentUser.email });
+        showSuccess('Réglages des courriels enregistrés');
+      } catch (e) {
+        console.error('Error saving e-mail settings:', e);
+        showError('Erreur lors de l\'enregistrement des réglages');
+      }
+    }
+
+    function notifyContext(request, extra) {
+      return Object.assign({
+        request, actor: { uid: currentUser.uid, name: currentUserData.name || currentUser.email },
+        url: new URL('support.html', location.href).href
+      }, extra || {});
+    }
+
+    async function loadUsersForFilter() {
+      try {
+        const snap = await db.collection('inspectors').where('status', '==', 'active').get();
+        const select = document.getElementById('filter-user');
+        snap.forEach(doc => {
+          const data = doc.data();
+          const option = document.createElement('option');
+          option.value = doc.id;
+          option.textContent = data.name || data.email;
+          select.appendChild(option);
+          if (data.role === 'admin' || data.role === 'system_admin') {
+            const adminOption = option.cloneNode(true);
+            adminOption.textContent = (data.name || data.email) + (data.email && data.name ? ` (${data.email})` : '');
+            document.getElementById('mail-admin').appendChild(adminOption);
+          }
+        });
+        if (currentUserData.role === 'system_admin') await loadMailSettings();
+      } catch (e) {
+        console.error('Error loading users:', e);
+      }
+    }
+
+    // Load Requests
+    async function loadRequests() {
+      const isAdmin = currentUserData.role === 'admin' || currentUserData.role === 'system_admin';
+      
+      try {
+        let query = db.collection('requests').orderBy('createdAt', 'desc');
+        
+        // Non-admins only see their own requests
+        if (!isAdmin) {
+          query = query.where('createdBy', '==', currentUser.uid);
+        }
+        
+        const snap = await query.get();
+        allRequests = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        applyFilters();
+      } catch (e) {
+        console.error('Error loading requests:', e);
+        showError('Erreur lors du chargement des demandes');
+      }
+    }
+
+    function applyFilters() {
+      const typeFilter = document.getElementById('filter-type').value;
+      const statusFilter = document.getElementById('filter-status').value;
+      const priorityFilter = document.getElementById('filter-priority').value;
+      const userFilter = document.getElementById('filter-user').value;
+      const withArchived = document.getElementById('filter-archived').checked;   // archived requests are left out unless asked for (or chosen as the status)
+
+      const filtered = allRequests.filter(r => {
+        if (r.status === 'archived' && !withArchived && statusFilter !== 'archived') return false;
+        if (typeFilter !== 'all' && r.type !== typeFilter) return false;
+        if (statusFilter !== 'all' && r.status !== statusFilter) return false;
+        if (priorityFilter !== 'all' && r.priority !== priorityFilter) return false;
+        if (userFilter !== 'all' && r.createdBy !== userFilter) return false;
+        return true;
+      });
+
+      renderRequests(filtered);
+    }
+
+    function resetFilters() {
+      document.getElementById('filter-type').value = 'all';
+      document.getElementById('filter-status').value = 'all';
+      document.getElementById('filter-priority').value = 'all';
+      document.getElementById('filter-user').value = 'all';
+      document.getElementById('filter-archived').checked = false;
+      applyFilters();
+    }
+
+    function renderRequests(requests) {
+      const container = document.getElementById('requests-list');
+      document.getElementById('request-count').textContent = `${requests.length} demande(s)`;
+
+      if (requests.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>Aucune demande trouvée</p></div>';
+        return;
+      }
+
+      container.innerHTML = requests.map(r => {
+        const date = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Date inconnue';
+        const description = r.description?.length > 150 ? r.description.substring(0, 150) + '...' : r.description;
+        
+        return `
+          <div class="request-card" data-id="${r.id}">
+            <div class="request-card__header">
+              <h3 class="request-card__title">${escapeHtml(r.title)}</h3>
+              <div class="request-card__badges">
+                <span class="badge badge-type-${r.type}">${typeLabels[r.type] || r.type}</span>
+                <span class="badge badge-priority-${r.priority}">${priorityLabels[r.priority] || r.priority}</span>
+                <span class="badge badge-status-${r.status}">${statusLabels[r.status] || r.status}</span>
+              </div>
+            </div>
+            <div class="request-card__meta">Par ${escapeHtml(r.createdByName || 'Inconnu')} • ${date}</div>
+            <div class="request-card__description">${escapeHtml(description || '')}</div>
+            <div class="request-card__footer">
+              <span class="request-card__comments">💬 ${r.commentCount || 0} commentaire(s)</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Bind click events
+      container.querySelectorAll('.request-card').forEach(card => {
+        card.addEventListener('click', () => openDetailModal(card.dataset.id));
+      });
+    }
+
+    // New Request Modal
+    function openNewRequestModal() {
+      document.getElementById('new-request-form').reset();
+      document.getElementById('request-priority').value = 'medium';
+      hideError('new-request-error');
+      document.getElementById('new-request-modal').classList.add('is-active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeNewRequestModal() {
+      document.getElementById('new-request-modal').classList.remove('is-active');
+      document.body.style.overflow = '';
+    }
+
+    async function submitNewRequest() {
+      const title = document.getElementById('request-title').value.trim();
+      const type = document.getElementById('request-type').value;
+      const priority = document.getElementById('request-priority').value;
+      const description = document.getElementById('request-description').value.trim();
+
+      if (!title || !type || !priority || !description) {
+        showError('Veuillez remplir tous les champs obligatoires', 'new-request-error');
+        return;
+      }
+
+      const submitBtn = document.getElementById('new-request-submit');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Envoi...';
+
+      try {
+        const requestData = {
+          title,
+          type,
+          priority,
+          description,
+          status: 'new',
+          createdBy: currentUser.uid,
+          createdByName: currentUserData.name || currentUser.email,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          commentCount: 0
+        };
+
+        const docRef = await db.collection('requests').add(requestData);
+
+        // E-mails (chosen admin + the creator), if the admin switched them on in the settings
+        await SupportMail.notify(db, firebase, 'created', notifyContext(Object.assign({ id: docRef.id }, requestData)));
+
+        closeNewRequestModal();
+        showSuccess('Demande créée avec succès');
+        
+        // Add to local list and refresh
+        requestData.id = docRef.id;
+        requestData.createdAt = { toDate: () => new Date() };
+        allRequests.unshift(requestData);
+        applyFilters();
+
+      } catch (e) {
+        console.error('Error creating request:', e);
+        showError('Erreur lors de la création: ' + e.message, 'new-request-error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Soumettre';
+      }
+    }
+
+    // Detail Modal
+    async function openDetailModal(requestId) {
+      currentRequestId = requestId;
+      const request = allRequests.find(r => r.id === requestId);
+      
+      if (!request) return;
+
+      try {
+        // Title
+        document.getElementById('detail-title').textContent = request.title;
+
+        // Badges
+        document.getElementById('detail-badges').innerHTML = `
+          <span class="badge badge-type-${request.type}">${typeLabels[request.type] || request.type}</span>
+          <span class="badge badge-priority-${request.priority}">${priorityLabels[request.priority] || request.priority}</span>
+          <span class="badge badge-status-${request.status}">${statusLabels[request.status] || request.status}</span>
+        `;
+
+        // Meta
+        const date = request.createdAt?.toDate ? request.createdAt.toDate().toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Date inconnue';
+        document.getElementById('detail-meta').innerHTML = `Par <strong>${escapeHtml(request.createdByName || 'Inconnu')}</strong> • ${date}`;
+
+        // Description
+        document.getElementById('detail-description').textContent = request.description;
+
+        // Admin controls
+        setupAdminControls(request);
+
+        // Reset comments area
+        document.getElementById('comments-list').innerHTML = '<div class="comments-empty">Chargement...</div>';
+        document.getElementById('comments-count').textContent = '(0)';
+
+        // Show modal
+        document.getElementById('detail-modal').classList.add('is-active');
+        document.body.style.overflow = 'hidden';
+
+        // Load comments after modal is shown (non-blocking)
+        loadComments(requestId);
+      } catch (e) {
+        console.error('Error in openDetailModal:', e);
+      }
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detail-modal').classList.remove('is-active');
+      document.body.style.overflow = '';
+      currentRequestId = null;
+    }
+
+    function setupAdminControls(request) {
+      const isAdmin = currentUserData.role === 'admin' || currentUserData.role === 'system_admin';
+      const isSystemAdmin = currentUserData.role === 'system_admin';
+
+      const adminControls = document.getElementById('admin-controls');
+      const statusControlGroup = document.getElementById('status-control-group');
+
+      if (isAdmin) {
+        adminControls.style.display = 'block';
+        document.getElementById('admin-priority').value = request.priority;
+
+        if (isSystemAdmin) {
+          statusControlGroup.style.display = 'block';
+          document.getElementById('admin-status').value = request.status;
+        } else {
+          statusControlGroup.style.display = 'none';
+        }
+      } else {
+        adminControls.style.display = 'none';
+      }
+    }
+
+    async function saveAdminChanges() {
+      if (!currentRequestId) return;
+
+      const isSystemAdmin = currentUserData.role === 'system_admin';
+      const updates = {
+        priority: document.getElementById('admin-priority').value,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      if (isSystemAdmin) {
+        updates.status = document.getElementById('admin-status').value;
+      }
+
+      try {
+        const before = allRequests.find(r => r.id === currentRequestId);
+        const previousStatus = before ? before.status : null;
+        await db.collection('requests').doc(currentRequestId).update(updates);
+        if (before && updates.status && updates.status !== previousStatus) {
+          await SupportMail.notify(db, firebase, 'status', notifyContext(before, { status: updates.status }));   // En cours / Résolu: the creator
+        }
+        
+        // Update local data
+        const request = allRequests.find(r => r.id === currentRequestId);
+        if (request) {
+          request.priority = updates.priority;
+          if (updates.status) request.status = updates.status;
+        }
+
+        // Refresh badges
+        document.getElementById('detail-badges').innerHTML = `
+          <span class="badge badge-type-${request.type}">${typeLabels[request.type] || request.type}</span>
+          <span class="badge badge-priority-${request.priority}">${priorityLabels[request.priority] || request.priority}</span>
+          <span class="badge badge-status-${request.status}">${statusLabels[request.status] || request.status}</span>
+        `;
+
+        showSuccess('Modifications enregistrées');
+        applyFilters(); // Refresh list
+      } catch (e) {
+        console.error('Error saving changes:', e);
+        showError('Erreur lors de l\'enregistrement');
+      }
+    }
+
+    // Comments
+    async function loadComments(requestId) {
+      const container = document.getElementById('comments-list');
+      container.innerHTML = '<div class="comments-empty">Chargement...</div>';
+
+      try {
+        const snap = await db.collection('requests').doc(requestId).collection('comments')
+          .orderBy('createdAt', 'asc').get();
+
+        document.getElementById('comments-count').textContent = `(${snap.size})`;
+
+        if (snap.empty) {
+          container.innerHTML = '<div class="comments-empty">Aucun commentaire</div>';
+          return;
+        }
+
+        container.innerHTML = snap.docs.map(doc => {
+          const c = doc.data();
+          const date = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleDateString('fr-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+          
+          let roleHtml = '';
+          if (c.role === 'system_admin') {
+            roleHtml = '<span class="comment__role comment__role--system">System Admin</span>';
+          } else if (c.role === 'admin') {
+            roleHtml = '<span class="comment__role comment__role--admin">Admin</span>';
+          }
+
+          return `
+            <div class="comment">
+              <div class="comment__header">
+                <span class="comment__author">${escapeHtml(c.authorName || 'Inconnu')} ${roleHtml}</span>
+                <span class="comment__date">${date}</span>
+              </div>
+              <div class="comment__text">${escapeHtml(c.text)}</div>
+            </div>
+          `;
+        }).join('');
+
+        // Scroll to bottom
+        container.scrollTop = container.scrollHeight;
+
+      } catch (e) {
+        console.error('Error loading comments:', e);
+        container.innerHTML = '<div class="comments-empty">Erreur de chargement</div>';
+      }
+    }
+
+    async function submitComment() {
+      if (!currentRequestId) return;
+
+      const textarea = document.getElementById('new-comment');
+      const text = textarea.value.trim();
+      if (!text) return;
+
+      const submitBtn = document.getElementById('submit-comment');
+      submitBtn.disabled = true;
+
+      try {
+        const commentData = {
+          text,
+          authorId: currentUser.uid,
+          authorName: currentUserData.name || currentUser.email,
+          role: currentUserData.role,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection('requests').doc(currentRequestId).collection('comments').add(commentData);
+
+        // Update comment count
+        await db.collection('requests').doc(currentRequestId).update({
+          commentCount: firebase.firestore.FieldValue.increment(1),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // Update local data
+        const request = allRequests.find(r => r.id === currentRequestId);
+        if (request) {
+          request.commentCount = (request.commentCount || 0) + 1;
+          await SupportMail.notify(db, firebase, 'comment', notifyContext(request, { text }));   // the other party
+        }
+
+        textarea.value = '';
+        await loadComments(currentRequestId);
+        applyFilters(); // Refresh count in list
+
+      } catch (e) {
+        console.error('Error submitting comment:', e);
+        showError('Erreur lors de l\'envoi du commentaire');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+
+    // Helpers
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function showSuccess(msg) {
+      hideMessages();
+      const el = document.getElementById('success-message');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 4000);
+    }
+
+    function showError(msg, elementId = 'error-message') {
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.textContent = msg;
+        el.classList.add('show');
+      }
+    }
+
+    function hideError(elementId) {
+      const el = document.getElementById(elementId);
+      if (el) el.classList.remove('show');
+    }
+
+    function hideMessages() {
+      document.getElementById('success-message')?.classList.remove('show');
+      document.getElementById('error-message')?.classList.remove('show');
+    }
+
+    onFirebaseReady( initSupport);
+  </script>
+</body>
+</html>

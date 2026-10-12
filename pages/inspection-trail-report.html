@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Rapport d'inspection de sentier">
+  <meta name="theme-color" content="#1b4b72">
+  <title>Inspection Sentier</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .form-section { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.5rem; }
+    .form-section-header { display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.25rem; background: var(--theme-surface-alt); border-bottom: 1px solid var(--theme-border); font-weight: 600; }
+    .form-section-title { margin: 0; font-size: 1rem; font-weight: 600; }
+    .form-section-body { padding: 1.25rem; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+    .form-label-optional { font-weight: 400; color: var(--theme-text-secondary); font-size: 0.875rem; }
+    .form-label-required::after { content: ' *'; color: var(--color-danger); }
+    .radio-group { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .radio-item { position: relative; }
+    .form-radio { position: absolute; opacity: 0; width: 0; height: 0; }
+    .radio-label { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.625rem 1rem; background: var(--theme-surface); border: 2px solid var(--theme-border); border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s ease; font-size: 0.875rem; }
+    .radio-label:hover { border-color: var(--theme-accent); }
+    .form-radio:checked + .radio-label { border-color: var(--theme-accent); background: rgba(var(--theme-accent-rgb), 0.1); }
+    .radio-indicator { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--theme-border); }
+    .radio-indicator.good { border-color: var(--color-success); background: rgba(16, 185, 129, 0.2); }
+    .radio-indicator.warning { border-color: var(--color-warning); background: rgba(245, 158, 11, 0.2); }
+    .radio-indicator.critical { border-color: var(--color-danger); background: rgba(239, 68, 68, 0.2); }
+    .form-radio:checked + .radio-label .radio-indicator.good { background: var(--color-success); }
+    .form-radio:checked + .radio-label .radio-indicator.warning { background: var(--color-warning); }
+    .form-radio:checked + .radio-label .radio-indicator.critical { background: var(--color-danger); }
+    .checkbox-group { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.5rem; }
+    .checkbox-item { position: relative; }
+    .form-checkbox { position: absolute; opacity: 0; width: 0; height: 0; }
+    .checkbox-label { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.875rem; border-radius: var(--radius-md); transition: background 0.15s; }
+    .checkbox-label:hover { background: var(--theme-surface-alt); }
+    .checkbox-indicator { width: 18px; height: 18px; border: 2px solid var(--theme-border); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .form-checkbox:checked + .checkbox-label .checkbox-indicator { background: var(--theme-accent); border-color: var(--theme-accent); }
+    .form-checkbox:checked + .checkbox-label .checkbox-indicator::after { content: '✓'; color: white; font-size: 0.75rem; font-weight: bold; }
+    .file-upload-area { border: 2px dashed var(--theme-border); border-radius: var(--radius-lg); padding: 2rem; text-align: center; cursor: pointer; transition: all 0.2s ease; }
+    .file-upload-area:hover, .file-upload-area.drag-over { border-color: var(--theme-accent); background: rgba(var(--theme-accent-rgb), 0.05); }
+    .file-upload-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .file-upload-text { font-weight: 500; margin-bottom: 0.25rem; }
+    .file-upload-hint { font-size: 0.75rem; color: var(--theme-text-secondary); }
+    .photo-preview-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.75rem; margin-top: 1rem; }
+    .photo-preview { position: relative; aspect-ratio: 1; border-radius: var(--radius-md); overflow: hidden; background: var(--theme-surface-alt); }
+    .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-remove { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; background: rgba(0,0,0,0.7); color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; line-height: 1; }
+    .photo-remove:hover { background: var(--color-danger); }
+    .form-actions { display: flex; gap: 1rem; margin-top: 1.5rem; }
+    .alert { padding: 1rem 1.5rem; border-radius: var(--radius-md); margin-bottom: 1rem; border-left: 4px solid; display: none; }
+    .alert.show { display: block; }
+    .alert-success { background: rgba(16, 185, 129, 0.15); color: #065f46; border-left-color: var(--color-success); }
+    .alert-danger { background: rgba(239, 68, 68, 0.15); color: #991b1b; border-left-color: var(--color-danger); }
+    .form-loading-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    .form-loading-overlay.show { display: flex; }
+    .form-loading-content { background: var(--theme-surface); padding: 2rem; border-radius: var(--radius-lg); text-align: center; }
+    @media (max-width: 640px) { .form-actions { flex-direction: column; } .form-actions .btn { width: 100%; } .radio-group { flex-direction: column; } .radio-label { width: 100%; justify-content: flex-start; } }
+  </style>
+</head>
+<body data-theme="light" data-module="inspection-rando" data-nav="inspection" data-page="inspection-trail-report">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/kind.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement du formulaire...</p></div>
+  <div class="form-loading-overlay" id="form-loading"><div class="form-loading-content"><div class="loading-spinner"></div><p class="loading-text" id="loading-text">Enregistrement en cours...</p></div></div>
+  <main id="main-content" class="main main--narrow" style="display: none;">
+    <div class="page-header"><div class="page-header__content"><h1 class="page-title">Inspection de sentier</h1><p class="page-subtitle">Enregistrez une nouvelle inspection</p></div></div>
+    <div class="alert alert-success" id="success-message"></div>
+    <div class="alert alert-danger" id="error-message"></div>
+    <form id="trail-inspection-form">
+      <div class="form-section">
+        <div class="form-section-header"><h2 class="form-section-title">📍 Informations générales</h2></div>
+        <div class="form-section-body">
+          <div class="form-grid">
+            <div class="form-group" id="sector-group"><label class="form-label form-label-required" for="sector-select">Secteur</label><select class="form-select" id="sector-select" required><option value="">Sélectionner un secteur</option></select></div>
+            <div class="form-group"><label class="form-label form-label-required" for="trail-select">Sentier</label><select class="form-select" id="trail-select" required><option value="">Sélectionner d'abord un secteur</option></select></div>
+            <div class="form-group"><label class="form-label" for="inspector-name">Inspecteur</label><input type="text" class="form-input" id="inspector-name" readonly><input type="hidden" id="inspector-id"></div>
+            <div class="form-group"><label class="form-label form-label-required" for="inspection-at">Date et heure d'inspection</label><input type="datetime-local" class="form-input" id="inspection-at" required></div>
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-header"><h2 class="form-section-title">🚪 Statut et état du sentier</h2></div>
+        <div class="form-section-body">
+          <div class="form-grid">
+            <div class="form-group"><label class="form-label form-label-required" id="status-label">Statut du sentier post inspection</label>
+              <div class="radio-group">
+                <div class="radio-item"><input type="radio" id="status-open" name="trail-status" value="open" class="form-radio" required><label for="status-open" class="radio-label"><span class="radio-indicator good"></span><span class="radio-text" id="status-open-text">🟢 À ouvrir</span></label></div>
+                <div class="radio-item"><input type="radio" id="status-closed" name="trail-status" value="closed" class="form-radio"><label for="status-closed" class="radio-label"><span class="radio-indicator critical"></span><span class="radio-text" id="status-closed-text">🔴 À fermer</span></label></div>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label form-label-required">État général</label>
+              <div class="radio-group">
+                <div class="radio-item"><input type="radio" id="condition-good" name="condition" value="good" class="form-radio" required><label for="condition-good" class="radio-label"><span class="radio-indicator good"></span><span class="radio-text">Bon état</span></label></div>
+                <div class="radio-item"><input type="radio" id="condition-warning" name="condition" value="warning" class="form-radio"><label for="condition-warning" class="radio-label"><span class="radio-indicator warning"></span><span class="radio-text">Attention requise</span></label></div>
+                <div class="radio-item"><input type="radio" id="condition-critical" name="condition" value="critical" class="form-radio"><label for="condition-critical" class="radio-label"><span class="radio-indicator critical"></span><span class="radio-text">État critique</span></label></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group" id="snow-condition-group" style="margin-top: 1rem;"><label class="form-label">Conditions de neige <span class="form-label-optional">(optionnel)</span></label>
+            <div class="radio-group">
+              <div class="radio-item"><input type="radio" id="snow-good" name="snow-condition" value="good" class="form-radio"><label for="snow-good" class="radio-label"><span class="radio-indicator good"></span><span class="radio-text">Bonnes conditions</span></label></div>
+              <div class="radio-item"><input type="radio" id="snow-warning" name="snow-condition" value="warning" class="form-radio"><label for="snow-warning" class="radio-label"><span class="radio-indicator warning"></span><span class="radio-text">Conditions moyennes</span></label></div>
+              <div class="radio-item"><input type="radio" id="snow-critical" name="snow-condition" value="critical" class="form-radio"><label for="snow-critical" class="radio-label"><span class="radio-indicator critical"></span><span class="radio-text">Mauvaises conditions</span></label></div>
+              <div class="radio-item"><input type="radio" id="snow-none" name="snow-condition" value="none" class="form-radio"><label for="snow-none" class="radio-label"><span class="radio-indicator"></span><span class="radio-text">Non évalué</span></label></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-header"><h2 class="form-section-title">⚠️ Problèmes identifiés</h2></div>
+        <div class="form-section-body">
+          <div class="form-group">
+            <p class="form-label-optional" id="issues-hint">Sélectionnez un sentier ci-dessus pour voir la liste des problèmes courants.</p>
+            <div class="checkbox-group" id="issues-group" hidden></div>
+          </div>
+          <div class="form-group" style="margin-top: 1rem;"><label class="form-label" for="other-issues">Autres problèmes</label><textarea class="form-textarea" id="other-issues" rows="3" placeholder="Décrivez tout autre problème non listé ci-dessus..."></textarea></div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-header"><h2 class="form-section-title">📷 Documentation photographique</h2></div>
+        <div class="form-section-body">
+          <div class="form-group">
+            <div class="file-upload-area" id="photo-upload"><div class="file-upload-content"><div class="file-upload-icon">📷</div><p class="file-upload-text">Déposez des photos ici ou cliquez pour parcourir</p><p class="file-upload-hint">Format accepté: JPG, PNG • Taille max: 10 MB par photo</p></div><input type="file" id="file-input" multiple accept="image/*" style="display: none;"></div>
+            <div class="photo-preview-container" id="preview-container"></div>
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <div class="form-section-header"><h2 class="form-section-title">📝 Notes et commentaires</h2></div>
+        <div class="form-section-body"><div class="form-group"><label class="form-label" for="comments">Notes additionnelles</label><textarea class="form-textarea" id="comments" rows="4" placeholder="Ajoutez toute information pertinente concernant l'inspection..."></textarea></div></div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" id="cancel-action">Annuler</button>
+        <button type="submit" class="btn btn-primary" id="submit-btn">Enregistrer l'inspection</button>
+      </div>
+    </form>
+  </main>
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+  <script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.min.js"></script>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/datetime-field.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/utils/photo-picker.js"></script>
+  <script src="../js/services/photo-service.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/sector-service.js"></script>
+
+  <script>
+    let selectedFiles = [], currentTrailStatus = null, storage = null;
+    let photoPicker = null;
+    const form = document.getElementById('trail-inspection-form');
+    const sectorGroup = document.getElementById('sector-group');
+    const sectorSelect = document.getElementById('sector-select');
+    const trailSelect = document.getElementById('trail-select');
+    let sectors = [];   // sectors and their trails, from Firestore (SectorService)
+    let allTrails = []; // this activity's active trails - only used when the sector step is skipped
+    const inspectorName = document.getElementById('inspector-name');
+    const inspectorId = document.getElementById('inspector-id');
+    const inspectionAt = document.getElementById('inspection-at');
+    const photoUpload = document.getElementById('photo-upload');
+    const fileInput = document.getElementById('file-input');
+    const previewContainer = document.getElementById('preview-container');
+    const comments = document.getElementById('comments');
+    const otherIssues = document.getElementById('other-issues');
+    const issuesHint = document.getElementById('issues-hint');
+    const issuesGroup = document.getElementById('issues-group');
+    const submitBtn = document.getElementById('submit-btn');
+    const successMessage = document.getElementById('success-message');
+    const errorMessage = document.getElementById('error-message');
+
+    function initTrailInspection() {
+      storage = firebase.storage();
+      setCurrentDateTime();
+      bindEvents();
+      
+      // Setup offline detection
+      setupOfflineDetection();
+      
+      checkAuthStatus({
+        requireAuth: true,
+        requiredPermission: 'allowInspection',
+        onAuthenticated: async (userData) => {
+          inspectorName.value = userData.name || currentUser.email;
+          inspectorId.value = currentUser.uid;
+          // Show admin nav links if user is admin
+          if (userData.role === 'admin' || userData.role === 'system_admin') {
+            document.querySelectorAll('.nav__link--admin, .mobile-nav__link--admin').forEach(el => el.style.display = '');
+          }
+          // Snow conditions only exist for activities that have them (ski)
+          document.getElementById('snow-condition-group').style.display = Network.feature('snowCondition') ? '' : 'none';
+          await loadSectors();
+        }
+      });
+    }
+
+    function setCurrentDateTime() {
+      DateTimeField.init(inspectionAt);          // (does nothing more once done)
+      DateTimeField.set(inspectionAt, new Date());   // local time, to the minute
+    }
+
+    function bindEvents() {
+      form.addEventListener('submit', handleSubmit);
+      document.getElementById('cancel-action').addEventListener('click', () => {
+        if (confirm('Êtes-vous sûr de vouloir annuler?')) window.location.href = 'inspection-dashboard.html';
+      });
+      sectorSelect.addEventListener('change', populateTrails);
+      trailSelect.addEventListener('change', updateStatusOptionsForTrail);
+      
+      // Initialize PhotoPicker for smart platform detection (Android bottom sheet, iOS/Desktop direct)
+      photoPicker = new PhotoPicker({
+        dropZone: null, // We handle drag & drop separately
+        previewContainer: null, // We handle previews separately
+        multiple: true,
+        maxPhotos: 10,
+        onPhotosChange: (photos) => {
+          // PhotoPicker selected files - process them
+          const pendingFiles = photoPicker.getPendingFiles();
+          pendingFiles.forEach(p => {
+            if (!selectedFiles.find(f => f.name === p.file.name)) {
+              processFiles([p.file]);
+            }
+          });
+        }
+      });
+      
+      photoUpload.addEventListener('click', () => photoPicker.open());
+      photoUpload.addEventListener('dragover', e => { e.preventDefault(); photoUpload.classList.add('drag-over'); });
+      photoUpload.addEventListener('dragleave', e => { e.preventDefault(); photoUpload.classList.remove('drag-over'); });
+      photoUpload.addEventListener('drop', e => { e.preventDefault(); photoUpload.classList.remove('drag-over'); processFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))); });
+      fileInput.addEventListener('change', e => { processFiles(Array.from(e.target.files)); fileInput.value = ''; });
+    }
+
+    // Sector first, then trail (like the infraction/signalisation forms) - but ONLY when the
+    // kind currently shown (Kind.current() - kind.js + header switcher) actually has trails in
+    // more than one sector. Today, downhill runs are spread across several real sectors, but
+    // every uphill trail sits in the single catch-all "Randonnée alpine" sector: picking a
+    // sector there would never narrow anything down, so that case skips straight to a flat,
+    // alphabetical list instead - same as before the sector step existed (orphan trails with no
+    // sector included, unlike the sector-first case where they are not reachable).
+    async function loadSectors() {
+      try {
+        const [sectorList, trailList] = await Promise.all([SectorService.load(), SectorService.loadTrails()]);
+        sectors = sectorList;
+        allTrails = trailList.filter(t => Network.matches(t) && TrailService.isActive(t));
+      } catch (e) {
+        console.error('Error loading sectors:', e);
+        showError('Impossible de charger les secteurs. Rechargez la page.');
+      }
+      updateTrailPicker();
+      await applyPreselection();
+    }
+
+    // Opened from the dashboard's right-click on a trail: ?trail=<id>&status=open|closed. Selects
+    // the sector + trail (through the sector step, or straight in the flat list when it is
+    // skipped), then the status to change to. The status comes last on purpose: picking a trail
+    // ticks that trail's current status, which would otherwise override the requested one.
+    async function applyPreselection() {
+      const params = new URLSearchParams(window.location.search);
+      const trailId = params.get('trail');
+      if (!trailId) return;
+      if (!sectorGroup.hidden) {
+        const sector = kindSectors().find(s => s.items.some(i => i.id === trailId));
+        if (!sector) return;
+        sectorSelect.value = sector.id;
+        populateTrails();
+      }
+      trailSelect.value = trailId;
+      if (trailSelect.value !== trailId) return; // not a trail of the kind shown
+      await updateStatusOptionsForTrail();
+      const status = params.get('status');
+      if (status === 'open' || status === 'closed') document.getElementById(`status-${status}`).checked = true;
+    }
+
+    // The sectors that actually hold a trail of the kind currently shown
+    function kindSectors() {
+      return sectors.filter(s => (s.items || []).some(i => i.kind === Kind.current()));
+    }
+
+    function updateTrailPicker() {
+      if (kindSectors().length > 1) {
+        sectorGroup.hidden = false;
+        sectorSelect.required = true;
+        SectorService.fillSectors(sectorSelect, sectors, 'Sélectionner un secteur');
+        trailSelect.innerHTML = '<option value="">Sélectionner d\'abord un secteur</option>';
+      } else {
+        sectorGroup.hidden = true;
+        sectorSelect.required = false;
+        sectorSelect.value = '';
+        trailSelect.innerHTML = '<option value="">Sélectionner un sentier</option>';
+        allTrails
+          .filter(t => TrailService.kindOf(t) === Kind.current())
+          .sort((a, b) => String(a.name).localeCompare(String(b.name), 'fr'))
+          .forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = TrailService.describe(t); // name (difficulty · length), the last two only when known
+            opt.dataset.name = t.name;
+            trailSelect.appendChild(opt);
+          });
+      }
+      updateStatusOptionsForTrail();
+    }
+
+    function populateTrails() {
+      const sector = SectorService.find(sectors, sectorSelect.value);
+      SectorService.fillTrails(trailSelect, sector, 'Sélectionner un sentier', Kind.current());
+      updateStatusOptionsForTrail();
+    }
+
+    async function updateStatusOptionsForTrail() {
+      const trailId = trailSelect.value;
+      const statusLabel = document.getElementById('status-label');
+      if (!trailId) {
+        setStatusLabels('🟢 À ouvrir', '🔴 À fermer');
+        statusLabel.innerHTML = 'Statut du sentier post inspection';
+        currentTrailStatus = null;
+        renderIssues(null);
+        return;
+      }
+      try {
+        const trailDoc = await db.collection('trails').doc(trailId).get();
+        const trail = trailDoc.exists ? trailDoc.data() : null;
+        currentTrailStatus = trail ? (trail.status || 'unknown') : 'unknown';
+        renderIssues(trail);
+        if (currentTrailStatus === 'open') {
+          statusLabel.innerHTML = 'Statut du sentier post inspection <span style="font-weight:normal;color:#10b981;">(actuellement ouvert)</span>';
+          setStatusLabels('🟢 Laisser ouvert', '🔴 À fermer');
+          document.getElementById('status-open').checked = true;
+        } else if (currentTrailStatus === 'closed') {
+          statusLabel.innerHTML = 'Statut du sentier post inspection <span style="font-weight:normal;color:#ef4444;">(actuellement fermé)</span>';
+          setStatusLabels('🟢 À ouvrir', '🔴 Laisser fermé');
+          document.getElementById('status-closed').checked = true;
+        } else {
+          statusLabel.innerHTML = 'Statut du sentier post inspection <span style="font-weight:normal;color:#6b7280;">(statut inconnu)</span>';
+          setStatusLabels('🟢 À ouvrir', '🔴 À fermer');
+        }
+      } catch (e) { console.error('Error:', e); statusLabel.innerHTML = 'Statut du sentier post inspection'; setStatusLabels('🟢 À ouvrir', '🔴 À fermer'); renderIssues(null); }
+    }
+
+    function setStatusLabels(o, c) {
+      document.getElementById('status-open-text').textContent = o;
+      document.getElementById('status-closed-text').textContent = c;
+    }
+
+    // The checklist depends on the trail's kind (uphill/downhill/bike issues differ)
+    function renderIssues(trail) {
+      issuesGroup.innerHTML = '';
+      if (!trail) { issuesHint.hidden = false; issuesGroup.hidden = true; return; }
+      issuesHint.hidden = true; issuesGroup.hidden = false;
+      TrailService.issuesOf(trail).forEach((issue, i) => {
+        const item = document.createElement('div'); item.className = 'checkbox-item';
+        const id = `issue-${i}`;
+        item.innerHTML = `<input type="checkbox" id="${id}" class="form-checkbox"><label for="${id}" class="checkbox-label"><span class="checkbox-indicator"></span></label>`;
+        item.querySelector('input').value = issue;
+        item.querySelector('label').append(issue);
+        issuesGroup.appendChild(item);
+      });
+    }
+
+    function processFiles(files) {
+      files.forEach(f => {
+        if (f.size > 10*1024*1024) { showError(`${f.name} trop volumineux (max 10MB)`); return; }
+        if (selectedFiles.length >= 10) { showError('Maximum 10 photos'); return; }
+        selectedFiles.push(f);
+        const preview = document.createElement('div'); preview.className = 'photo-preview';
+        const img = document.createElement('img'); const url = URL.createObjectURL(f); img.src = url; img.alt = f.name;
+        const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'photo-remove'; btn.innerHTML = '×';
+        btn.onclick = () => { const i = selectedFiles.indexOf(f); if (i > -1) selectedFiles.splice(i, 1); preview.remove(); URL.revokeObjectURL(url); };
+        preview.appendChild(img); preview.appendChild(btn); previewContainer.appendChild(preview);
+      });
+    }
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      hideMessages();
+      if (!DateTimeField.read(inspectionAt)) { showError('Veuillez entrer la date et l\'heure de l\'inspection'); return; }
+      if (!trailSelect.value) { showError('Veuillez sélectionner un sentier'); return; }
+      if (!form.querySelector('input[name="trail-status"]:checked')) { showError('Veuillez sélectionner le statut du sentier'); return; }
+      if (!form.querySelector('input[name="condition"]:checked')) { showError('Veuillez sélectionner l\'état général'); return; }
+      setFormLoading(true, 'Enregistrement...');
+      try {
+        const issues = [];
+        form.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => { if (cb.value) issues.push(cb.value); });
+        if (otherIssues.value.trim()) issues.push(otherIssues.value.trim());
+        const dateTime = DateTimeField.read(inspectionAt);
+        const formData = {
+          network: Network.current(),
+          trail_id: trailSelect.value,
+          inspector_id: inspectorId.value,
+          inspector_name: inspectorName.value,
+          date: firebase.firestore.Timestamp.fromDate(dateTime),
+          previous_trail_status: currentTrailStatus || 'unknown',
+          trail_status: form.querySelector('input[name="trail-status"]:checked').value,
+          condition: form.querySelector('input[name="condition"]:checked').value,
+          snow_condition: Network.feature('snowCondition') ? (form.querySelector('input[name="snow-condition"]:checked')?.value || null) : null,
+          issues: issues,
+          notes: comments.value.trim(),
+          photos: [],
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        if (selectedFiles.length > 0) {
+          setFormLoading(true, 'Extraction des métadonnées et téléversement...');
+          const inspectionId = Date.now();
+          formData.photos = await Promise.all(selectedFiles.map(async (f, i) => {
+            // Extract GPS coordinates from EXIF
+            let coordinates = null;
+            let timestamp = null;
+            try {
+              const exifData = await extractExifData(f);
+              if (exifData) {
+                coordinates = extractGpsFromExif(exifData);
+                timestamp = extractTimestampFromExif(exifData);
+              }
+            } catch (e) { console.warn('EXIF extraction failed:', e); }
+            
+            // Upload to storage
+            const ref = storage.ref(`inspections/trails/${inspectionId}/${i}-${f.name}`);
+            const snap = await ref.put(f);
+            return { url: await snap.ref.getDownloadURL(), filename: f.name, coordinates, timestamp };
+          }));
+        }
+        setFormLoading(true, 'Enregistrement...');
+        const batch = db.batch();
+        const inspRef = db.collection('trail_inspections').doc();
+        batch.set(inspRef, formData);
+        batch.update(db.collection('trails').doc(formData.trail_id), { status: formData.trail_status, lastUpdated: firebase.firestore.FieldValue.serverTimestamp(), lastInspectionId: inspRef.id });
+        await batch.commit();
+        const trailName = trailSelect.options[trailSelect.selectedIndex].dataset.name;
+        showSuccess(`Inspection enregistrée! ${trailName} est maintenant ${formData.trail_status === 'open' ? 'ouvert' : 'fermé'}.`);
+        // Save inspector info before reset
+        const savedInspectorName = inspectorName.value;
+        const savedInspectorId = inspectorId.value;
+        setTimeout(() => {
+          form.reset();
+          // Restore inspector info
+          inspectorName.value = savedInspectorName;
+          inspectorId.value = savedInspectorId;
+          // form.reset() alone would leave the trail list showing whichever sector was last
+          // picked (its options were swapped in by fillTrails/updateTrailPicker, not the
+          // original placeholder)
+          updateTrailPicker();
+          selectedFiles = [];
+          previewContainer.innerHTML = '';
+          currentTrailStatus = null;
+          setCurrentDateTime();
+          hideMessages();
+          document.getElementById('status-label').innerHTML = 'Statut du sentier post inspection';
+          setStatusLabels('🟢 À ouvrir', '🔴 À fermer');
+          renderIssues(null);
+        }, 2000);
+      } catch (e) { console.error('Error:', e); showError('Erreur: ' + e.message); }
+      finally { setFormLoading(false); }
+    }
+
+    function setFormLoading(show, text = 'Chargement...') {
+      document.getElementById('loading-text').textContent = text;
+      document.getElementById('form-loading').classList.toggle('show', show);
+      submitBtn.disabled = show;
+    }
+    function showSuccess(msg) { hideMessages(); successMessage.textContent = msg; successMessage.classList.add('show'); successMessage.scrollIntoView({behavior:'smooth',block:'center'}); }
+    function showError(msg) { hideMessages(); errorMessage.textContent = msg; errorMessage.classList.add('show'); errorMessage.scrollIntoView({behavior:'smooth',block:'center'}); }
+    function hideMessages() { successMessage.classList.remove('show'); errorMessage.classList.remove('show'); }
+
+    // EXIF extraction helpers (with timeout protection)
+    function extractExifData(file, timeout = 5000) {
+      return new Promise((resolve) => {
+        if (typeof EXIF === 'undefined') { resolve(null); return; }
+        
+        const timeoutId = setTimeout(() => {
+          console.warn('EXIF extraction timed out');
+          resolve(null);
+        }, timeout);
+        
+        try {
+          EXIF.getData(file, function() {
+            clearTimeout(timeoutId);
+            const tags = EXIF.getAllTags(this);
+            resolve(tags && Object.keys(tags).length > 0 ? tags : null);
+          });
+        } catch (e) {
+          clearTimeout(timeoutId);
+          resolve(null);
+        }
+      });
+    }
+    
+    function extractGpsFromExif(exifData) {
+      if (!exifData) return null;
+      const lat = exifData.GPSLatitude, latRef = exifData.GPSLatitudeRef;
+      const lon = exifData.GPSLongitude, lonRef = exifData.GPSLongitudeRef;
+      if (!lat || !lon || !latRef || !lonRef) return null;
+      try {
+        const toDecimal = (dms, ref) => {
+          const d = typeof dms[0] === 'object' ? dms[0].numerator / dms[0].denominator : dms[0];
+          const m = typeof dms[1] === 'object' ? dms[1].numerator / dms[1].denominator : dms[1];
+          const s = typeof dms[2] === 'object' ? dms[2].numerator / dms[2].denominator : dms[2];
+          let dec = d + m/60 + s/3600;
+          if (ref === 'S' || ref === 'W') dec = -dec;
+          return Math.round(dec * 1000000) / 1000000;
+        };
+        return { latitude: toDecimal(lat, latRef), longitude: toDecimal(lon, lonRef) };
+      } catch (e) { return null; }
+    }
+    
+    function extractTimestampFromExif(exifData) {
+      if (!exifData) return null;
+      const dateStr = exifData.DateTimeOriginal || exifData.DateTimeDigitized || exifData.DateTime;
+      if (!dateStr) return null;
+      try {
+        const [datePart, timePart] = dateStr.split(' ');
+        if (!datePart || !timePart) return null;
+        const [y, mo, d] = datePart.split(':');
+        const [h, mi, s] = timePart.split(':');
+        const date = new Date(parseInt(y), parseInt(mo)-1, parseInt(d), parseInt(h), parseInt(mi), parseInt(s));
+        return isNaN(date.getTime()) ? null : firebase.firestore.Timestamp.fromDate(date);
+      } catch (e) { return null; }
+    }
+
+    onFirebaseReady( initTrailInspection);
+  </script>
+</body>
+</html>

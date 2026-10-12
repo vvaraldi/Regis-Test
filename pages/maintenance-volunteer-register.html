@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" data-no-brand content="Inscription des bénévoles - entretien des sentiers de vélo">
+  <meta name="theme-color" content="#059669">
+  <title data-no-brand>Mont Orford - Inscription bénévole</title>
+
+  <link rel="icon" data-brand href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪏</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    body { background: var(--theme-bg); color: var(--theme-text); min-height: 100vh; }
+
+    .vr-main { width: 100%; max-width: 480px; margin: 0 auto; padding: 2rem 1rem; box-sizing: border-box; }
+    .vr-card { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); padding: 1.5rem; }
+    .vr-title { font-size: 1.25rem; font-weight: 700; margin: 0 0 0.25rem; text-align: center; }
+    .vr-subtitle { font-size: 0.9rem; color: var(--theme-text-secondary); text-align: center; margin: 0 0 1.5rem; }
+
+    .vr-date { font-size: 0.85rem; color: var(--theme-text-secondary); text-align: center; margin-bottom: 1rem; }
+
+    .vr-agreement { background: var(--theme-surface-alt); border-radius: var(--radius-md); padding: 0.85rem; font-size: 0.85rem; line-height: 1.5; margin: 1rem 0; }
+    .vr-checkbox-row { display: flex; align-items: flex-start; gap: 0.5rem; margin: 0.75rem 0 1.25rem; }
+    .vr-checkbox-row input { width: 18px; height: 18px; margin-top: 0.15rem; flex: none; }
+    .vr-checkbox-row label { font-size: 0.875rem; }
+
+    .vr-success { text-align: center; padding: 1rem 0; }
+    .vr-success__icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+
+    .is-invalid { border-color: var(--color-danger) !important; box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2) !important; }
+
+    /* Message under the form (a limit was reached, no connection...) and the notice that replaces the form when sign-ups are closed */
+    .vr-notice { border-radius: var(--radius-md); padding: 0.85rem; font-size: 0.9rem; line-height: 1.5; margin-top: 1rem; border: 1px solid var(--theme-border); background: var(--theme-surface-alt); }
+    .vr-notice--error { border-color: var(--color-danger); }
+    .vr-closed { text-align: center; padding: 1rem 0; }
+    .vr-closed__icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body data-theme="light" data-module="maintenance">
+  <main class="vr-main" id="main-content">
+    <div class="vr-card">
+      <h1 class="vr-title">🪏 Inscription bénévole</h1>
+      <p class="vr-subtitle">Entretien des sentiers de vélo - Mont Orford</p>
+      <p class="vr-date" id="today-date"></p>
+
+      <form id="register-form">
+        <div class="form-group">
+          <label class="form-label" for="volunteer-nom">Nom <span class="form-required">*</span></label>
+          <input type="text" class="form-input" id="volunteer-nom" maxlength="100" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="volunteer-prenom">Prénom <span class="form-required">*</span></label>
+          <input type="text" class="form-input" id="volunteer-prenom" maxlength="100" required>
+        </div>
+
+        <div class="vr-agreement">
+          Je participe volontairement aux travaux d'entretien des sentiers de vélo du Mont Orford.
+          J'ai été informé(e) des consignes de sécurité et j'accepte les conditions de bénévolat
+          pour la saison en cours.
+        </div>
+        <div class="vr-checkbox-row">
+          <input type="checkbox" id="agreement-checkbox">
+          <label for="agreement-checkbox">J'ai lu et j'accepte les conditions ci-dessus <span class="form-required">*</span></label>
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="submit-btn" style="width:100%;" disabled>S'inscrire</button>
+        <div class="vr-notice vr-notice--error" id="error-message" role="alert" hidden></div>
+      </form>
+
+      <!-- Replaces the form while sign-ups are closed (a limit is reached, or an admin turned them off) -->
+      <div class="vr-closed" id="closed-message" hidden>
+        <div class="vr-closed__icon">⏳</div>
+        <p id="closed-text"></p>
+      </div>
+
+      <div class="vr-success" id="success-message" hidden>
+        <div class="vr-success__icon">✅</div>
+        <p>Merci, votre inscription a été enregistrée.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Scripts: config only (Firestore is loaded below, no login on this page) -->
+  <script src="../js/core/config.js"></script>
+  <script src="../js/services/volunteer-limits.js"></script>
+
+  <script>
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error(`Failed to load ${src}`));
+        document.head.appendChild(s);
+      });
+    }
+
+    // Public page: only the app + Firestore SDKs are needed (no auth, no storage)
+    async function startFirestore() {
+      await loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
+      await loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js');
+      if (!firebase.apps.length) firebase.initializeApp(APP_CONFIG.firebase);
+      return firebase.firestore();
+    }
+
+    let db = null;
+
+    function todayLabel() {
+      return new Date().toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+
+    function clearValidation() {
+      document.getElementById('volunteer-nom').classList.remove('is-invalid');
+      document.getElementById('volunteer-prenom').classList.remove('is-invalid');
+    }
+
+    function validate() {
+      clearValidation();
+      const nom = document.getElementById('volunteer-nom');
+      const prenom = document.getElementById('volunteer-prenom');
+      let isValid = true;
+
+      if (!nom.value.trim()) { isValid = false; nom.classList.add('is-invalid'); }
+      if (!prenom.value.trim()) { isValid = false; prenom.classList.add('is-invalid'); }
+      if (!document.getElementById('agreement-checkbox').checked) isValid = false;
+
+      return isValid;
+    }
+
+    function updateSubmitState() {
+      document.getElementById('submit-btn').disabled = !document.getElementById('agreement-checkbox').checked;
+    }
+
+    // Sign-ups are closed (limit reached or switched off): the form gives way to the reason
+    function showClosed(text) {
+      document.getElementById('register-form').hidden = true;
+      document.getElementById('closed-text').textContent = text;
+      document.getElementById('closed-message').hidden = false;
+    }
+
+    function showError(text) {
+      const box = document.getElementById('error-message');
+      box.textContent = text;
+      box.hidden = !text;
+    }
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      showError('');
+      if (!validate()) return;
+
+      const submitBtn = document.getElementById('submit-btn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Inscription...';
+
+      try {
+        if (!db) db = await startFirestore();
+
+        // The registration is counted against the limits (per minute / hour / day / total) in the same write
+        const result = await VolunteerLimits.register(db, firebase, {
+          nom: document.getElementById('volunteer-nom').value.trim(),
+          prenom: document.getElementById('volunteer-prenom').value.trim()
+        });
+
+        if (result.ok) {
+          document.getElementById('register-form').hidden = true;
+          document.getElementById('success-message').hidden = false;
+          return;
+        }
+        // Closed for a good while: say so instead of leaving a form that cannot work. Otherwise keep the form (try again).
+        if (['disabled', 'total', 'day'].includes(result.reason)) { showClosed(result.message); return; }
+        showError(result.message);
+      } catch (err) {
+        console.error('Error registering volunteer:', err);
+        showError(VolunteerLimits.message('unknown'));
+      }
+      submitBtn.textContent = "S'inscrire";
+      updateSubmitState();
+    }
+
+    async function init() {
+      document.getElementById('today-date').textContent = `Date : ${todayLabel()}`;
+      document.getElementById('agreement-checkbox').addEventListener('change', updateSubmitState);
+      document.getElementById('register-form').addEventListener('submit', handleSubmit);
+      // Warm up the Firestore connection so the first real submit is not slower than the rest
+      try {
+        db = await startFirestore();
+        const status = await VolunteerLimits.check(db);   // closed already? say so before the visitor types anything
+        if (status.blocked && ['disabled', 'total', 'day'].includes(status.blocked)) showClosed(status.message);
+      } catch (err) { console.error('Firestore init failed:', err); }
+    }
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Résumé Signalisation">
+  <meta name="theme-color" content="#f59e0b">
+  <title>Résumé Signalisation</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚧</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    /* Map section */
+    .map-section { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.5rem; }
+    .map-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--theme-border); }
+    .map-header__title { font-size: 1.125rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .map-header__count { font-size: 0.875rem; color: var(--theme-text-secondary); }
+    .map-switch { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .map-switch[hidden] { display: none; }
+
+    /* Map container */
+    .map-container { position: relative; width: 100%; overflow: auto; background: var(--theme-surface-alt); max-height: 700px; }
+    .map-wrapper { position: relative; display: inline-block; }
+    .map-image { display: block; width: auto; height: auto; max-width: none; }
+
+    /* Map markers */
+    .map-marker { position: absolute; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: white; cursor: pointer; transform: translate(-50%, -50%); transition: transform 0.2s ease; z-index: 10; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+    .map-marker:hover { transform: translate(-50%, -50%) scale(1.15); z-index: 20; }
+    .map-marker--open { background: #10b981; }
+    .map-marker--warning { background: #f59e0b; }
+    .map-marker--closed { background: #ef4444; }
+    .map-marker--unknown { background: #6b7280; }
+
+    /* Legend */
+    .map-legend { display: flex; gap: 1.5rem; padding: 0.75rem 1rem; background: var(--theme-surface-alt); border-top: 1px solid var(--theme-border); font-size: 0.75rem; flex-wrap: wrap; }
+    .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .legend-dot--open { background: #10b981; }
+    .legend-dot--warning { background: #f59e0b; }
+    .legend-dot--closed { background: #ef4444; }
+
+    /* Reports table */
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th, .data-table td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--theme-border); }
+    .data-table th { background: var(--theme-surface-alt); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+    .data-table tbody tr:hover { background: var(--theme-surface-alt); cursor: pointer; }
+    
+    .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.75rem; font-weight: 500; }
+    .badge--open { background: #d1fae5; color: #065f46; }
+    .badge--warning { background: #fef3c7; color: #92400e; }
+    .badge--closed { background: #fee2e2; color: #991b1b; }
+    
+    .empty-row td { text-align: center; padding: 2rem; color: var(--theme-text-secondary); }
+
+    /* Detail sections in modal */
+    .detail-section { margin-bottom: 1.5rem; }
+    .detail-section h4 { font-size: 0.875rem; font-weight: 600; color: var(--theme-accent); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+    .detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+    @media (max-width: 480px) { .detail-grid { grid-template-columns: 1fr; } }
+    .detail-item { font-size: 0.875rem; }
+    .detail-item strong { color: var(--theme-text-secondary); font-weight: 500; display: block; margin-bottom: 0.25rem; }
+    .detail-photo { max-width: 100%; max-height: 300px; border-radius: var(--radius-md); border: 1px solid var(--theme-border); cursor: pointer; }
+    .detail-description { background: var(--theme-surface-alt); padding: 0.75rem; border-radius: var(--radius-md); white-space: pre-wrap; font-size: 0.875rem; }
+    .photo-location { margin-top: 0.5rem; font-size: 0.8rem; }
+    .photo-location a { color: var(--theme-accent); margin-right: 1rem; }
+
+    /* Modal */
+    .detail-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+    .detail-modal.show { display: flex; }
+    .detail-modal__content { background: var(--theme-surface); border-radius: var(--radius-lg); max-width: 600px; width: 100%; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
+    .detail-modal__header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--theme-border); }
+    .detail-modal__title { font-size: 1.125rem; font-weight: 600; }
+    .detail-modal__close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--theme-text-secondary); }
+    .detail-modal__body { padding: 1rem; overflow-y: auto; flex: 1; }
+    .detail-modal__footer { display: flex; gap: 1rem; justify-content: flex-end; padding: 1rem; border-top: 1px solid var(--theme-border); }
+  </style>
+</head>
+<body data-theme="light" data-module="signalisation" data-nav="signalisation" data-page="signalisation-resume">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/kind.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <main id="main-content" class="main" style="display:none;">
+    <div class="page-header"><div class="page-header__content"><h1 class="page-title">Résumé des signalisations</h1><p class="page-subtitle">Vue d'ensemble des rapports actifs</p></div></div>
+
+    <!-- Filters: apply to both the map and the table below -->
+    <section class="content-section" style="margin-bottom:1rem;">
+      <div style="display:flex; gap:1rem; flex-wrap:wrap; align-items:flex-end;">
+        <!-- Both (default), permanent only or temporary only ("due à une condition temporaire") -->
+        <div class="form-group" style="margin-bottom:0; min-width:180px;">
+          <label class="form-label" for="filter-duration">Durée</label>
+          <select class="form-select" id="filter-duration" title="Une signalisation temporaire est due à une condition temporaire">
+            <option value="both" selected>Permanentes et temporaires</option>
+            <option value="permanent">Permanentes</option>
+            <option value="temporary">Temporaires</option>
+          </select>
+        </div>
+        <!-- Period (same choices as Inspections > Gestion), judged on the report's last change -->
+        <div class="form-group" style="margin-bottom:0; min-width:180px;">
+          <label class="form-label" for="date-filter">Période</label>
+          <select class="form-select" id="date-filter" title="Selon la dernière modification du rapport">
+            <option value="all" selected>Toutes les saisons</option>
+            <option value="season" id="season-option">Saison en cours</option><!-- label filled with the dates -->
+            <option value="today">Aujourd'hui</option>
+            <option value="week">7 derniers jours</option>
+            <option value="month">30 derniers jours</option>
+            <option value="custom">Dates personnalisées</option>
+          </select>
+          <div id="custom-date-range" style="display:none; gap:0.5rem; align-items:center; margin-top:0.5rem;">
+            <input type="date" class="form-input" id="start-date" aria-label="Du">
+            <span>à</span>
+            <input type="date" class="form-input" id="end-date" aria-label="Au">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Map Section -->
+    <section class="map-section">
+      <div class="map-header">
+        <h2 class="map-header__title">🗺️ Carte des signalisations</h2>
+        <div class="map-switch" id="map-switch" hidden></div>
+        <span class="map-header__count" id="map-count">0 rapport(s) avec localisation</span>
+      </div>
+      <div class="map-container" id="map-container">
+        <div class="map-wrapper" id="map-wrapper">
+          <img alt="Carte" class="map-image" id="map-image"><!-- src set for the current activity -->
+        </div>
+      </div>
+      <div class="map-legend">
+        <div class="legend-item"><span class="legend-dot legend-dot--open"></span><span>Ouverte</span></div>
+        <div class="legend-item"><span class="legend-dot legend-dot--warning"></span><span>Attention requise</span></div>
+        <div class="legend-item"><span class="legend-dot legend-dot--closed"></span><span>Fermée</span></div>
+      </div>
+    </section>
+
+    <!-- Reports List -->
+    <section class="content-section">
+      <div class="section-card">
+        <div class="section-card__header">
+          <h2 class="section-card__title">📋 Rapports actifs</h2>
+          <span id="reports-count" style="font-size:0.875rem;color:var(--theme-text-secondary);">0 rapport(s)</span>
+        </div>
+        <div class="section-card__body" style="padding:0;">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Secteur</th>
+                  <th>Piste</th>
+                  <th>Statut</th>
+                  <th>Inspecteur</th>
+                <th title="Numéro du marqueur sur la carte">Géolocalisation</th>
+                </tr>
+              </thead>
+              <tbody id="reports-tbody">
+                <tr class="empty-row"><td colspan="6">Chargement...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Detail Modal -->
+  <div class="detail-modal" id="detail-modal">
+    <div class="detail-modal__content">
+      <div class="detail-modal__header">
+        <h3 class="detail-modal__title">Détails du rapport</h3>
+        <button class="detail-modal__close" onclick="closeModal()">×</button>
+      </div>
+      <div class="detail-modal__body" id="modal-body"></div>
+      <div class="detail-modal__footer">
+        <button class="btn btn-secondary" onclick="closeModal()">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/period-filter.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/photo-service.js"></script>
+  <script src="../js/services/map-service.js"></script>
+  <script src="../js/services/photo-map-modal.js"></script>
+  <script src="../js/services/sector-service.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/weather-service.js"></script>
+  <script src="../js/services/weather-context.js"></script>
+
+  <script>
+    const STATUS_LABELS = {
+      'ouverte': '🟢 Ouverte',
+      'attention-requise': '🟡 Attention requise',
+      'fermee': '🔴 Fermée'
+    };
+
+    const STATUS_BADGE_CLASS = {
+      'ouverte': 'badge--open',
+      'attention-requise': 'badge--warning',
+      'fermee': 'badge--closed'
+    };
+
+    const STATUS_MARKER_CLASS = {
+      'ouverte': 'map-marker--open',
+      'attention-requise': 'map-marker--warning',
+      'fermee': 'map-marker--closed'
+    };
+
+    let reportsData = [];
+    let currentReportId = null;
+    let sectors = []; // this activity's sectors, with their trails (SectorService.load)
+    let allTrails = []; // every trail record (even hidden): tells which view (Montée / Descente) a report belongs to
+    // Filters (Durée and Période): apply to both the map markers and the table.
+    let filterDuration = 'both';   // 'both' (default), 'permanent' or 'temporary'
+    let periodFilter = null;       // the Période controls (js/core/period-filter.js)
+
+    // If the sectors cannot be loaded the page still shows the name stored on each report
+    const sectorNameOf = r => SectorService.nameOf(sectors, r.sector, r.sectorDisplayName);
+    // A trail identifies a report by id when it has one, else by name (old reports)
+
+    // Which map a record's photos should default to: its own trail's kind, else its sector's kind
+    // when every trail of that sector shares one (e.g. a sector used only for backcountry/
+    // randonnée alpine reports, with no specific trail selected) - else null (network default).
+    // See js/services/photo-map-modal.js for how `preferred` is used.
+    function geoMapFor(record) {
+      const sector = SectorService.find(sectors, record.sector);
+      const trail = sector && sector.items.find(i => i.id === record.trailId);
+      if (trail) return TrailService.geoMapIdOf(trail.kind);
+      if (sector && sector.items.length) {
+        const kinds = new Set(sector.items.map(i => i.kind));
+        if (kinds.size === 1) return TrailService.geoMapIdOf([...kinds][0]);
+      }
+      return null;
+    }
+
+    // A report without the field is permanent (all reports made before the choice existed)
+    const isTemporary = r => r.duration === 'temporary';
+    const matchesDuration = r => filterDuration === 'both' || (filterDuration === 'temporary') === isTemporary(r);
+    const temporaryBadge = r => (isTemporary(r) ? ' <span class="badge badge-warning" title="Due à une condition temporaire">Temporaire</span>' : '');
+
+    function visibleReports() {
+      const period = periodFilter ? periodFilter.state() : { value: 'all' };
+      let list = reportsData.filter(matchesDuration).filter(r => PeriodFilter.matches(PeriodFilter.lastChange(r), period));
+      return list;
+    }
+
+    // Montée / Descente (header switch, like Inspections): the dashboard shows the reports of the view
+    // shown, on that view's own map - so no map switch is needed any more. Descente covers downhill
+    // runs and lifts (same map). A report whose trail cannot be told (old report) shows in both views.
+    const inView = list => SectorService.inKinds(sectors, allTrails, list, TrailService.viewKinds());
+    function viewMaps() {
+      const offered = MapService.reportMaps().all;
+      const kinds = TrailService.viewKinds();
+      if (!kinds) return offered;
+      const wanted = [...new Set(kinds.map(k => TrailService.geoMapIdOf(k)))].filter(id => offered.includes(id));
+      return wanted.length ? wanted : offered;
+    }
+
+    // The map shown (ski: the downhill or the touring map). GPS -> pixel on that map;
+    // null when the map has no calibration.
+    let resumeMap = null;
+    const gpsToPixel = (lat, lon) => MapService.gpsToPixel(lat, lon, resumeMap);
+
+    // escapeHtml is now provided by utils.js
+
+    function initSignalisationResume() {
+      checkAuthStatus({
+        requireAuth: true,
+        requiredPermission: 'allowSignalisation',
+        permissionDefault: false,
+        onAuthenticated: async (userData) => {
+          // Show admin link if admin
+          if (userData.role === 'admin' || userData.role === 'system_admin') {
+            document.querySelectorAll('.nav__link--admin, .mobile-nav__link--admin').forEach(el => el.style.display = '');
+          }
+          try {
+            sectors = await SectorService.load();
+            allTrails = await SectorService.loadTrails();
+          } catch (e) {
+            console.error('Error loading sectors:', e);
+          }
+          await MapService.load(); // the GPS calibrations (markers below need them)
+          resumeMap = viewMaps()[0] || MapService.reportMaps().default;
+          buildMapSwitch();
+          MapService.showImage(document.getElementById('map-image'), resumeMap);
+
+          document.getElementById('filter-duration').addEventListener('change', (e) => {
+            filterDuration = e.target.value;
+            renderMapMarkers();
+            renderReportsTable();
+          });
+          periodFilter = PeriodFilter.attach({
+            select: document.getElementById('date-filter'), custom: document.getElementById('custom-date-range'),
+            start: document.getElementById('start-date'), end: document.getElementById('end-date'),
+            seasonOption: document.getElementById('season-option'),
+            onChange: () => { renderMapMarkers(); renderReportsTable(); }
+          });
+
+          loadReports();
+        }
+      });
+    }
+
+    async function loadReports() {
+      try {
+        // Active reports = not archived (read in date order, the archived ones left out here: no index needed)
+        const snap = await db.collection('signalisations').orderBy('createdAt', 'desc').get();
+        reportsData = [];
+        snap.forEach(doc => {
+          const data = { id: doc.id, ...doc.data() };
+          if (data.archived !== true && Network.matches(data)) reportsData.push(data); // this activity's reports only
+        });
+        reportsData = inView(reportsData);
+
+        renderMapMarkers();
+        renderReportsTable();
+      } catch (e) {
+        console.error('Error loading reports:', e);
+        document.getElementById('reports-tbody').innerHTML = '<tr class="empty-row"><td colspan="6" style="color:#ef4444;">Erreur de chargement</td></tr>';
+      }
+    }
+    // One button per map of the activity (only when there are several)
+    function buildMapSwitch() {
+      const all = viewMaps();
+      const box = document.getElementById('map-switch');
+      box.replaceChildren();
+      box.hidden = all.length < 2;
+      all.forEach(id => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-sm ' + (id === resumeMap ? 'btn-primary' : 'btn-secondary');
+        button.textContent = `${APP_CONFIG.maps[id].icon} ${APP_CONFIG.maps[id].name}`;
+        button.title = MapService.canLocate(id) ? '' : 'Carte non calibrée (Administration > Cartes) : les positions ne peuvent pas y être placées';
+        button.addEventListener('click', () => {
+          resumeMap = id;
+          buildMapSwitch();
+          MapService.showImage(document.getElementById('map-image'), resumeMap);
+          renderMapMarkers();
+          renderReportsTable();   // the Géolocalisation numbers follow the map shown
+        });
+        box.appendChild(button);
+      });
+    }
+
+    // The reports shown on the map (they have a position this activity's map can place), in the order of the list:
+    // the marker number is the rank here, and the Géolocalisation column of the table shows the same number
+    function locatedReports() {
+      return MapService.canLocate(resumeMap)
+        ? visibleReports().filter(r => r.coordinates && r.coordinates.latitude && r.coordinates.longitude &&
+            gpsToPixel(r.coordinates.latitude, r.coordinates.longitude))
+        : [];
+    }
+
+    function renderMapMarkers() {
+      const wrapper = document.getElementById('map-wrapper');
+      // Remove existing markers
+      wrapper.querySelectorAll('.map-marker').forEach(m => m.remove());
+      
+      const reportsWithGps = locatedReports();
+      document.getElementById('map-count').textContent = MapService.canLocate(resumeMap)
+        ? `${reportsWithGps.length} rapport(s) avec localisation`
+        : 'Carte non calibrée : positions non affichées';
+      
+      // Add markers
+      reportsWithGps.forEach((report, index) => {
+        const pixel = gpsToPixel(report.coordinates.latitude, report.coordinates.longitude);
+        
+        const marker = document.createElement('div');
+        marker.className = 'map-marker';
+        marker.classList.add(STATUS_MARKER_CLASS[report.status] || 'map-marker--unknown');
+        marker.style.left = pixel.x + 'px';
+        marker.style.top = pixel.y + 'px';
+        marker.textContent = index + 1;
+        marker.title = `${report.trail || 'N/A'} - ${STATUS_LABELS[report.status] || 'Inconnu'}`;
+        marker.onclick = () => openDetailModal(report.id);
+        
+        wrapper.appendChild(marker);
+      });
+    }
+
+    function renderReportsTable() {
+      const tbody = document.getElementById('reports-tbody');
+      const filtered = visibleReports();
+      const markerNumber = new Map(locatedReports().map((r, index) => [r.id, index + 1]));
+      document.getElementById('reports-count').textContent = `${filtered.length} rapport(s)`;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun rapport actif</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(r => {
+        const date = r.createdAt?.toDate?.();
+        const dateStr = date ? date.toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+        const sectorName = sectorNameOf(r);
+        
+        let statusHtml = '<span style="color:var(--theme-text-secondary);">-</span>';
+        if (r.status) {
+          const badgeClass = STATUS_BADGE_CLASS[r.status] || '';
+          statusHtml = `<span class="badge ${badgeClass}">${STATUS_LABELS[r.status] || r.status}</span>`;
+        }
+        
+        return `<tr data-id="${r.id}"><td>${dateStr}</td><td>${escapeHtml(sectorName)}</td><td>${escapeHtml(r.trail || '-')}</td><td>${statusHtml}${temporaryBadge(r)}</td><td>${escapeHtml(r.inspectorName || '-')}</td><td>${markerNumber.get(r.id) || ''}</td></tr>`;
+      }).join('');
+      
+      // Bind row clicks
+      tbody.querySelectorAll('tr[data-id]').forEach(row => {
+        row.addEventListener('click', () => openDetailModal(row.dataset.id));
+      });
+    }
+
+    function openDetailModal(id) {
+      currentReportId = id;
+      const r = reportsData.find(rep => rep.id === id);
+      if (!r) return;
+      
+      const date = r.createdAt?.toDate?.();
+      const dateStr = date ? date.toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+      const modifiedStr = r.modifiedAt?.toDate?.()?.toLocaleDateString('fr-CA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) || '';
+      const sectorName = sectorNameOf(r);
+
+      let statusHtml = '<span style="color:var(--theme-text-secondary);">Non spécifié</span>';
+      if (r.status) {
+        const badgeClass = STATUS_BADGE_CLASS[r.status] || '';
+        statusHtml = `<span class="badge ${badgeClass}">${STATUS_LABELS[r.status] || r.status}</span>`;
+      }
+      
+      // Photos with GPS location
+      let photoHtml = '<p style="color:var(--theme-text-secondary);">Aucune photo</p>';
+      const photos = PhotoService.photosFrom(r);
+      
+      if (photos.length > 0) {
+        const preferredMap = geoMapFor(r);
+        photoHtml = '<div class="photo-gallery" style="display:flex;flex-wrap:wrap;gap:0.5rem;">';
+        photos.forEach((photo, idx) => {
+          const locationHtml = PhotoMapModal.locationLinks(photo, { collection: 'signalisations', docId: r.id, record: r, preferredMap, onChanged: async () => { await loadReports(); openDetailModal(r.id); } });
+          photoHtml += `<div class="photo-gallery-item" style="position:relative;">
+            <img src="${photo.url}" class="detail-photo" alt="Photo ${idx + 1}" onclick="window.open('${photo.url}', '_blank')" style="max-width:150px;max-height:150px;">
+            ${locationHtml}
+          </div>`;
+        });
+        photoHtml += '</div>';
+      }
+      
+      document.getElementById('modal-body').innerHTML = `
+        <div class="detail-section">
+          <h4>📍 Localisation</h4>
+          <div class="detail-grid">
+            <div class="detail-item"><strong>Secteur</strong>${escapeHtml(sectorName)}</div>
+            <div class="detail-item"><strong>Piste</strong>${escapeHtml(r.trail || '-')}</div>
+          </div>
+        </div>
+        <div class="detail-section">
+          <h4>📊 Statut de la signalisation</h4>
+          ${statusHtml}${temporaryBadge(r)}
+          <p style="font-size:0.8rem;color:var(--theme-text-secondary);margin-top:0.35rem;">Durée : ${isTemporary(r) ? "temporaire (due à une condition temporaire)" : "permanente"}</p>
+        </div>
+        <div class="detail-section">
+          <h4>📷 Photos (${photos.length})</h4>
+          ${photoHtml}
+        </div>
+        ${r.comments ? `<div class="detail-section"><h4>💬 Commentaires</h4><div class="detail-description">${escapeHtml(r.comments)}</div></div>` : ''}
+        <div class="detail-section">
+          <h4>👤 Informations</h4>
+          <div class="detail-grid">
+            <div class="detail-item"><strong>Inspecteur</strong>${escapeHtml(r.inspectorName || '-')}</div>
+            <div class="detail-item"><strong>Créé le</strong>${dateStr}</div>
+          </div>
+          ${modifiedStr ? `<p style="font-size:0.75rem;color:var(--theme-text-secondary);margin-top:0.5rem;">Modifié le: ${modifiedStr}</p>` : ''}
+        </div>
+      `;
+      
+      WeatherContext.attach(document.getElementById('modal-body'), date);   // the weather nearest in time to the report (if the admin switch is on)
+
+      document.getElementById('detail-modal').classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('detail-modal').classList.remove('show');
+      document.body.style.overflow = '';
+      currentReportId = null;
+    }
+
+    // PhotoMapModal (the location pop-up, with its map switch) lives in js/services/photo-map-modal.js
+
+    onFirebaseReady( initSignalisationResume);
+  </script>
+</body>
+</html>

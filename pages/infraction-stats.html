@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Statistiques et gestion des données des infractions">
+  <meta name="theme-color" content="#dc2626">
+  <title>Administration des infractions</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚨</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/pages/data-admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body data-theme="light" data-module="infraction" data-nav="infraction" data-page="infraction-stats">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <main id="main-content" class="main" style="display: none;">
+    <div class="page-header"><div class="page-header__content"><h1 class="page-title">Administration des infractions</h1><p class="page-subtitle">Statistiques et gestion des données</p></div></div>
+    <div id="admin-root"></div>
+  </main>
+
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/photo-service.js"></script>
+  <script src="../js/services/storage-cleanup.js"></script>
+  <script src="../js/admin/data-admin.js"></script>
+
+  <script>
+    // Infractions of the current activity, by season (createdAt: every report has it). The numbers
+    // below are only a description; the page itself (tabs, season, charts, clean-up) is data-admin.js.
+    const stamp = date => firebase.firestore.Timestamp.fromDate(date);
+    const toDate = value => (value && value.toDate ? value.toDate() : (value ? new Date(value) : null));
+    const tally = (recs, keyOf) => {
+      const counts = new Map();
+      recs.forEach(r => { const key = keyOf(r); if (key) counts.set(key, (counts.get(key) || 0) + 1); });
+      return [...counts];
+    };
+    const percent = (n, total) => (total ? `${Math.round(n / total * 100)}% des infractions` : '-');
+
+    onFirebaseReady(() => DataAdmin.init({
+      deniedUrl: 'infraction-report.html',
+
+      async fetch({ start, end }) {
+        const { faults, practices } = Network.config().infractions;
+        const snap = await db.collection('infractions').where('createdAt', '>=', stamp(start)).where('createdAt', '<=', stamp(end)).get();
+        return snap.docs.filter(doc => Network.matches(doc.data())).map(doc => {
+          const d = doc.data();
+          return {
+            id: doc.id, ...d,
+            date: toDate(d.createdAt),
+            patrol: d.patrolName || 'Inconnu',
+            patrolKey: d.patrolId || d.patrolName || '?',
+            photoCount: PhotoService.photosFrom(d).length,
+            faultLabel: faults[d.fault] || d.faultDisplayName || d.fault || 'Non précisé',
+            practiceLabel: practices[d.practice] || (d.practice ? d.practice : 'Non précisé')
+          };
+        });
+      },
+
+      cards: [
+        { label: 'Total infractions', value: r => r.length, sub: () => 'Saison affichée', highlight: true },
+        { label: 'Archivées', value: r => r.filter(i => i.archived).length, sub: r => percent(r.filter(i => i.archived).length, r.length) },
+        { label: 'Hors-piste', value: r => r.filter(i => i.offPiste).length, sub: r => percent(r.filter(i => i.offPiste).length, r.length) },
+        { label: 'Photos téléversées', value: r => r.reduce((n, i) => n + i.photoCount, 0) },
+        { label: 'Patrouilleurs actifs', value: r => new Set(r.map(i => i.patrolKey)).size },
+        { label: 'Moy. infractions/patrouilleur', value: r => { const n = new Set(r.map(i => i.patrolKey)).size; return n ? (r.length / n).toFixed(1) : '-'; } }
+      ],
+
+      charts: [
+        { id: 'weekly', kind: 'weekly', title: '📈 Infractions par semaine', label: 'Infractions', half: true },
+        { id: 'faults', kind: 'bar', title: '⚠️ Types d\'infraction', label: 'Infractions', horizontal: true, half: true, color: '#ef4444', data: r => tally(r, i => i.faultLabel) },
+        { id: 'practices', kind: 'doughnut', title: '🎿 Pratiques', half: true, data: r => tally(r, i => i.practiceLabel) },
+        { id: 'trails', kind: 'bar', title: '🏔️ Pistes les plus touchées', label: 'Infractions', horizontal: true, half: true, limit: 10, data: r => tally(r, i => i.trail || 'Sans piste précisée') }
+      ],
+
+      rankings: [
+        {
+          title: '🏆 Classement des patrouilleurs (par nombre d\'infractions)',
+          columns: ['Patrouilleur', 'Infractions', 'Photos', 'Hors-piste'],
+          rows: recs => {
+            const stats = {};
+            recs.forEach(i => {
+              const s = stats[i.patrolKey] || (stats[i.patrolKey] = { name: i.patrol, n: 0, photos: 0, off: 0 });
+              s.n++; s.photos += i.photoCount; if (i.offPiste) s.off++;
+            });
+            return Object.values(stats).sort((a, b) => b.n - a.n).map(s => [s.name, s.n, s.photos, s.off]);
+          }
+        }
+      ],
+
+      management: {
+        async overview() {
+          const snap = await db.collection('infractions').get();
+          let photos = 0;
+          snap.forEach(doc => { photos += PhotoService.photosFrom(doc.data()).length; });
+          return [{ label: 'Infractions', value: snap.size }, { label: 'Photos', value: photos }];
+        },
+        deleteOld: {
+          noun: 'les infractions',
+          backupName: 'backup-infractions',
+          async find(before) {
+            const snap = await db.collection('infractions').where('createdAt', '<=', stamp(before)).get();
+            return snap.docs.filter(doc => Network.matches(doc.data())).map(doc => ({ collection: 'infractions', id: doc.id, data: doc.data() }));
+          },
+          async remove(item) {
+            await PhotoService.deletePhotosFrom(item.data);
+            if (item.data.offenderQRImageUrl) await PhotoService.deletePhotos([{ url: item.data.offenderQRImageUrl }]);
+            await db.collection(item.collection).doc(item.id).delete();
+          }
+        },
+        orphanApp: 'infraction'
+      }
+    }));
+  </script>
+</body>
+</html>

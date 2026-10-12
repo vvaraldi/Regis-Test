@@ -1,0 +1,303 @@
+/* ========================================
+   CARDS.CSS - Card Components
+   ========================================
+   Card containers with various styles
+   ======================================== */
+
+/* ===== BASE CARD ===== */
+.card {
+  background-color: var(--theme-surface);
+  border: var(--border-width) solid var(--theme-border);
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--theme-shadow-sm);
+  overflow: hidden;
+  transition: var(--transition-all);
+}
+
+/* ===== CARD SECTIONS ===== */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: var(--border-width) solid var(--theme-border);
+  background-color: var(--theme-surface-alt);
+}
+
+.card-header--accent {
+  background: var(--theme-gradient);
+  color: var(--color-white);
+  border-bottom: none;
+}
+
+.card-header--accent .card-title {
+  color: var(--color-white);
+}
+
+.card-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--theme-text);
+  margin: 0;
+}
+
+.card-subtitle {
+  font-size: var(--text-sm);
+  color: var(--theme-text-light);
+  margin-top: var(--space-1);
+}
+
+.card-body {
+  padding: var(--space-5);
+}
+
+.card-body--compact {
+  padding: var(--space-4);
+}
+
+.card-body--spacious {
+  padding: var(--space-6);
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: var(--border-width) solid var(--theme-border);
+  background-color: var(--theme-surface-alt);
+}
+
+.card-footer--left {
+  justify-content: flex-start;
+}
+
+.card-footer--between {
+  justify-content: space-between;
+}
+
+/* ===== CARD VARIANTS ===== */
+
+/* Elevated card */
+.card--elevated {
+  box-shadow: var(--theme-shadow-md);
+  border-color: transparent;
+}
+
+.card--elevated:hover {
+  box-shadow: var(--theme-shadow-lg);
+}
+
+/* Flat card (no shadow) */
+.card--flat {
+  box-shadow: none;
+}
+
+/* Outlined card */
+.card--outlined {
+  border-width: 2px;
+  box-shadow: none;
+}
+
+/* Interactive/Clickable card */
+.card--interactive {
+  cursor: pointer;
+}
+
+.card--interactive:hover {
+  border-color: var(--theme-accent);
+  box-shadow: var(--theme-shadow-md);
+  transform: translateY(-2px);
+}
+
+.card--interactive:active {
+  transform: translateY(0);
+}
+
+/* Card with accent border */
+.card--accent-top {
+  border-top: 3px solid var(--theme-accent);
+}
+
+.card--accent-left {
+  border-left: 3px solid var(--theme-accent);
+}
+
+/* Status cards */
+.card--success {
+  border-color: var(--color-success);
+}
+
+.card--success .card-header {
+  background-color: var(--color-success-light);
+}
+
+.card--warning {
+  border-color: var(--color-warning);
+}
+
+.card--warning .card-header {
+  background-color: var(--color-warning-light);
+}
+
+.card--danger {
+  border-color: var(--color-danger);
+}
+
+.card--danger .card-header {
+  background-color: var(--color-danger-light);
+}
+
+.card--info {
+  border-color: var(--color-info);
+}
+
+.card--info .card-header {
+  background-color: var(--color-info-light);
+}
+
+/* ===== APP CARD (for Portal) ===== */
+.app-card {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--theme-surface);
+  border: var(--border-width) solid var(--theme-border);
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--theme-shadow-sm);
+  overflow: hidden;
+  transition: var(--transition-all);
+  text-decoration: none;
+  color: inherit;
+}
+
+.app-card:hover {
+  border-color: var(--theme-accent);
+  box-shadow: var(--theme-shadow-md);
+  transform: translateY(-4px);
+}
+
+.app-card--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.app-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: var(--theme-gradient);
+  font-size: 3rem;
+}
+
+.app-card__content {
+  flex: 1;
+  padding: var(--space-4);
+}
+
+.app-card__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--theme-text);
+  margin-bottom: var(--space-2);
+}
+
+.app-card__description {
+  font-size: var(--text-sm);
+  color: var(--theme-text-light);
+  line-height: var(--leading-relaxed);
+}
+
+.app-card__action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--theme-surface-alt);
+  border-top: var(--border-width) solid var(--theme-border);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--theme-accent);
+}
+
+.app-card:hover .app-card__action {
+  background-color: var(--theme-accent);
+  color: var(--color-white);
+}
+
+/* ===== STAT CARD ===== */
+.stat-card {
+  padding: var(--space-5);
+  background-color: var(--theme-surface);
+  border: var(--border-width) solid var(--theme-border);
+  border-radius: var(--border-radius-xl);
+}
+
+.stat-card__label {
+  font-size: var(--text-sm);
+  color: var(--theme-text-light);
+  margin-bottom: var(--space-1);
+}
+
+.stat-card__value {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: var(--theme-text);
+}
+
+.stat-card__change {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  margin-top: var(--space-2);
+}
+
+.stat-card__change--positive {
+  color: var(--color-success);
+}
+
+.stat-card__change--negative {
+  color: var(--color-danger);
+}
+
+/* ===== CARD GRID ===== */
+.card-grid {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.card-grid--compact {
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 640px) {
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+  
+  .card-footer {
+    flex-direction: column;
+  }
+  
+  .card-footer .btn {
+    width: 100%;
+  }
+  
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .app-card__icon {
+    padding: var(--space-4);
+    font-size: 2.5rem;
+  }
+}

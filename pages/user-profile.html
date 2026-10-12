@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Mon profil">
+  <meta name="theme-color" content="#1b4b72">
+  <title>Mon profil</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" data-brand href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔️</text></svg>">
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body data-theme="light" data-module="portal" data-nav="profile" data-page="user-profile">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <!-- Loading Screen -->
+  <div id="loading" class="page-loading">
+    <div class="loading-spinner"></div>
+    <p class="loading-text">Chargement du profil...</p>
+  </div>
+
+  <!-- Main Content -->
+  <main id="main-content" class="main" style="display: none;">
+    <div class="profile-container">
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-header__content">
+          <h1 class="page-title">
+            <span class="page-title__icon">👤</span>
+            Mon profil
+          </h1>
+          <p class="page-subtitle">Gérez vos informations personnelles et préférences</p>
+        </div>
+      </div>
+
+      <!-- Profile Header -->
+      <div class="profile-header">
+        <div class="profile-avatar" data-user-initials>--</div>
+        <div class="profile-info">
+          <h2 class="profile-name" data-user-name>-</h2>
+          <div class="profile-role">
+            <span data-user-role class="badge">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Personal Information Section -->
+      <div class="profile-section">
+        <div class="profile-section__header">
+          <span class="profile-section__icon">📋</span>
+          <h3 class="profile-section__title">Informations personnelles</h3>
+        </div>
+        <div class="profile-section__body">
+          <div class="profile-field">
+            <span class="profile-field__label">Nom</span>
+            <span class="profile-field__value" id="profile-name">-</span>
+          </div>
+          <div class="profile-field">
+            <span class="profile-field__label">Courriel</span>
+            <span class="profile-field__value" id="profile-email">-</span>
+          </div>
+          <div class="profile-field">
+            <span class="profile-field__label">Téléphone</span>
+            <div class="profile-field__value profile-field__value--editable">
+              <input type="tel" class="form-input" id="profile-phone" placeholder="514-555-1234">
+              <button class="btn btn-secondary btn--sm" id="save-phone-btn" onclick="savePhone()">
+                Enregistrer
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security Section -->
+      <div class="profile-section">
+        <div class="profile-section__header">
+          <span class="profile-section__icon">🔐</span>
+          <h3 class="profile-section__title">Sécurité</h3>
+        </div>
+        <div class="profile-section__body">
+          <div class="profile-field">
+            <span class="profile-field__label">Mot de passe</span>
+            <div class="profile-field__value">
+              <button class="btn btn-outline btn--sm" id="change-password-toggle" onclick="togglePasswordChange()">
+                Changer le mot de passe
+              </button>
+            </div>
+          </div>
+
+          <!-- Password Change Form (hidden by default) -->
+          <div class="password-change" id="password-change-form">
+            <form class="password-change__form" onsubmit="handlePasswordChange(event)">
+              <div class="form-group">
+                <label class="form-label" for="current-password">Mot de passe actuel</label>
+                <input type="password" class="form-input" id="current-password" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="new-password">Nouveau mot de passe</label>
+                <input type="password" class="form-input" id="new-password" required minlength="6">
+                <span class="form-hint">Minimum 6 caractères</span>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="confirm-password">Confirmer le mot de passe</label>
+                <input type="password" class="form-input" id="confirm-password" required>
+              </div>
+              <div class="password-change__actions">
+                <button type="button" class="btn btn-secondary" onclick="togglePasswordChange()">
+                  Annuler
+                </button>
+                <button type="submit" class="btn btn-primary" id="change-password-btn">
+                  Changer le mot de passe
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Display Preferences Section -->
+      <div class="profile-section">
+        <div class="profile-section__header">
+          <span class="profile-section__icon">🎨</span>
+          <h3 class="profile-section__title">Préférences d'affichage</h3>
+        </div>
+        <div class="profile-section__body">
+          <div class="profile-field">
+            <span class="profile-field__label">Thème</span>
+            <div class="profile-field__value">
+              <div class="theme-selector">
+                <button class="theme-option" data-theme="light" onclick="selectTheme('light')">
+                  <span class="theme-option__icon">☀️</span>
+                  <span class="theme-option__label">Clair</span>
+                  <span class="theme-option__check">✓</span>
+                </button>
+                <button class="theme-option" data-theme="dark" onclick="selectTheme('dark')">
+                  <span class="theme-option__icon">🌙</span>
+                  <span class="theme-option__label">Sombre</span>
+                  <span class="theme-option__check">✓</span>
+                </button>
+              </div>
+              <p class="form-hint mt-2">Le thème sera appliqué automatiquement à chaque connexion.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Back to Portal -->
+      <div class="profile-actions">
+        <a href="../index.html" class="btn btn-secondary">
+          <span>🏠</span>
+          <span>Retour au portail</span>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer footer--simple">
+    <div class="footer__content">
+      <p class="footer__copyright">© 2026 Regis for Mont Orford</p>
+    </div>
+  </footer>
+
+  <!-- Status Messages Container -->
+  <div id="status-messages"></div>
+
+  <!-- Firebase SDK -->
+
+  <!-- Core JS -->
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+
+  <!-- Page JS -->
+  <script>
+    let userData = null;
+
+    /**
+     * Populate profile fields with user data
+     */
+    function populateProfile(data) {
+      userData = data;
+
+      // Name
+      document.getElementById('profile-name').textContent = data.name || '-';
+      
+      // Email
+      document.getElementById('profile-email').textContent = data.email || '-';
+      
+      // Phone
+      const phoneInput = document.getElementById('profile-phone');
+      if (phoneInput) {
+        phoneInput.value = data.phone || '';
+      }
+
+      // Update theme selector
+      updateThemeSelector();
+    }
+
+    /**
+     * Save phone number
+     */
+    async function savePhone() {
+      const phoneInput = document.getElementById('profile-phone');
+      const saveBtn = document.getElementById('save-phone-btn');
+      const phone = phoneInput.value.trim();
+
+      setButtonLoading(saveBtn, true, 'Sauvegarde...');
+
+      try {
+        await db.collection('inspectors').doc(currentUser.uid).update({
+          phone: phone
+        });
+
+        showMessage('Téléphone mis à jour avec succès.', 'success');
+      } catch (error) {
+        console.error('Error saving phone:', error);
+        showMessage('Erreur lors de la sauvegarde.', 'error');
+      } finally {
+        setButtonLoading(saveBtn, false);
+      }
+    }
+
+    /**
+     * Toggle password change form
+     */
+    function togglePasswordChange() {
+      const form = document.getElementById('password-change-form');
+      const toggleBtn = document.getElementById('change-password-toggle');
+
+      if (form.classList.contains('is-active')) {
+        form.classList.remove('is-active');
+        toggleBtn.style.display = '';
+        // Clear form
+        document.getElementById('current-password').value = '';
+        document.getElementById('new-password').value = '';
+        document.getElementById('confirm-password').value = '';
+      } else {
+        form.classList.add('is-active');
+        toggleBtn.style.display = 'none';
+        document.getElementById('current-password').focus();
+      }
+    }
+
+    /**
+     * Handle password change
+     */
+    async function handlePasswordChange(e) {
+      e.preventDefault();
+
+      const currentPassword = document.getElementById('current-password').value;
+      const newPassword = document.getElementById('new-password').value;
+      const confirmPassword = document.getElementById('confirm-password').value;
+      const btn = document.getElementById('change-password-btn');
+
+      // Validate
+      if (newPassword !== confirmPassword) {
+        showMessage('Les mots de passe ne correspondent pas.', 'error');
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        showMessage('Le mot de passe doit contenir au moins 6 caractères.', 'error');
+        return;
+      }
+
+      setButtonLoading(btn, true, 'Modification...');
+
+      try {
+        await updatePassword(currentPassword, newPassword);
+        showMessage('Mot de passe modifié avec succès.', 'success');
+        togglePasswordChange();
+      } catch (error) {
+        console.error('Password change error:', error);
+        showMessage(getAuthErrorMessage(error), 'error');
+      } finally {
+        setButtonLoading(btn, false);
+      }
+    }
+
+    /**
+     * Select theme
+     */
+    function selectTheme(theme) {
+      window.themeManager.setTheme(theme);
+      updateThemeSelector();
+    }
+
+    /**
+     * Update theme selector UI
+     */
+    function updateThemeSelector() {
+      const currentTheme = window.themeManager.getTheme();
+      const options = document.querySelectorAll('.theme-option');
+
+      options.forEach(option => {
+        if (option.dataset.theme === currentTheme) {
+          option.classList.add('is-selected');
+        } else {
+          option.classList.remove('is-selected');
+        }
+      });
+
+      // Update mobile toggle
+      const mobileToggle = document.getElementById('mobile-theme-toggle');
+      if (mobileToggle) {
+        mobileToggle.checked = currentTheme === 'dark';
+      }
+    }
+
+    /**
+     * Initialize profile page
+     */
+    function initProfile() {
+      checkAuthStatus({
+        requireAuth: true,
+        onAuthenticated: (data) => {
+          populateProfile(data);
+          updateThemeSelector();
+        }
+      });
+
+      // Listen for theme changes
+      document.addEventListener('themeChanged', updateThemeSelector);
+    }
+
+    // Initialize when DOM is ready
+    onFirebaseReady( initProfile);
+  </script>
+</body>
+</html>

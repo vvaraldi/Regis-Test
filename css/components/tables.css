@@ -1,0 +1,319 @@
+/* ========================================
+   TABLES.CSS - Table Components
+   ======================================== */
+
+/* ===== BASE TABLE ===== */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: var(--border-radius-lg);
+  border: var(--border-width) solid var(--theme-border);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table th,
+.table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  vertical-align: middle;
+  border-bottom: var(--border-width) solid var(--theme-border);
+}
+
+.table th {
+  font-weight: var(--font-semibold);
+  color: var(--theme-text);
+  background-color: var(--theme-surface-alt);
+  white-space: nowrap;
+}
+
+.table td {
+  color: var(--theme-text);
+  background-color: var(--theme-surface);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ===== TABLE VARIANTS ===== */
+
+/* Striped rows */
+.table--striped tbody tr:nth-child(even) td {
+  background-color: var(--theme-surface-alt);
+}
+
+/* Hoverable rows */
+.table--hover tbody tr:hover td {
+  background-color: var(--theme-surface-hover);
+}
+
+/* Bordered */
+.table--bordered th,
+.table--bordered td {
+  border: var(--border-width) solid var(--theme-border);
+}
+
+/* Compact */
+.table--compact th,
+.table--compact td {
+  padding: var(--space-2) var(--space-3);
+}
+
+/* Clickable rows */
+.table--clickable tbody tr {
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.table--clickable tbody tr:hover td {
+  background-color: rgba(var(--theme-accent-rgb), 0.05);
+}
+
+/* ===== TABLE CELL UTILITIES ===== */
+.table-cell--center {
+  text-align: center;
+}
+
+.table-cell--right {
+  text-align: right;
+}
+
+.table-cell--nowrap {
+  white-space: nowrap;
+}
+
+.table-cell--actions {
+  width: 1%;
+  white-space: nowrap;
+}
+
+/* ===== SORTABLE TABLE ===== */
+.table th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.table th.sortable:hover {
+  background-color: var(--theme-border-light);
+}
+
+.table th.sortable::after {
+  content: '';
+  display: inline-block;
+  width: 0;
+  height: 0;
+  margin-left: var(--space-2);
+  vertical-align: middle;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid var(--theme-text-lighter);
+  opacity: 0.5;
+}
+
+.table th.sortable.sorted-asc::after {
+  border-top: none;
+  border-bottom: 4px solid var(--theme-accent);
+  opacity: 1;
+}
+
+.table th.sortable.sorted-desc::after {
+  border-top: 4px solid var(--theme-accent);
+  opacity: 1;
+}
+
+/* ===== EMPTY STATE ===== */
+.table-empty {
+  padding: var(--space-10);
+  text-align: center;
+  color: var(--theme-text-light);
+}
+
+.table-empty__icon {
+  font-size: 3rem;
+  margin-bottom: var(--space-3);
+  opacity: 0.5;
+}
+
+.table-empty__text {
+  font-size: var(--text-base);
+}
+
+/* ===== LOADING STATE ===== */
+.table-loading {
+  position: relative;
+  min-height: 200px;
+}
+
+.table-loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: rgba(var(--color-white), 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ===== DATA TABLE (with filters) ===== */
+.data-table {
+  border: var(--border-width) solid var(--theme-border);
+  border-radius: var(--border-radius-xl);
+  overflow: hidden;
+}
+
+.data-table__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background-color: var(--theme-surface-alt);
+  border-bottom: var(--border-width) solid var(--theme-border);
+}
+
+.data-table__title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--theme-text);
+}
+
+.data-table__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.data-table__filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--theme-surface);
+  border-bottom: var(--border-width) solid var(--theme-border);
+}
+
+.data-table__body {
+  overflow-x: auto;
+}
+
+.data-table .table {
+  margin: 0;
+}
+
+.data-table__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--theme-surface-alt);
+  border-top: var(--border-width) solid var(--theme-border);
+  font-size: var(--text-sm);
+  color: var(--theme-text-light);
+}
+
+/* ===== PAGINATION ===== */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.pagination__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--theme-text);
+  background-color: var(--theme-surface);
+  border: var(--border-width) solid var(--theme-border);
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.pagination__btn:hover:not(:disabled) {
+  background-color: var(--theme-surface-hover);
+  border-color: var(--theme-text-lighter);
+}
+
+.pagination__btn.is-active {
+  background-color: var(--theme-accent);
+  border-color: var(--theme-accent);
+  color: var(--color-white);
+}
+
+.pagination__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .table th,
+  .table td {
+    padding: var(--space-2) var(--space-3);
+  }
+  
+  .data-table__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+  
+  .data-table__filters {
+    flex-wrap: wrap;
+  }
+  
+  .data-table__footer {
+    flex-direction: column;
+    gap: var(--space-3);
+    text-align: center;
+  }
+  
+  .pagination {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+/* Responsive stacked table for mobile */
+@media (max-width: 640px) {
+  .table--responsive thead {
+    display: none;
+  }
+  
+  .table--responsive tbody tr {
+    display: block;
+    margin-bottom: var(--space-4);
+    border: var(--border-width) solid var(--theme-border);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+  }
+  
+  .table--responsive tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-3);
+    border-bottom: var(--border-width) solid var(--theme-border);
+  }
+  
+  .table--responsive tbody td::before {
+    content: attr(data-label);
+    font-weight: var(--font-semibold);
+    color: var(--theme-text);
+    margin-right: var(--space-3);
+  }
+  
+  .table--responsive tbody td:last-child {
+    border-bottom: none;
+  }
+}

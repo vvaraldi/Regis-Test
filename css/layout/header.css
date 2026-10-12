@@ -1,0 +1,588 @@
+/* ========================================
+   HEADER.CSS - Header & Navigation
+   ======================================== */
+
+/* ===== HEADER ===== */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: var(--header-height);
+  padding: 0 var(--space-5) 0 0;
+  color: var(--color-white);
+  box-shadow: var(--shadow-md);
+}
+
+/* Banner colours: white (left) to the app's own colour (right). The white part is longer
+   than the title so the nav links, on the coloured side, stay white on a solid colour. */
+.header,
+.mobile-nav__header {
+  --header-title-color: var(--color-logo-blue);
+  background: linear-gradient(90deg, #fff 0%, #fff 12%, var(--theme-header-from) 60%, var(--theme-header-to) 100%);
+}
+
+/* ===== LOGO =====
+   The logo is dark blue, so the banner goes from white (left) to the app's own colour
+   (right), see --theme-header-from/to in modules.css.
+   The logo block keeps its own white -> transparent fade so the dark title stays
+   readable on white whatever the screen width. */
+.logo {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  min-width: 0;
+  padding-right: var(--space-12);
+  background: linear-gradient(90deg, #fff calc(100% - var(--space-12)), rgba(255, 255, 255, 0) 100%);
+  color: var(--header-title-color);
+}
+
+/* Only this part (logo + name) is the link to the portal; the app's name beside it is plain text */
+.logo__link {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  gap: var(--space-3);
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.logo__rest {
+  align-self: center;
+}
+
+.logo__icon {
+  padding-left: var(--space-5);
+  font-size: 1.75rem;
+  line-height: 1;
+}
+
+/* Logo image (BRANDING.logoImage): as tall as the banner, without making it taller */
+.logo__image {
+  height: var(--header-height);
+  width: auto;
+  display: block;
+  flex-shrink: 0;
+}
+
+.logo__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-brand);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* "  -  App": the separator keeps its double spaces */
+.logo__sep {
+  white-space: pre;
+}
+
+.logo__app {
+  font-weight: 700;
+}
+
+/* The logo and name are a link to the portal: keep the title colour on hover (the global a:hover
+   would turn it into the module's accent colour) */
+.logo__link:hover,
+.logo__name:hover,
+.mobile-nav__logo a:hover {
+  color: var(--header-title-color);
+  text-decoration: none;
+}
+
+.logo__link:hover {
+  opacity: 0.9;
+}
+
+/* ===== DESKTOP NAVIGATION ===== */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: var(--border-radius-md);
+  transition: var(--transition-fast);
+}
+
+.nav__link:hover {
+  color: var(--color-white);
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.nav__link.is-active,
+.nav__link--active {
+  color: var(--color-white);
+  background-color: rgba(255, 255, 255, 0.35);
+  font-weight: var(--font-semibold);
+  cursor: default;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.nav__link--icon {
+  padding: var(--space-2);
+}
+
+.nav__divider {
+  width: 2px;
+  height: 24px;
+  margin: 0 var(--space-2);
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* ===== ACTIVITY SWITCH (ski / bike; only for users with several activities) ===== */
+.network-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 36px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-white);
+  background-color: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: var(--border-radius-full);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.network-switch:hover {
+  background-color: rgba(255, 255, 255, 0.28);
+}
+
+.network-switch[hidden] {
+  display: none;
+}
+
+/* ===== THEME TOGGLE (In Header) ===== */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  height: 36px;
+  padding: 0 var(--space-3);
+  color: var(--color-white);
+  background-color: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: var(--border-radius-full);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+/* Same pill as the activity switch (.network-switch) */
+.theme-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.28);
+}
+
+.theme-toggle__icon {
+  width: 20px;
+  height: 20px;
+}
+
+/* Show/hide icons based on theme */
+[data-theme="light"] .theme-toggle__icon--sun {
+  display: none;
+}
+
+[data-theme="dark"] .theme-toggle__icon--moon {
+  display: none;
+}
+
+/* ===== USER MENU ===== */
+.user-menu {
+  position: relative;
+}
+
+.user-menu__trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1-5) var(--space-3);
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--border-radius-full);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.user-menu__trigger:hover {
+  color: var(--color-white);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.user-menu__avatar {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: var(--border-radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+}
+
+.user-menu__name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu__dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  min-width: 200px;
+  background-color: var(--theme-surface);
+  border: var(--border-width) solid var(--theme-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: var(--transition-fast);
+  z-index: var(--z-dropdown);
+}
+
+.user-menu.is-open .user-menu__dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.user-menu__header {
+  padding: var(--space-3);
+  border-bottom: var(--border-width) solid var(--theme-border);
+}
+
+.user-menu__header-name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--theme-text);
+}
+
+.user-menu__header-email {
+  font-size: var(--text-xs);
+  color: var(--theme-text-light);
+  margin-top: var(--space-0-5);
+}
+
+.user-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2-5) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--theme-text);
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.user-menu__item:hover {
+  background-color: var(--theme-surface-hover);
+}
+
+.user-menu__item--danger {
+  color: var(--color-danger);
+}
+
+.user-menu__divider {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background-color: var(--theme-border);
+}
+
+/* ===== MOBILE MENU BUTTON ===== */
+.mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: var(--color-white);
+  background: transparent;
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.mobile-menu-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.mobile-menu-btn__icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* ===== MOBILE NAVIGATION ===== */
+.mobile-nav {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: 320px;
+  background-color: var(--theme-surface);
+  box-shadow: var(--shadow-2xl);
+  transform: translateX(100%);
+  transition: transform var(--transition-normal);
+  z-index: var(--z-modal);
+  overflow-y: auto;
+}
+
+.mobile-nav.is-active {
+  transform: translateX(0);
+}
+
+.mobile-nav__backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: var(--theme-overlay);
+  opacity: 0;
+  visibility: hidden;
+  transition: var(--transition-normal);
+  z-index: calc(var(--z-modal) - 1);
+}
+
+.mobile-nav__backdrop.is-active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.mobile-nav__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-height-mobile);
+  padding: 0 var(--space-4) 0 0;
+  color: var(--color-white);
+}
+
+/* Same logo + name as the banner; the app title goes on a second line */
+.mobile-nav__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  align-self: stretch;
+  color: var(--header-title-color);
+}
+
+.mobile-nav__logo a,
+.logo__name {
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+}
+
+/* In the drawer the name is a block link above the app title (a second line) */
+.mobile-nav__logo .logo__name {
+  display: block;
+}
+
+.mobile-nav__logo .logo__image {
+  height: var(--header-height-mobile);
+}
+
+.mobile-nav__logo .logo__text {
+  white-space: normal;
+  line-height: 1.2;
+  font-size: var(--text-base);
+}
+
+.mobile-nav__logo .logo__sep {
+  display: none;
+}
+
+.mobile-nav__logo .logo__app {
+  display: block;
+  font-size: var(--text-sm);
+  opacity: 0.85;
+}
+
+.mobile-nav__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: var(--color-white);
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+}
+
+.mobile-nav__user {
+  padding: var(--space-4);
+  background-color: var(--theme-surface-alt);
+  border-bottom: var(--border-width) solid var(--theme-border);
+}
+
+.mobile-nav__user-name {
+  font-weight: var(--font-semibold);
+  color: var(--theme-text);
+}
+
+.mobile-nav__user-role {
+  font-size: var(--text-sm);
+  color: var(--theme-text-light);
+  margin-top: var(--space-0-5);
+}
+
+.mobile-nav__section {
+  padding: var(--space-2) 0;
+}
+
+.mobile-nav__section-title {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  color: var(--theme-text-lighter);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mobile-nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-base);
+  color: var(--theme-text);
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+.mobile-nav__link:hover {
+  background-color: var(--theme-surface-hover);
+}
+
+.mobile-nav__link.is-active,
+.mobile-nav__link--active {
+  color: var(--theme-accent);
+  background-color: rgba(var(--theme-accent-rgb), 0.15);
+  font-weight: var(--font-semibold);
+  cursor: default;
+}
+
+.mobile-nav__link-icon {
+  width: 20px;
+  text-align: center;
+}
+
+.mobile-nav__divider {
+  height: 1px;
+  margin: var(--space-2) var(--space-4);
+  background-color: var(--theme-border);
+}
+
+/* Theme toggle in mobile nav */
+.mobile-nav__theme {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-top: var(--border-width) solid var(--theme-border);
+}
+
+.mobile-nav__theme-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-base);
+  color: var(--theme-text);
+}
+
+/* ===== RESPONSIVE ===== */
+/* The logo + "name - app" title takes room: the user's name folds into the avatar and the
+   links get tighter first... */
+@media (max-width: 1400px) {
+  .user-menu__name {
+    display: none;
+  }
+
+  .nav__link {
+    padding: var(--space-2);
+  }
+}
+
+/* ...then the menu moves into the drawer */
+@media (max-width: 1200px) {
+  .nav,
+  .nav__divider,
+  .theme-toggle,
+  .user-menu {
+    display: none;
+  }
+
+  .mobile-menu-btn {
+    display: flex;
+  }
+}
+
+@media (min-width: 1201px) {
+  .mobile-nav,
+  .mobile-nav__backdrop {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    height: var(--header-height-mobile);
+  }
+
+  .header,
+  .mobile-nav__header {
+    padding-right: var(--space-4);
+  }
+
+  .logo {
+    padding-right: var(--space-6);
+    background: linear-gradient(90deg, #fff calc(100% - var(--space-6)), rgba(255, 255, 255, 0) 100%);
+  }
+
+  .logo__image {
+    height: var(--header-height-mobile);
+  }
+
+  .logo__text {
+    font-size: 0.9375rem;
+  }
+}

@@ -1,0 +1,297 @@
+/* ========================================
+   FILTERS.CSS - Filter Components
+   ======================================== */
+
+/* ===== FILTER BAR ===== */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--theme-surface);
+  border: var(--border-width) solid var(--theme-border);
+  border-radius: var(--border-radius-lg);
+}
+
+.filter-bar__group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.filter-bar__label {
+  font-size: var(--text-sm);
+  color: var(--theme-text-light);
+  white-space: nowrap;
+}
+
+.filter-bar__divider {
+  width: 1px;
+  height: 24px;
+  background-color: var(--theme-border);
+}
+
+/* ===== SEARCH INPUT ===== */
+.search-input {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-input__icon {
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--theme-text-lighter);
+  pointer-events: none;
+}
+
+.search-input__input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  padding-left: var(--space-9);
+  font-size: var(--text-sm);
+  background-color: var(--theme-surface-alt);
+  border: var(--border-width) solid var(--theme-border);
+  border-radius: var(--border-radius-lg);
+  transition: var(--transition-fast);
+}
+
+.search-input__input:focus {
+  outline: none;
+  background-color: var(--theme-surface);
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 0 3px rgba(var(--theme-accent-rgb), 0.15);
+}
+
+.search-input__clear {
+  position: absolute;
+  right: var(--space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: var(--space-1);
+  color: var(--theme-text-lighter);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: var(--transition-fast);
+}
+
+.search-input__input:not(:placeholder-shown) + .search-input__clear {
+  opacity: 1;
+}
+
+.search-input__clear:hover {
+  color: var(--theme-text);
+}
+
+/* ===== FILTER DROPDOWN ===== */
+.filter-dropdown {
+  position: relative;
+}
+
+.filter-dropdown__trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--theme-text);
+  background-color: var(--theme-surface);
+  border: var(--border-width) solid var(--theme-border);
+  border-radius: var(--border-radius-lg);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.filter-dropdown__trigger:hover {
+  border-color: var(--theme-text-lighter);
+}
+
+.filter-dropdown__trigger.is-active {
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 0 3px rgba(var(--theme-accent-rgb), 0.15);
+}
+
+.filter-dropdown__arrow {
+  transition: transform var(--transition-fast);
+}
+
+.filter-dropdown.is-open .filter-dropdown__arrow {
+  transform: rotate(180deg);
+}
+
+.filter-dropdown__menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: var(--space-1);
+  min-width: 200px;
+  background-color: var(--theme-surface);
+  border: var(--border-width) solid var(--theme-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-dropdown);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: var(--transition-fast);
+}
+
+.filter-dropdown.is-open .filter-dropdown__menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.filter-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--theme-text);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.filter-dropdown__item:first-child {
+  border-top-left-radius: var(--border-radius-lg);
+  border-top-right-radius: var(--border-radius-lg);
+}
+
+.filter-dropdown__item:last-child {
+  border-bottom-left-radius: var(--border-radius-lg);
+  border-bottom-right-radius: var(--border-radius-lg);
+}
+
+.filter-dropdown__item:hover {
+  background-color: var(--theme-surface-hover);
+}
+
+.filter-dropdown__item.is-selected {
+  background-color: rgba(var(--theme-accent-rgb), 0.1);
+  color: var(--theme-accent);
+}
+
+/* ===== ACTIVE FILTERS ===== */
+.active-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.active-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--text-xs);
+  background-color: rgba(var(--theme-accent-rgb), 0.1);
+  color: var(--theme-accent);
+  border-radius: var(--border-radius-full);
+}
+
+.active-filter__remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  font-size: 10px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: var(--transition-fast);
+}
+
+.active-filter__remove:hover {
+  opacity: 1;
+}
+
+.clear-filters {
+  font-size: var(--text-xs);
+  color: var(--theme-text-light);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.clear-filters:hover {
+  color: var(--color-danger);
+}
+
+/* ===== DATE RANGE FILTER ===== */
+.date-range {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.date-range__separator {
+  color: var(--theme-text-lighter);
+}
+
+.date-range__input {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  background-color: var(--theme-surface);
+  border: var(--border-width) solid var(--theme-border);
+  border-radius: var(--border-radius-lg);
+}
+
+/* ===== SORT CONTROLS ===== */
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sort-controls__label {
+  font-size: var(--text-sm);
+  color: var(--theme-text-light);
+}
+
+.sort-controls__select {
+  padding: var(--space-2) var(--space-8) var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  background-color: var(--theme-surface);
+  border: var(--border-width) solid var(--theme-border);
+  border-radius: var(--border-radius-lg);
+  cursor: pointer;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-bar__group {
+    flex-wrap: wrap;
+  }
+  
+  .filter-bar__divider {
+    display: none;
+  }
+  
+  .search-input {
+    width: 100%;
+  }
+  
+  .date-range {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .date-range__separator {
+    text-align: center;
+  }
+}

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Relevés météo">
+  <meta name="theme-color" content="#ca8a04">
+  <title>Météo</title>
+  <!-- The symbol follows the season (snowflake in winter, sun in summer): set by the script at the end -->
+  <link rel="icon" id="page-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌦️</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .wx-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+    .wx-web-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    .wx-web-status { font-size: 0.875rem; color: var(--theme-text-secondary); }
+    .wx-web-status--warn { color: var(--color-warning-dark, #92400e); }
+    .wx-web-notes { font-size: 0.8125rem; color: var(--theme-text-secondary); margin: 0 0 0.75rem; padding-left: 1.1rem; }
+
+    /* One line per measure: name | what Environment Canada says | what you type (blank by default) */
+    .wx-row, .wx-head { display: grid; grid-template-columns: minmax(150px, 1.2fr) minmax(150px, 1.4fr) minmax(130px, 1fr); gap: 0.4rem 0.75rem; align-items: center; }
+    .wx-head { font-size: 0.8125rem; font-weight: 600; color: var(--theme-text-secondary); border-bottom: 1px solid var(--theme-border); padding-bottom: 0.3rem; margin-bottom: 0.25rem; }
+    .wx-row { padding: 0.35rem 0; border-bottom: 1px dashed var(--theme-border); }
+    .wx-label { font-weight: 500; }
+    .wx-unit { font-weight: 400; font-size: 0.8125rem; color: var(--theme-text-secondary); }
+    .wx-web { font-size: 0.9rem; }
+    .wx-web--none { color: var(--theme-text-secondary); }
+    .wx-web__src { display: block; font-size: 0.75rem; color: var(--theme-text-secondary); }
+    .wx-input-wrap { display: flex; align-items: center; gap: 0.25rem; }
+    .wx-input-wrap .form-input, .wx-input-wrap .form-select { min-width: 0; }
+    .wx-restore { border: 0; background: none; cursor: pointer; font-size: 0.8125rem; color: var(--theme-accent-dark); padding: 0 0.25rem; display: none; }
+    .wx-restore.is-visible { display: inline; }
+    .is-invalid { border-color: var(--color-danger) !important; box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2) !important; }
+    .wx-errors { color: var(--color-danger); font-size: 0.875rem; margin: 0.5rem 0; }
+    .wx-errors:empty { display: none; }
+    /* Wide screens: the measures sit two by two (7 lines instead of 13), each side with its own header */
+    .wx-heads { display: block; }
+    .wx-head--second { display: none; }
+    @media (min-width: 1100px) {
+      .wx-heads, #fields-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 2.5rem; }
+      .wx-head--second { display: grid; }
+    }
+    @media (max-width: 640px) {
+      .wx-heads { display: none; }
+      .wx-row { grid-template-columns: 1fr 1fr; }
+      .wx-label { grid-column: 1 / -1; }
+    }
+
+    .wx-day { display: block; font-size: 0.8rem; color: var(--theme-text-secondary); }
+    .wx-list-nav { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .wx-src { font-size: 0.7rem; color: var(--theme-text-secondary); margin-left: 0.2rem; }
+    #records-table td[data-label="Heure"] { white-space: nowrap; }
+    .wx-actions { white-space: nowrap; }
+    .wx-comment { max-width: 18rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  </style>
+</head>
+<body data-theme="light" data-module="meteo" data-nav="meteo" data-page="meteo-report">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <!-- Loading -->
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <!-- Main Content -->
+  <main id="main-content" class="main" style="display: none;">
+    <div class="page-header">
+      <div class="page-header__content">
+        <h1 class="page-title"><span id="season-icon">🌦️</span> Météo</h1>
+        <p class="page-subtitle">Relevés météo : température, vent, neige et conditions</p>
+      </div>
+    </div>
+
+    <!-- The reading -->
+    <section class="content-section">
+      <form id="weather-form" class="section-card" novalidate>
+        <div class="section-card__header"><h2 class="section-card__title" id="form-title">📝 Nouveau relevé</h2></div>
+        <div class="section-card__body">
+
+          <div class="wx-top">
+            <div class="form-group">
+              <label class="form-label" for="recorded-at">Date et heure du relevé <span class="form-required">*</span></label>
+              <input type="datetime-local" class="form-input" id="recorded-at" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="place-name">Lieu</label>
+              <input type="text" class="form-input" id="place-name" readonly>
+            </div>
+          </div>
+
+          <!-- Environment Canada, on request -->
+          <div class="wx-web-bar">
+            <button type="button" class="btn btn-secondary" id="fetch-web-btn">🌐 Charger les données d'Environnement Canada</button>
+            <span class="wx-web-status" id="web-status">Les valeurs du web s'affichent ici; vos valeurs restent vides tant que vous ne les saisissez pas.</span>
+          </div>
+          <ul class="wx-web-notes" id="web-notes" hidden></ul>
+
+          <div class="wx-heads" aria-hidden="true"><div class="wx-head"><div>Mesure</div><div>Environnement Canada</div><div>Votre valeur</div></div><div class="wx-head wx-head--second"><div>Mesure</div><div>Environnement Canada</div><div>Votre valeur</div></div></div>
+          <div id="fields-grid"></div>
+
+          <div class="form-group" style="margin-top: 1rem;">
+            <label class="form-label" for="comment">Commentaire <span class="form-hint">(optionnel)</span></label>
+            <textarea class="form-textarea" id="comment" rows="2" maxlength="1000"></textarea>
+          </div>
+
+          <div class="wx-errors" id="form-errors" role="alert"></div>
+        </div>
+        <div class="section-card__footer">
+          <button type="button" class="btn btn-danger" id="delete-btn" style="display:none; margin-right:auto;">🗑️ Supprimer ce relevé</button>
+          <button type="button" class="btn btn-secondary" id="cancel-btn" style="display:none;">Annuler la modification</button>
+          <button type="button" class="btn btn-secondary" id="reset-btn">Réinitialiser</button>
+          <button type="submit" class="btn btn-primary" id="save-btn">Enregistrer</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- The day's readings -->
+    <section class="content-section">
+      <div class="section-card">
+        <div class="section-card__header"><h2 class="section-card__title" id="list-title">📋 Relevés</h2></div>
+        <div class="section-card__body">
+          <div class="wx-list-nav">
+            <label class="form-label" for="date-filter" style="margin:0;">Période</label>
+            <select class="form-select" id="date-filter" style="width:auto;" title="Selon la date et l'heure du relevé">
+              <option value="all">Toutes les saisons</option>
+              <option value="season" id="season-option">Saison en cours</option><!-- label filled with the dates -->
+              <option value="today">Aujourd'hui</option>
+              <option value="week" selected>7 derniers jours</option>
+              <option value="month">30 derniers jours</option>
+              <option value="custom">Dates personnalisées</option>
+            </select>
+            <span id="custom-date-range" style="display:none; gap:0.5rem; align-items:center;">
+              <input type="date" class="form-input" id="start-date" aria-label="Du" style="width:auto;">
+              <span>à</span>
+              <input type="date" class="form-input" id="end-date" aria-label="Au" style="width:auto;">
+            </span>
+          </div>
+          <div class="data-table__body">
+            <table class="table table--hover table--responsive" id="records-table">
+              <thead>
+                <tr><th>Relevé</th><th>Température</th><th>Vent</th><th>Neige</th><th>Ciel</th><th>Commentaire</th><th>Saisi par</th><th></th></tr>
+              </thead>
+              <tbody id="records-tbody"></tbody>
+            </table>
+          </div>
+          <p id="records-empty" style="display:none; color: var(--theme-text-secondary);">Aucun relevé pour cette période.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+
+  <!-- Scripts -->
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/period-filter.js"></script>
+  <script src="../js/core/datetime-field.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/weather-service.js"></script>
+
+  <script>
+    const WS = WeatherService;
+    // State
+    let editing = null;        // { id, record } while a saved reading is being corrected
+    let webResult = null;      // what Environment Canada gave (or the stored web part while editing): { fields, fetchedAt, observedAt }
+    let webForTime = null;     // the time (ms) the web values were loaded for
+    let periodFilter = null;   // the Période controls of the list (js/core/period-filter.js); the list opens on the last 7 days
+    let records = [];
+    let saving = false;
+    let isSystemAdmin = false;   // only the system admin deletes a reading (the rules say the same)
+
+    const el = id => document.getElementById(id);
+    const SOURCE_LABEL = { lac: 'Lac Memphrémagog', sherbrooke: 'aéroport de Sherbrooke (estimation)', calc: 'calculée' };
+
+    // ---- small helpers ----
+    function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+    const pad = n => String(n).padStart(2, '0');
+    const toLocalInput = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const toDateInput = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const clock = t => new Date(t).toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' });
+    const num = v => String(v).replace('.', ',');
+    function gap(msDiff) {
+      const m = Math.round(Math.abs(msDiff) / 60000);
+      return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${pad(m % 60)}`;
+    }
+    const toDate = ts => ts && typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
+
+    /** A value as shown: 12 cm, 297° (ONO), Couvert */
+    function display(key, value) {
+      const f = WS.fieldOf(key);
+      if (f.type === 'choice') return f.choices[value] || String(value);
+      if (key === 'windDir') return `${num(value)}° (${WS.compass(value)})`;
+      return `${num(value)}${f.unit ? ' ' + f.unit : ''}`;
+    }
+
+    // ---- the form ----
+    function buildFields() {
+      el('fields-grid').innerHTML = WS.FIELDS.map(f => {
+        const unit = f.unit ? ` <span class="wx-unit">(${f.unit})</span>` : '';
+        const input = f.type === 'choice'
+          ? `<select class="form-select" id="in-${f.key}"><option value="">—</option>${Object.entries(f.choices).map(([id, label]) => `<option value="${id}">${label}</option>`).join('')}</select>`
+          : `<input type="number" class="form-input" id="in-${f.key}" step="${f.step}" min="${f.min}" max="${f.max}" inputmode="decimal" autocomplete="off">`;
+        return `<div class="wx-row" data-key="${f.key}">
+          <label class="wx-label" for="in-${f.key}">${f.label}${unit}</label>
+          <div class="wx-web wx-web--none" id="web-${f.key}">—</div>
+          <div class="wx-input-wrap">${input}<button type="button" class="wx-restore" data-restore="${f.key}" title="Effacer ma valeur et reprendre celle d'Environnement Canada">↺</button></div>
+        </div>`;
+      }).join('');
+      WS.FIELDS.forEach(f => {
+        el(`in-${f.key}`).addEventListener('input', () => { updateRestore(f.key); clearErrors(); });
+        el(`in-${f.key}`).addEventListener('change', () => updateRestore(f.key));
+      });
+      document.querySelectorAll('[data-restore]').forEach(b => b.addEventListener('click', () => {
+        el(`in-${b.dataset.restore}`).value = '';
+        updateRestore(b.dataset.restore);
+      }));
+    }
+
+    /** The "↺" shows only when a value was typed AND the web has one to come back to */
+    function updateRestore(key) {
+      const has = el(`in-${key}`).value !== '' && !!(webResult && webResult.fields && webResult.fields[key]);
+      document.querySelector(`[data-restore="${key}"]`).classList.toggle('is-visible', has);
+    }
+
+    function showWebValues() {
+      WS.FIELDS.forEach(f => {
+        const box = el(`web-${f.key}`);
+        const w = webResult && webResult.fields && webResult.fields[f.key];
+        if (!w) { box.className = 'wx-web wx-web--none'; box.textContent = '—'; }
+        else {
+          box.className = 'wx-web';
+          box.innerHTML = `${escapeHtml(display(f.key, w.value))}<span class="wx-web__src">${escapeHtml(SOURCE_LABEL[w.source] || w.source)}${w.observedAt ? ' · ' + clock(ms(w.observedAt)) : ''}</span>`;
+        }
+        updateRestore(f.key);
+      });
+    }
+    // Timestamps (Firestore) or milliseconds, as milliseconds
+    function ms(t) { return t && typeof t.toMillis === 'function' ? t.toMillis() : (t && typeof t.toDate === 'function' ? t.toDate().getTime() : t); }
+
+    function setWebStatus(text, warn) {
+      const s = el('web-status');
+      s.textContent = text;
+      s.classList.toggle('wx-web-status--warn', !!warn);
+    }
+    function setWebNotes(lines) {
+      const ul = el('web-notes');
+      ul.innerHTML = lines.map(l => `<li>${escapeHtml(l)}</li>`).join('');
+      ul.hidden = lines.length === 0;
+    }
+
+    function readAt() { return DateTimeField.read(el('recorded-at')) || new Date(NaN); }
+
+    async function loadWeb() {
+      const at = readAt();
+      if (!Number.isFinite(at.getTime())) { showErrors({ recordedAt: 'Choisissez d\'abord la date et l\'heure du relevé.' }); return; }
+      const btn = el('fetch-web-btn');
+      btn.disabled = true;
+      setWebStatus('Chargement…');
+      setWebNotes([]);
+      try {
+        const result = await WS.fetchWebValues({ at });
+        webForTime = at.getTime();
+        const notes = [];
+        result.errors.forEach(e => notes.push(`${stationName(e.station)} : station inaccessible.`));
+        result.missing.forEach(id => notes.push(`${stationName(id)} : aucune observation pour cette heure.`));
+        if (result.observedAt === null) {
+          webResult = null;
+          setWebStatus('Aucune observation disponible pour cette heure.', true);
+        } else {
+          webResult = result;
+          setWebStatus(`Observations de ${clock(result.observedAt)} (${gap(at.getTime() - result.observedAt)} ${result.observedAt <= at.getTime() ? 'avant' : 'après'} le relevé). Vos valeurs restent à vous.`);
+        }
+        setWebNotes(notes);
+      } catch (e) {
+        console.error('Environment Canada:', e);
+        webResult = null;
+        setWebStatus('Environnement Canada est inaccessible pour le moment. Vous pouvez saisir les valeurs à la main.', true);
+      } finally {
+        btn.disabled = false;
+        showWebValues();
+      }
+    }
+    const stationName = id => (WS.location().stations.find(s => s.id === id) || { name: id }).name;
+
+    // The hour was changed after the web values were loaded: say so (nothing is lost)
+    function warnIfTimeMoved() {
+      if (webResult && !editing && webForTime !== null && Math.abs(readAt().getTime() - webForTime) > 30 * 60000) {
+        setWebStatus('L\'heure a changé depuis le chargement : rechargez les données du web pour cette heure.', true);
+      }
+    }
+
+    function collectManual() {
+      const manual = {};
+      WS.KEYS.forEach(k => { manual[k] = el(`in-${k}`).value; });
+      return manual;
+    }
+
+    function clearErrors() {
+      el('form-errors').textContent = '';
+      document.querySelectorAll('#weather-form .is-invalid').forEach(i => i.classList.remove('is-invalid'));
+    }
+    function showErrors(errors) {
+      clearErrors();
+      Object.keys(errors).forEach(k => {
+        const input = k === 'recordedAt' ? el('recorded-at') : el(`in-${k}`);
+        if (input) input.classList.add('is-invalid');
+      });
+      el('form-errors').innerHTML = Object.values(errors).map(escapeHtml).join('<br>');
+    }
+
+    function resetForm() {
+      editing = null; webResult = null; webForTime = null;
+      el('recorded-at').value = toLocalInput(new Date());
+      el('place-name').value = WS.location().name;
+      WS.KEYS.forEach(k => { el(`in-${k}`).value = ''; });
+      el('comment').value = '';
+      el('form-title').textContent = '📝 Nouveau relevé';
+      el('save-btn').textContent = 'Enregistrer';
+      el('cancel-btn').style.display = 'none';
+      el('delete-btn').style.display = 'none';
+      el('fetch-web-btn').disabled = false;
+      setWebStatus('Les valeurs du web s\'affichent ici; vos valeurs restent vides tant que vous ne les saisissez pas.');
+      setWebNotes([]);
+      clearErrors();
+      showWebValues();
+    }
+
+    async function saveReading(e) {
+      if (e) e.preventDefault();
+      if (saving) return;
+      clearErrors();
+      saving = true;
+      el('save-btn').disabled = true;
+      const user = { uid: currentUser.uid, name: (typeof currentUserData !== 'undefined' && currentUserData && currentUserData.name) || currentUser.email || '' };
+      try {
+        let result;
+        if (editing) {
+          result = await WS.update(db, firebase, editing.id, editing.record,
+            { at: readAt(), manual: collectManual(), comment: el('comment').value }, user);
+        } else {
+          result = await WS.save(db, firebase, { at: readAt(), manual: collectManual(), web: webResult, comment: el('comment').value }, user);
+        }
+        if (!result.ok) { showErrors(result.errors); return; }
+        // the public copy of the latest reading follows (a failure there never loses the reading)
+        const done = editing ? 'Relevé modifié' : 'Relevé enregistré';
+        showToast(await publishPublic() ? `${done}.` : `${done}, mais la page publique n'a pas pu être mise à jour.`, 'success');
+        showPeriodOf(readAt());
+        resetForm();
+        await loadList();
+      } catch (err) {
+        console.error('Saving the reading:', err);
+        showToast('Erreur lors de l\'enregistrement du relevé.', 'error');
+      } finally {
+        saving = false;
+        el('save-btn').disabled = false;
+      }
+    }
+
+    // ---- editing a saved reading ----
+    function startEdit(id) {
+      const record = records.find(r => r.id === id);
+      if (!record) return;
+      editing = { id, record };
+      el('recorded-at').value = toLocalInput(toDate(record.recordedAt));
+      el('place-name').value = (WS.location(record.locationId) || WS.location()).name;
+      WS.KEYS.forEach(k => {
+        const v = record.manual && record.manual[k];
+        el(`in-${k}`).value = v === null || v === undefined ? '' : v;
+      });
+      el('comment').value = record.comment || '';
+      // the web values are those read when the reading was saved: they are not read again
+      webResult = record.web && record.web.fields ? { fields: record.web.fields, fetchedAt: record.web.fetchedAt, observedAt: null } : null;
+      webForTime = null;
+      el('form-title').textContent = `✏️ Modifier le relevé de ${clock(toDate(record.recordedAt))}`;
+      el('save-btn').textContent = 'Enregistrer la modification';
+      el('cancel-btn').style.display = '';
+      el('delete-btn').style.display = isSystemAdmin ? '' : 'none';
+      el('fetch-web-btn').disabled = true;
+      setWebStatus(webResult ? `Valeurs d'Environnement Canada conservées telles que lues le ${toDate(record.web.fetchedAt).toLocaleDateString('fr-CA')} à ${clock(ms(record.web.fetchedAt))}.` : 'Ce relevé n\'a pas de valeurs du web.');
+      setWebNotes([]);
+      clearErrors();
+      showWebValues();
+      el('weather-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    /** Rewrites the public "latest reading" from the most recent reading. Returns false when that failed. */
+    async function publishPublic() {
+      try {
+        await WS.publishLatest(db, firebase);
+        return true;
+      } catch (err) {
+        console.error('Public reading:', err);
+        return false;
+      }
+    }
+
+    // id: the reading of a row of the list (quick delete); no id: the reading being corrected in the form
+    async function deleteReading(id) {
+      const target = id || (editing && editing.id);
+      if (!target || !isSystemAdmin) return;
+      if (!window.confirm('Supprimer ce relevé météo ? Cette action est irréversible.')) return;
+      try {
+        await WS.remove(db, target);
+        showToast(await publishPublic() ? 'Relevé supprimé.' : 'Relevé supprimé, mais la page publique n\'a pas pu être mise à jour.', 'success');
+        if (editing && editing.id === target) resetForm();   // the reading open in the form is gone
+        await loadList();
+      } catch (err) {
+        console.error('Deleting the reading:', err);
+        showToast('Erreur lors de la suppression du relevé.', 'error');
+      }
+    }
+
+    // ---- the day's list ----
+    function cellText(parts) { return parts.filter(Boolean).join(' · ') || '—'; }
+
+    function renderRecords() {
+      el('list-title').textContent = `📋 Relevés · ${PeriodFilter.label(periodFilter.state())} (${records.length})`;
+      const tbody = el('records-tbody');
+      el('records-empty').style.display = records.length ? 'none' : '';
+      tbody.innerHTML = records.map(r => {
+        const v = WS.effectiveValues(r);
+        const mark = k => v[k] ? `<span class="wx-src" title="${v[k].source === 'manual' ? 'Valeur saisie' : 'Environnement Canada'}">${v[k].source === 'manual' ? '✎' : '🌐'}</span>` : '';
+        const show = k => v[k] ? escapeHtml(display(k, v[k].value)) + mark(k) : '';
+        const temp = v.tempC ? show('tempC') + (v.feelsLikeC && v.feelsLikeC.value !== v.tempC.value ? ` (ressenti ${show('feelsLikeC')})` : '') : '';
+        const wind = (v.windForce && !v.windKmh) ? show('windForce') : v.windKmh ? (v.windForce ? show('windForce') + ', ' : '') + show('windKmh') + (v.windDir ? ' ' + escapeHtml(WS.compass(v.windDir.value)) : '') + (v.gustKmh ? `, rafales ${show('gustKmh')}` : '') : '';
+        const snow = cellText([v.newSnowCm ? 'frais ' + show('newSnowCm') : '', v.snowType ? show('snowType') : '', v.snowDepthCm ? 'base ' + show('snowDepthCm') : '', v.snowBase ? 'fond ' + show('snowBase') : '', v.snowCover ? 'couv. ' + show('snowCover') : '']);
+        const sky = cellText([v.cloudCover ? show('cloudCover') : '', v.sky ? show('sky') : '']);
+        const comment = r.comment ? `<div class="wx-comment" title="${escapeHtml(r.comment)}">${escapeHtml(r.comment)}</div>` : '—';
+        return `<tr data-id="${r.id}">
+          <td data-label="Relevé"><strong>${clock(toDate(r.recordedAt).getTime())}</strong> <span class="wx-day">${escapeHtml(shortDay(toDate(r.recordedAt)))}</span></td>
+          <td data-label="Température">${temp || '—'}</td>
+          <td data-label="Vent">${wind || '—'}</td>
+          <td data-label="Neige">${snow}</td>
+          <td data-label="Ciel">${sky}</td>
+          <td data-label="Commentaire">${comment}</td>
+          <td data-label="Saisi par">${escapeHtml(r.createdByName || '')}</td>
+          <td class="wx-actions"><button type="button" class="btn btn-secondary btn-sm" data-edit="${r.id}">✏️ Modifier</button>${isSystemAdmin ? ` <button type="button" class="btn btn-danger btn-sm" data-delete="${r.id}" title="Supprimer ce relevé" aria-label="Supprimer ce relevé">🗑️</button>` : ''}</td>
+        </tr>`;
+      }).join('');
+      tbody.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => startEdit(b.dataset.edit)));
+      tbody.querySelectorAll('[data-delete]').forEach(b => b.addEventListener('click', () => deleteReading(b.dataset.delete)));
+    }
+
+    const shortDay = d => d.toLocaleDateString('fr-CA', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+
+    // The dates [from, to) that the chosen period covers, for the query (the exact rule is PeriodFilter.matches)
+    function periodRange(state) {
+      const now = new Date(), tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const day = text => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+      const open = new Date(2000, 0, 1), far = new Date(2100, 0, 1);
+      if (state.value === 'today') return [startOfDay(now), tomorrow];
+      if (state.value === 'week') return [new Date(now.getTime() - 7 * 86400000), tomorrow];
+      if (state.value === 'month') return [new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()), tomorrow];
+      if (state.value === 'season') return [Network.seasonStart(), tomorrow];
+      if (state.value === 'custom') {
+        const from = day(state.start), to = day(state.end);
+        return [from || open, to ? new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1) : far];
+      }
+      return [open, far];
+    }
+
+    // After a save: if the reading falls outside the period shown, show its own day so it does not seem lost
+    function showPeriodOf(at) {
+      if (PeriodFilter.matches(at, periodFilter.state())) return;
+      el('date-filter').value = 'custom';
+      el('start-date').value = el('end-date').value = toDateInput(at);
+      el('date-filter').dispatchEvent(new Event('change'));
+    }
+
+    async function loadList() {
+      try {
+        const state = periodFilter.state(), [from, to] = periodRange(state);
+        records = (await WS.list(db, firebase, from, to)).filter(r => PeriodFilter.matches(toDate(r.recordedAt), state)).reverse();   // the most recent first
+      } catch (err) {
+        console.error('Reading the readings:', err);
+        showToast('Erreur lors du chargement des relevés.', 'error');
+        records = [];
+      }
+      renderRecords();
+    }
+
+    // ---- start ----
+    function applySeasonIcon() {
+      const icon = Network.seasonIcon();
+      el('season-icon').textContent = icon;
+      el('page-icon').href = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>${icon}</text></svg>`;
+    }
+
+    function initMeteoReport() {
+      applySeasonIcon();
+      buildFields();
+      DateTimeField.init(el('recorded-at'));   // the two-field version only where the browser has no date-and-time field
+      el('weather-form').addEventListener('submit', saveReading);
+      el('fetch-web-btn').addEventListener('click', loadWeb);
+      el('reset-btn').addEventListener('click', resetForm);
+      el('cancel-btn').addEventListener('click', resetForm);
+      el('delete-btn').addEventListener('click', () => deleteReading());
+      el('recorded-at').addEventListener('change', () => { clearErrors(); warnIfTimeMoved(); });
+      el('comment').addEventListener('input', clearErrors);
+      periodFilter = PeriodFilter.attach({
+        select: el('date-filter'), custom: el('custom-date-range'),
+        start: el('start-date'), end: el('end-date'),
+        seasonOption: el('season-option'),
+        onChange: loadList
+      });
+
+      checkAuthStatus({
+        requireAuth: true,
+        requiredPermission: 'allowMeteo',
+        permissionDefault: false,
+        onAuthenticated: async (userData) => {
+          isSystemAdmin = userData.role === 'system_admin';
+          if (userData.role === 'admin' || isSystemAdmin) {
+            document.querySelectorAll('.nav__link--admin, .mobile-nav__link--admin').forEach(link => link.style.display = '');
+          }
+          resetForm();
+          await loadList();
+        }
+      });
+    }
+
+    onFirebaseReady(initMeteoReport);
+  </script>
+</body>
+</html>
