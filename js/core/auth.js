@@ -60,7 +60,7 @@ function checkAuthStatus(options = {}) {
 
           // Check if user is active
           if (currentUserData.status !== 'active') {
-            showAccessDenied('Votre compte a été désactivé. Contactez l\'administrateur.');
+            showAccessDenied('Votre compte a été désactivé. Contactez l\'administrateur.', true);
             await auth.signOut();
             return;
           }
@@ -105,7 +105,7 @@ function checkAuthStatus(options = {}) {
           // Which activity (ski, bike...) the user works in; needs their networks.
           // A user without any activity cannot use the app.
           if (typeof Network !== 'undefined' && !Network.setUser(currentUserData)) {
-            showAccessDenied('Aucune activité ne vous est attribuée. Contactez l\'administrateur.');
+            showAccessDenied('Aucune activité ne vous est attribuée. Contactez l\'administrateur.', true);
             await auth.signOut();
             return;
           }
@@ -134,13 +134,13 @@ function checkAuthStatus(options = {}) {
 
         } else {
           // User not in inspectors collection
-          showAccessDenied('Utilisateur non trouvé. Contactez l\'administrateur.');
+          showAccessDenied('Utilisateur non trouvé. Contactez l\'administrateur.', true);
           await auth.signOut();
         }
 
       } catch (error) {
         console.error('Error checking auth status:', error);
-        showAccessDenied('Erreur lors de la vérification des accès.');
+        showAccessDenied('Erreur lors de la vérification des accès.', true);
         await auth.signOut();
       }
 
@@ -243,10 +243,15 @@ function updateNavPermissions(userData) {
 /**
  * Show access denied message and redirect
  * @param {string} message - Message to display
+ * @param {boolean} [signingOut] - true when the user is signed out right after (the login page then shows the message)
  */
-function showAccessDenied(message) {
+function showAccessDenied(message, signingOut) {
   const loading = document.getElementById('loading');
   if (loading) loading.style.display = 'none';
+
+  // The user is about to be signed out, which sends the browser straight back to the login page: that page shows the reason
+  // (the message above would be gone before it could be read)
+  if (signingOut) { try { sessionStorage.setItem('regis-login-notice', message); } catch (e) { /* no storage: the toast is all there is */ } }
 
   // Show message
   if (typeof showMessage === 'function') {

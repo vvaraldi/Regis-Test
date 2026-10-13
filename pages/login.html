@@ -258,6 +258,20 @@
     }
 
     // Initialize when DOM is ready
+    /**
+     * The reason a user was just sent back here (no profile, deactivated account, no activity...): auth.js leaves it for this page,
+     * because the sign-out that follows brings the browser back to the login page before a toast could be read.
+     */
+    function showLoginNotice() {
+      try {
+        const message = sessionStorage.getItem('regis-login-notice');
+        if (!message) return;
+        sessionStorage.removeItem('regis-login-notice');   // shown once
+        showAuthMessage(message);
+      } catch (e) { /* no storage: nothing to show */ }
+    }
+    showLoginNotice();
+
     onFirebaseReady( initLogin);
   </script>
 </body>
