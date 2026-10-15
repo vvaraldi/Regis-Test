@@ -21,7 +21,7 @@
     .rg-filter { display: flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; cursor: pointer; }
 
     /* the round buttons: red = close everything, green = open everything */
-    .rg-dot { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.15); cursor: pointer; padding: 0; flex: none; transition: transform 0.1s, box-shadow 0.1s; }
+    .rg-dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.15); cursor: pointer; padding: 0; flex: none; transition: transform 0.1s, box-shadow 0.1s; }
     .rg-dot:hover { transform: scale(1.12); box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
     .rg-dot:disabled { opacity: 0.5; cursor: wait; }
     .rg-dot--open { background: #16a34a; }
@@ -29,8 +29,8 @@
     .rg-dots { display: flex; gap: 0.5rem; align-items: center; }
 
     /* the groups (Montées, Descentes), each a grid of sector boxes: three per line on a wide screen */
-    .rg-group-block { margin-bottom: 1.25rem; }
-    .rg-group-block__title { margin: 0 0 0.5rem; font-size: 1.2rem; }
+    .rg-group-block { margin-bottom: 0.75rem; }
+    .rg-group-block__title { margin: 0 0 0.3rem; font-size: 1.1rem; }
     .rg-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; align-items: start; }
     @media (max-width: 1100px) { .rg-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 700px) { .rg-grid { grid-template-columns: 1fr; } .rg-rows { grid-template-columns: 1fr; } }
@@ -38,8 +38,8 @@
     /* Montées and Remontées take all the width: the rows of a box side by side, as many as fit */
     .rg-grid--wide { grid-template-columns: 1fr; }
     .rg-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr)); column-gap: 1.25rem; }
-    .rg-sector .section-card__header { padding: 0.5rem 0.75rem; }
-    .rg-sector .section-card__body { padding: 0.25rem 0.75rem 0.5rem; }
+    .rg-sector .section-card__header { padding: 0.3rem 0.75rem; min-height: 0; }
+    .rg-sector .section-card__body { padding: 0.1rem 0.75rem 0.3rem; }
     .rg-link { background: none; border: 0; padding: 0; color: var(--theme-accent-dark, #115e59); text-decoration: underline; cursor: pointer; font-size: inherit; }
     .rg-filter-box { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
     .rg-filter-box label { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; font-size: 0.9rem; }
@@ -61,22 +61,31 @@
     .rg-photos img { width: 110px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid var(--theme-border); }
     .rg-section-title { font-weight: 600; margin-top: 0.8rem; }
     .rg-sector__head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-    .rg-sector__title { margin: 0; font-size: 1.15rem; }
+    .rg-sector__title { margin: 0; font-size: 1.05rem; }
     .rg-sector__meta { font-size: 0.85rem; color: var(--theme-text-secondary); font-weight: normal; margin-left: 0.5rem; }
     .rg-group { margin-top: 0.75rem; }
     .rg-group__title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--theme-text-secondary); margin: 0 0 0.25rem; }
 
-    .rg-row { display: grid; grid-template-columns: 2.2rem 1fr auto auto; align-items: center; gap: 0.5rem 0.75rem; padding: 0.45rem 0.25rem; border-bottom: 1px solid var(--theme-border, #e5e7eb); }
+    .rg-row { display: grid; grid-template-columns: 2.2rem 1fr auto auto; align-items: center; gap: 0 0.6rem; padding: 0.2rem 0.25rem; line-height: 1.2; border-bottom: 1px solid var(--theme-border, #e5e7eb); }
     .rg-row:last-child { border-bottom: none; }
     .rg-row--reco { background: rgba(var(--theme-accent-rgb, 15,118,110), 0.07); border-radius: 8px; }
     .rg-num { font-weight: 700; color: var(--theme-text-secondary); text-align: right; }
     .rg-name small { color: var(--theme-text-secondary); margin-left: 0.4rem; }
-    .rg-note { grid-column: 2 / -1; font-size: 0.8rem; color: var(--theme-text-secondary); }
+    .rg-main { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.5rem; min-width: 0; }
+    .rg-note { font-size: 0.75rem; line-height: 1.15; color: var(--theme-text-secondary); }
+    .rg-peek { font-size: 0.75rem; opacity: 0.55; text-decoration: none; }
+    .rg-peek:hover { opacity: 1; }
+    /* a sector box can be folded to its title bar */
+    .rg-fold { background: none; border: 0; padding: 0 0.3rem 0 0; cursor: pointer; font-size: 0.9rem; color: var(--theme-text-secondary); }
+    .rg-sector.is-folded .section-card__body { display: none; }
+    .rg-sector.is-folded .section-card__header { border-bottom: 0; }
     .rg-note--reco { color: var(--theme-text); }
     .rg-note--reco .rg-up { color: #15803d; font-weight: 600; }
     .rg-note--reco .rg-down { color: #b91c1c; font-weight: 600; }
 
-    .rg-status { min-width: 5.2rem; border: none; border-radius: 999px; padding: 0.2rem 0.7rem; font-weight: 700; cursor: pointer; color: #fff; font-size: 0.82rem; transition: filter 0.1s; }
+    /* the status is a plain circle (green open, red closed, grey unknown): no text, the title and aria-label say it */
+    .rg-status { width: 1.1rem; height: 1.1rem; min-width: 0; padding: 0; border: 2px solid rgba(0,0,0,0.12); border-radius: 50%; cursor: pointer; flex: none; transition: filter 0.1s, transform 0.1s; }
+    .rg-status:hover { transform: scale(1.2); }
     .rg-status:hover { filter: brightness(1.1); }
     .rg-status:disabled { opacity: 0.55; cursor: wait; }
     .rg-status--open { background: #16a34a; }
@@ -84,16 +93,15 @@
     .rg-status--unknown { background: #6b7280; }
 
     /* the arrow beside the status: a recommendation to change it (green = open, red = close); clicking it ignores the recommendation */
-    .rg-arrow { width: 2rem; height: 2rem; border-radius: 50%; border: 2px solid; background: #fff; font-size: 1rem; line-height: 1; cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+    .rg-arrow { width: 1.4rem; height: 1.4rem; border-radius: 50%; border: 2px solid; background: #fff; font-size: 0.75rem; line-height: 1; cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
     .rg-arrow--open { color: #16a34a; border-color: #16a34a; }
     .rg-arrow--closed { color: #dc2626; border-color: #dc2626; }
     .rg-arrow:disabled { opacity: 0.5; cursor: wait; }
-    .rg-arrow-slot { width: 2rem; height: 2rem; display: inline-block; }
+    .rg-arrow-slot { width: 1.4rem; height: 1.4rem; display: inline-block; }
 
     .rg-empty { padding: 1.5rem; text-align: center; color: var(--theme-text-secondary); }
     @media (max-width: 640px) {
       .rg-row { grid-template-columns: 2.2rem 1fr auto auto; }
-      .rg-status { min-width: 5.5rem; padding: 0.4rem 0.6rem; }
     }
   </style>
 </head>
@@ -118,6 +126,7 @@
             <div class="rg-counts" id="mountain-counts"></div>
             <div class="rg-tools">
               <div class="rg-filter-box" id="group-filter" aria-label="Afficher"></div>
+              <span class="rg-foldall"><button type="button" class="rg-link" id="fold-all">Tout replier</button> · <button type="button" class="rg-link" id="unfold-all">Tout déplier</button></span>
               <label class="rg-filter"><input type="checkbox" id="only-reco"> Seulement les recommandations</label>
               <div class="rg-all"><span>Toute la montagne</span>
                 <span class="rg-dots">
@@ -164,6 +173,9 @@
     let lastInspection = {};    // trail id -> its latest inspection of the season
     let busy = false;
     let onlyReco = false;
+    let folded = new Set();     // the boxes folded to their title bar ("group|sector"), remembered in this browser
+    try { folded = new Set(JSON.parse(localStorage.getItem('regis-folded') || '[]')); } catch (e) { /* no storage: folding just is not remembered */ }
+    const saveFolded = () => { try { localStorage.setItem('regis-folded', JSON.stringify([...folded])); } catch (e) { /* ignore */ } };
     let hiddenGroups = {};      // groups the manager hid with the filter (Montées, Descentes)
     let inspectionsById = {};   // this season's inspections by id
     const el = id => document.getElementById(id);
@@ -242,29 +254,38 @@
     function rowHtml(t) {
       const status = statusOf(t), rec = recOf(t), insp = inspectionFor(t);
       const isLift = TrailService.kindOf(t) === 'lift';
-      // the whole line that describes an inspection is the link to it (it opens the window with the details)
-      const asLink = text => insp ? `<button type="button" class="rg-link" data-act="inspection" data-id="${esc(t.id)}" title="Voir l'inspection">${text}</button>` : text;
+      // the whole text that describes an inspection is the link to it (it opens the window with the details)
+      const asLink = (text, tip) => insp ? `<button type="button" class="rg-link" data-act="inspection" data-id="${esc(t.id)}" title="${esc(tip || "Voir l'inspection")}">${text}</button>` : text;
+      const nProblems = n => `${n} problème${n > 1 ? 's' : ''}`;
+      // After the name, on the same line when it fits (it wraps under the name otherwise). Only what is worth a look:
+      //   - a recommendation (always); - a trail with no inspection this season; - an inspection that is not "good with no issue".
+      // A good inspection with nothing to report is just a small magnifier (tooltip: how long ago, the condition), the way in to the window.
       let note = '';
       if (rec) {
         const when = toDate(rec.at) || (insp && toDate(insp.date));
-        const detail = [when ? `inspection du ${day(when)}` : '', rec.condition ? TrailService.conditionText(rec.condition) : '', rec.issueCount ? `${rec.issueCount} problème${rec.issueCount > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
-        note = `<div class="rg-note rg-note--reco">${asLink((rec.status === 'open' ? '<span class="rg-up">▲ Recommandation : ouvrir</span>' : '<span class="rg-down">▼ Recommandation : fermer</span>') + (detail ? ' (' + esc(detail) + ')' : ''))}</div>`;
+        const detail = [when ? `inspection du ${day(when)}` : '', rec.condition ? TrailService.conditionText(rec.condition) : '', rec.issueCount ? nProblems(rec.issueCount) : ''].filter(Boolean).join(' · ');
+        note = `<span class="rg-note rg-note--reco">${asLink((rec.status === 'open' ? '<span class="rg-up">▲ Recommandation : ouvrir</span>' : '<span class="rg-down">▼ Recommandation : fermer</span>') + (detail ? ' (' + esc(detail) + ')' : ''))}</span>`;
       } else if (!isLift) {
-        note = insp
-          ? `<div class="rg-note">${asLink(`${esc(agoText(toDate(insp.date)))} · ${esc(TrailService.conditionText(insp.condition))}${insp.issues && insp.issues.length ? ' · ' + insp.issues.length + ' problème' + (insp.issues.length > 1 ? 's' : '') : ''}`)}</div>`
-          : '<div class="rg-note">Pas d\'inspection cette saison</div>';
-      }      const arrow = rec
+        if (!insp) {
+          note = '<span class="rg-note">Pas d\'inspection cette saison</span>';
+        } else {
+          const issues = (insp.issues || []).length;
+          const summary = `${agoText(toDate(insp.date))} · ${TrailService.conditionText(insp.condition)}${issues ? ' · ' + nProblems(issues) : ''}`;
+          note = (insp.condition === 'good' && !issues)
+            ? `<button type="button" class="rg-link rg-peek" data-act="inspection" data-id="${esc(t.id)}" title="Dernière inspection : ${esc(summary)}" aria-label="Dernière inspection : ${esc(summary)}">🔍</button>`
+            : `<span class="rg-note">${asLink(esc(summary), 'Voir l\'inspection : ' + summary)}</span>`;
+        }
+      }
+      const arrow = rec
         ? `<button type="button" class="rg-arrow rg-arrow--${rec.status}" data-act="ignore" data-id="${esc(t.id)}" title="${rec.status === 'open' ? 'Une inspection recommande d\'ouvrir' : 'Une inspection recommande de fermer'}. Cliquer pour ignorer la recommandation." aria-label="Ignorer la recommandation">${rec.status === 'open' ? '▲' : '▼'}</button>`
         : '<span class="rg-arrow-slot"></span>';
       return `<div class="rg-row${rec ? ' rg-row--reco' : ''}" data-id="${esc(t.id)}">
         <span class="rg-num">${esc(TrailService.markerLabel(t))}</span>
-        <span class="rg-name">${esc(t.name || t.id)}</span>
+        <span class="rg-main"><span class="rg-name">${esc(t.name || t.id)}</span>${note}</span>
         ${arrow}
-        <button type="button" class="rg-status rg-status--${status}" data-act="toggle" data-id="${esc(t.id)}" title="Cliquer pour ${status === 'open' ? 'fermer' : 'ouvrir'}">${status === 'unknown' ? '' : '● '}${STATUS_WORD[status]}</button>
-        ${note}
+        <button type="button" class="rg-status rg-status--${status}" data-act="toggle" data-id="${esc(t.id)}" title="${STATUS_WORD[status]} - cliquer pour ${status === 'open' ? 'fermer' : 'ouvrir'}" aria-label="${STATUS_WORD[status]} - cliquer pour ${status === 'open' ? 'fermer' : 'ouvrir'}"></button>
       </div>`;
     }
-
     /** Inside a sector box: the rows (side by side in the full-width groups) */
     function boxBodyHtml(list, group) {
       const rows = list.slice().sort(TrailService.compare).map(rowHtml).join('');
@@ -296,9 +317,9 @@
         return `<div class="rg-group-block" data-group="${esc(g.id)}">${groupDefs().length > 1 ? `<h2 class="rg-group-block__title">${esc(g.title)}</h2>` : ''}<div class="rg-grid${g.wide ? ' rg-grid--wide' : ''}">`
           + boxes.map(b => {
             const c = countOf(boxTrails(g.id, b.id));   // a box's buttons act on all of it, even when filtered
-            return `<div class="section-card rg-sector" data-sector="${esc(b.id)}" data-group="${esc(g.id)}">
+            return `<div class="section-card rg-sector${folded.has(g.id + '|' + b.id) ? ' is-folded' : ''}" data-sector="${esc(b.id)}" data-group="${esc(g.id)}">
               <div class="section-card__header rg-sector__head">
-                <h3 class="rg-sector__title">${esc(b.name)}<span class="rg-sector__meta">${c.open} ouverts · ${c.closed} fermés${c.unknown ? ' · ' + c.unknown + ' inconnus' : ''}${c.reco ? ' · ▲▼ ' + c.reco : ''}</span></h3>
+                <h3 class="rg-sector__title"><button type="button" class="rg-fold" data-act="fold" data-sector="${esc(b.id)}" data-group="${esc(g.id)}" aria-expanded="${folded.has(g.id + '|' + b.id) ? 'false' : 'true'}" title="${folded.has(g.id + '|' + b.id) ? 'Déplier' : 'Replier'}">${folded.has(g.id + '|' + b.id) ? '▸' : '▾'}</button>${esc(b.name)}<span class="rg-sector__meta">${c.open} ouverts · ${c.closed} fermés${c.unknown ? ' · ' + c.unknown + ' inconnus' : ''}${c.reco ? ' · ▲▼ ' + c.reco : ''}</span></h3>
                 <span class="rg-dots">
                   <button type="button" class="rg-dot rg-dot--closed" data-act="sector-closed" data-sector="${esc(b.id)}" data-group="${esc(g.id)}" title="Fermer tout : ${esc(b.name)} (${esc(g.title)})" aria-label="Fermer tout : ${esc(b.name)} (${esc(g.title)})"></button>
                   <button type="button" class="rg-dot rg-dot--open" data-act="sector-open" data-sector="${esc(b.id)}" data-group="${esc(g.id)}" title="Ouvrir tout : ${esc(b.name)} (${esc(g.title)})" aria-label="Ouvrir tout : ${esc(b.name)} (${esc(g.title)})"></button>
@@ -370,6 +391,7 @@
       if (!btn) return;
       const act = btn.dataset.act;
       if (act === 'inspection') { openInspection(btn.dataset.id); return; }
+      if (act === 'fold') { const key = btn.dataset.group + '|' + btn.dataset.sector; if (folded.has(key)) folded.delete(key); else folded.add(key); saveFolded(); render(); return; }
       if (busy) return;
       const trail = trails.find(t => t.id === btn.dataset.id);
       if (act === 'toggle' && trail) {
@@ -395,6 +417,8 @@
       el('sectors').addEventListener('click', onClick);
       el('mountain-open').addEventListener('click', () => mountainAll('open'));
       el('mountain-close').addEventListener('click', () => mountainAll('closed'));
+      el('fold-all').addEventListener('click', () => { document.querySelectorAll('.rg-sector').forEach(b => folded.add(b.dataset.group + '|' + b.dataset.sector)); saveFolded(); render(); });
+      el('unfold-all').addEventListener('click', () => { folded.clear(); saveFolded(); render(); });
       el('only-reco').addEventListener('change', e => { onlyReco = e.target.checked; render(); });
       el('group-filter').addEventListener('change', e => { const g = e.target.dataset.group; if (g) { hiddenGroups[g] = !e.target.checked; render(); } });
       el('insp-close').addEventListener('click', closeInspection);
