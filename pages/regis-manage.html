@@ -31,8 +31,11 @@
     /* the groups (Montées, Descentes), each a grid of sector boxes: three per line on a wide screen */
     .rg-group-block { margin-bottom: 0.75rem; }
     .rg-group-block__title { margin: 0 0 0.3rem; font-size: 1.1rem; }
-    .rg-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; align-items: start; }
-    @media (max-width: 1100px) { .rg-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    /* four boxes per line on a wide screen (the page may be up to 1600 px wide), three, two, then one on smaller screens */
+    main.main { max-width: 1600px; }
+    .rg-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; align-items: start; }
+    @media (max-width: 1300px) { .rg-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 1000px) { .rg-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 700px) { .rg-grid { grid-template-columns: 1fr; } .rg-rows { grid-template-columns: 1fr; } }
     .rg-sector { margin: 0; }
     /* Montées and Remontées take all the width: the rows of a box side by side, as many as fit */
