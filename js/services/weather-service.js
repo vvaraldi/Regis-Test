@@ -18,7 +18,7 @@
 const WeatherService = (() => {
   const COLLECTION = 'weather_records';
 
-  // ---- The fields (units: °C, km/h, mm, cm, %, kPa, km) ----
+  // ---- The 11 fields (units: °C, km/h, cm) - all of them are on the public page ----
   const CLOUD_COVER = { clear: 'Dégagé', partly: 'Partiellement nuageux', overcast: 'Couvert' };
   const SKY = { sun: 'Soleil', snow: 'Neige', rain: 'Pluie', fog: 'Brouillard' };
   const LISTS = (APP_CONFIG.weather && APP_CONFIG.weather.lists) || {};   // the typed-only choices (config.js)
@@ -29,19 +29,13 @@ const WeatherService = (() => {
     { key: 'feelsLikeC', label: 'Température ressentie', unit: '°C', type: 'number', min: -90, max: 60, step: 1 },
     { key: 'windForce', label: 'Force du vent', type: 'choice', choices: LISTS.windForce || {}, listed: true },
     { key: 'windKmh', label: 'Vent', unit: 'km/h', type: 'number', min: 0, max: 300, step: 1 },
-    { key: 'gustKmh', label: 'Rafales', unit: 'km/h', type: 'number', min: 0, max: 300, step: 1 },
-    { key: 'windDir', label: 'Direction du vent', unit: '°', type: 'number', min: 0, max: 360, step: 1 },
     { key: 'newSnowCm', label: 'Neige fraîche (24 h)', unit: 'cm', type: 'number', min: 0, max: 300, step: 1 },
     { key: 'snowType', label: 'Conditions de neige', type: 'choice', choices: LISTS.snowType || {}, listed: true },
     { key: 'snowDepthCm', label: 'Neige au sol (base)', unit: 'cm', type: 'number', min: 0, max: 1000, step: 1 },
     { key: 'snowBase', label: 'Fond', type: 'choice', choices: LISTS.snowBase || {}, listed: true },
     { key: 'snowCover', label: 'Couverture', type: 'choice', choices: LISTS.snowCover || {}, listed: true },
-    { key: 'rainMm', label: 'Pluie (24 h)', unit: 'mm', type: 'number', min: 0, max: 500, step: 0.1 },
     { key: 'cloudCover', label: 'Nuages', type: 'choice', choices: CLOUD_COVER },
-    { key: 'sky', label: 'Conditions', type: 'choice', choices: SKY },
-    { key: 'humidityPct', label: 'Humidité', unit: '%', type: 'number', min: 0, max: 100, step: 1 },
-    { key: 'pressureKpa', label: 'Pression', unit: 'kPa', type: 'number', min: 80, max: 110, step: 0.1 },
-    { key: 'visibilityKm', label: 'Visibilité', unit: 'km', type: 'number', min: 0, max: 100, step: 0.1 }
+    { key: 'sky', label: 'Conditions générales', type: 'choice', choices: SKY }
   ];  const KEYS = FIELDS.map(f => f.key);
   const fieldOf = key => FIELDS.find(f => f.key === key);
 
@@ -54,15 +48,7 @@ const WeatherService = (() => {
     const n = typeof v === 'number' ? v : Number(v);
     return Number.isFinite(n) ? n : null;
   };
-  const round1 = n => Math.round(n * 10) / 10;
   const ms = t => (t && typeof t.toMillis === 'function') ? t.toMillis() : (t && typeof t.toDate === 'function') ? t.toDate().getTime() : (t instanceof Date ? t.getTime() : (typeof t === 'number' ? t : null));
-
-  const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO'];
-  /** 297 -> "ONO" (the wind comes from that side) */
-  function compass(deg) {
-    const d = num(deg);
-    return d === null ? '' : COMPASS[Math.round((((d % 360) + 360) % 360) / 22.5) % 16];
-  }
 
   /**
    * The temperature it feels like, with Environment Canada's formulas: wind chill when it is 0 °C or colder and
@@ -102,22 +88,13 @@ const WeatherService = (() => {
     const put = (key, v) => { if (v !== null && v !== undefined) out[key] = v; };
     const temp = num(p.air_temp);
     put('tempC', temp);
-    put('humidityPct', num(p.rel_hum));
     put('windKmh', num(p.avg_wnd_spd_10m_pst10mts));
-    put('windDir', num(p.avg_wnd_dir_10m_pst10mts));
-    const gust = num(p.max_wnd_spd_10m_pst1hr);
-    put('gustKmh', gust !== null ? gust : num(p.max_wnd_spd_10m_pst10mts));
     put('dewPointC', num(p.dwpt_temp));
     if (profile === 'airport') {
-      const mslp = num(p.mslp);                                   // hPa -> kPa
-      put('pressureKpa', mslp === null ? null : round1(mslp / 10));
-      put('visibilityKm', num(p.avg_vis_pst10mts));
       const layers = [p.cld_amt_code_1, p.cld_amt_code_2, p.cld_amt_code_3].filter(c => num(c) !== null);
       // no layer in a complete report (it has its visibility) = clear sky; a report without it tells nothing
       const cover = layers.length ? cloudCoverFromLayers(layers) : (num(p.avg_vis_pst10mts) !== null ? 'clear' : null);
       put('cloudCover', cover);
-      const pc24 = num(p.pcpn_amt_pst24hrs);                      // rain only when it is not freezing
-      put('rainMm', pc24 !== null && temp !== null && temp > 1 ? pc24 : null);
       // a suggestion for the sky: fog, precipitation (rain / snow by the temperature), otherwise sun when not overcast
       const pc1 = num(p.pcpn_amt_pst1hr), vis = num(p.avg_vis_pst10mts);
       let sky = null;
@@ -346,7 +323,6 @@ const WeatherService = (() => {
     if (!f) return String(value);
     if (f.type === 'choice') return f.choices[value] || String(value);
     const text = String(value).replace('.', ',');
-    if (key === 'windDir') return `${text}° (${compass(value)})`;
     return f.unit ? `${text} ${f.unit}` : text;
   }
 
@@ -372,8 +348,8 @@ const WeatherService = (() => {
     const stations = new Set();
     const loc = location(record.locationId);
     keys.forEach(k => {
-      // the words of a typed-only list go out as words (the other website has no copy of the lists); the rest as stored
-      measures[k] = fieldOf(k).listed ? (fieldOf(k).choices[eff[k].value] || String(eff[k].value)) : eff[k].value;
+      // every choice goes out as its words (the other website has no copy of the lists); numbers as stored
+      measures[k] = fieldOf(k).type === 'choice' ? (fieldOf(k).choices[eff[k].value] || String(eff[k].value)) : eff[k].value;
       if (eff[k].source !== 'manual') {
         webFields.push(k);
         const st = loc.stations.find(s => s.id === eff[k].source);
@@ -449,7 +425,7 @@ const WeatherService = (() => {
 
   return {
     COLLECTION, FIELDS, KEYS, CLOUD_COVER, SKY, fieldOf, location,
-    compass, format, feelsLike, mapObservation, observationUrl, fetchWebValues,
+    format, feelsLike, mapObservation, observationUrl, fetchWebValues,
     validateManual, buildRecord, effectiveValues, save, update, remove, list, listDay,
     publicDocument, publishLatest, dayKey, dailyValues, missingDays
   };

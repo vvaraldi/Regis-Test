@@ -373,7 +373,7 @@
     // rules not published) only hides the panel, never the trail map.
     function redrawWeather() {
       const panel = el('weather-panel');
-      const plain = lastWeather;
+      const plain = Network.feature('weather') ? lastWeather : null;   // no weather panel in an activity without weather (bike, for now)
       if (!plain) { panel.hidden = true; panel.innerHTML = ''; return; }
       WeatherPublic.injectStyles();
       panel.innerHTML = WeatherPublic.panelHtml(plain, { icon: Network.seasonIcon() });

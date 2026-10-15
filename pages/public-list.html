@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" data-no-brand content="Liste en direct des pistes, montées et remontées du Mont Orford, par secteur">
+  <meta name="theme-color" content="#1b4b72">
+  <title data-no-brand>Mont Orford - Statut des sentiers</title>
+
+  <!-- Favicon -->
+  <link rel="icon" data-brand href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔️</text></svg>">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    body { background: var(--theme-bg); color: var(--theme-text); min-height: 100vh; }
+
+    .ps-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 1rem 1.5rem; background: var(--theme-gradient); color: #fff; }
+    .ps-header h1 { font-size: 1.25rem; font-weight: 700; margin: 0; color: inherit; }
+    .ps-header__meta { display: flex; align-items: center; gap: 1rem; font-size: 0.85rem; flex-wrap: wrap; }
+    .ps-header a { color: #fff; opacity: 0.85; text-decoration: none; }
+    .ps-header a:hover { opacity: 1; text-decoration: underline; }
+    .ps-theme-btn { background: rgba(255,255,255,0.18); border: 0; border-radius: 8px; color: #fff; cursor: pointer; font-size: 1.1rem; line-height: 1; padding: 0.4rem 0.55rem; }
+
+    /* body is a flex column (main.css): width/min-width keep the page from widening */
+    .ps-main { width: 100%; min-width: 0; max-width: 1100px; margin: 0 auto; padding: 1.25rem 1rem 2rem; box-sizing: border-box; }
+
+    /* The sectors in two columns (one on a phone). A sector is never cut between two columns. */
+    .pl-sectors { column-count: 2; column-gap: 1.5rem; }
+    .pl-sector { break-inside: avoid; margin: 0 0 1rem; background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 12px; padding: 0.75rem 1rem 0.5rem; }
+    .pl-sector__head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; margin: 0 0 0.25rem; }
+    .pl-sector__title { margin: 0; font-size: 1.1rem; font-weight: 700; }
+    .pl-sector__count { font-size: 0.8rem; color: var(--theme-text-light); white-space: nowrap; }
+    .pl-group__title { margin: 0.6rem 0 0.15rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--theme-text-light); }
+    .pl-row { display: grid; grid-template-columns: 2.2rem 1fr auto; align-items: center; gap: 0.5rem; padding: 0.3rem 0; border-bottom: 1px solid var(--theme-border); }
+    .pl-row:last-child { border-bottom: none; }
+    .pl-num { text-align: right; font-weight: 700; color: var(--theme-text-light); font-size: 0.9rem; }
+    .pl-name small { color: var(--theme-text-light); margin-left: 0.35rem; }
+    .pl-pill { display: inline-flex; align-items: center; gap: 0.35rem; min-width: 5.2rem; justify-content: center; padding: 0.2rem 0.7rem; border-radius: 999px; font-size: 0.82rem; font-weight: 700; color: #fff; }
+    .pl-pill--open { background: #10b981; }
+    .pl-pill--closed { background: #ef4444; }
+    .pl-pill--unknown { background: #6b7280; }
+
+    .ps-legend { display: flex; gap: 1.25rem; flex-wrap: wrap; padding: 0 0.25rem 1rem; font-size: 0.8rem; color: var(--theme-text-light); }
+    .ps-legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .ps-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+    .ps-dot--open { background: #10b981; }
+    .ps-dot--closed { background: #ef4444; }
+    .ps-dot--unknown { background: #6b7280; }
+
+    .ps-message { padding: 1rem; text-align: center; color: var(--theme-text-light); }
+    .ps-message--error { color: #dc2626; }
+    .ps-message--warn { color: #b45309; font-size: 0.875rem; padding: 0.5rem 1rem; }
+    .ps-footer { text-align: center; font-size: 0.75rem; color: var(--theme-text-light); padding: 0 1rem 0.4rem; }
+    .ps-footer a { color: inherit; }
+    .ps-season-toggle { display: flex; justify-content: center; align-items: center; gap: 0.4rem; flex-wrap: wrap; font-size: 0.75rem; color: var(--theme-text-light); padding: 0 1rem 1.5rem; }
+    .ps-season-toggle button { background: none; border: 1px solid var(--theme-border); border-radius: 999px; color: inherit; cursor: pointer; font-size: 0.75rem; padding: 0.2rem 0.65rem; }
+    .ps-season-toggle button.is-active { background: var(--color-logo-blue); border-color: transparent; color: #fff; font-weight: 600; }
+
+    @media (max-width: 760px) {
+      .pl-sectors { column-count: 1; }
+      .ps-header { padding: 0.9rem 1rem; }
+      .ps-header h1 { font-size: 1.05rem; }
+    }
+  </style>
+</head>
+<body data-theme="light" data-module="status">
+  <header class="ps-header">
+    <h1 id="page-title">Mont Orford</h1>
+    <div class="ps-header__meta">
+      <span>Dernière mise à jour : <strong id="last-update">--</strong></span>
+      <!-- When the public file was last rewritten (it is read every minute): proves the page is alive even when no trail changed -->
+      <span id="data-checked-wrap" hidden>Données vérifiées : <strong id="data-checked">--</strong></span>
+      <a href="../index.html">Portail</a>
+      <button type="button" class="ps-theme-btn" id="theme-btn" aria-label="Changer le thème" title="Changer le thème">🌙</button>
+    </div>
+  </header>
+
+  <main class="ps-main" id="main-content">
+    <div class="ps-message" id="loading">Chargement de l'état des sentiers...</div>
+    <div class="ps-message ps-message--error" id="error" hidden></div>
+    <!-- Shown when the public file has not been rewritten for a long time (updates paused, or the function is down) -->
+    <div class="ps-message ps-message--warn" id="stale-note" hidden></div>
+
+    <div class="ps-legend" id="legend" hidden>
+      <span><i class="ps-dot ps-dot--open"></i>Ouvert</span>
+      <span><i class="ps-dot ps-dot--closed"></i>Fermé</span>
+      <span><i class="ps-dot ps-dot--unknown"></i>Inconnu</span>
+    </div>
+
+    <!-- Every trail and lift of the season's activity, by sector -->
+    <div class="pl-sectors" id="sectors"></div>
+
+    <!-- Météo: the latest published reading (weather_public/latest), at the bottom; hidden when there is none -->
+    <section id="weather-panel" aria-label="Météo" hidden></section>
+  </main>
+
+  <p class="ps-footer"><a id="map-link" href="public-status.html">🗺️ Voir la carte des sentiers</a></p>
+  <p class="ps-footer" id="footer"></p>
+  <!-- Preview: switch the activity shown regardless of today's date (nothing is remembered) -->
+  <div class="ps-season-toggle" id="season-toggle"></div>
+
+  <!-- Shared JS (no login needed on this page) -->
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/weather-public.js"></script>
+  <script src="../js/services/status-snapshot.js"></script>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+
+  <script>
+    let allTrails = [];     // this activity's trails and lifts, every kind together, hidden ones left out
+    let allSectors = [];    // { id, name, order, aliases }
+    let lastWeather = null; // the latest published weather reading (plain object), or null
+
+    const el = id => document.getElementById(id);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const STATUS_WORD = { open: 'Ouvert', closed: 'Fermé', unknown: 'Inconnu' };
+    const KIND_ORDER = ['downhill', 'uphill', 'lift', 'bike'];
+    const KIND_TITLE = { downhill: 'Descentes', uphill: 'Montées', lift: 'Remontées', bike: 'Sentiers' };
+
+    const statusOf = TrailService.statusOf;
+
+    /** The sector of a trail: its id, or one of the older ids (aliases) it may still carry */
+    function sectorOf(trail) {
+      if (!trail.sector) return null;
+      return allSectors.find(s => s.id === trail.sector) || allSectors.find(s => (s.aliases || []).includes(trail.sector)) || null;
+    }
+
+    function rowHtml(t) {
+      const status = statusOf(t);
+      const diff = TrailService.difficultyOf(t) ? TrailService.difficultyLabel(TrailService.difficultyOf(t)) : '';
+      return `<div class="pl-row"><span class="pl-num">${esc(TrailService.markerLabel(t))}</span>`
+        + `<span class="pl-name">${esc(t.name || t.id)}${diff && TrailService.kindOf(t) !== 'lift' ? `<small>${esc(diff)}</small>` : ''}</span>`
+        + `<span class="pl-pill pl-pill--${status}">${STATUS_WORD[status]}</span></div>`;
+    }
+
+    function sectorHtml(name, list) {
+      const byKind = {};
+      list.forEach(t => { (byKind[TrailService.kindOf(t)] = byKind[TrailService.kindOf(t)] || []).push(t); });
+      const kinds = KIND_ORDER.filter(k => byKind[k]).concat(Object.keys(byKind).filter(k => !KIND_ORDER.includes(k)));
+      const open = list.filter(t => statusOf(t) === 'open').length;
+      return `<section class="pl-sector"><div class="pl-sector__head"><h2 class="pl-sector__title">${esc(name)}</h2><span class="pl-sector__count">${open} / ${list.length} ouverts</span></div>`
+        + kinds.map(k => `<h3 class="pl-group__title">${esc(KIND_TITLE[k] || TrailService.kindLabel(k))}</h3>${byKind[k].slice().sort(TrailService.compare).map(rowHtml).join('')}`).join('')
+        + '</section>';
+    }
+
+    function render() {
+      const sectors = allSectors.slice().sort((a, b) => (a.order == null ? 999 : a.order) - (b.order == null ? 999 : b.order) || String(a.name).localeCompare(String(b.name), 'fr'));
+      const blocks = sectors.map(s => ({ name: s.name, list: allTrails.filter(t => (sectorOf(t) || {}).id === s.id) }));
+      const loose = allTrails.filter(t => !sectorOf(t));
+      if (loose.length) blocks.push({ name: allSectors.length ? 'Autres' : 'Sentiers', list: loose });
+      el('sectors').innerHTML = blocks.filter(b => b.list.length).map(b => sectorHtml(b.name, b.list)).join('');
+      el('legend').hidden = !allTrails.length;
+      const times = allTrails.map(t => t.lastUpdated && t.lastUpdated.toDate ? t.lastUpdated.toDate().getTime() : 0).filter(Boolean);
+      el('last-update').textContent = times.length ? formatDateTime(new Date(Math.max(...times))) : '--';
+    }
+
+    // "Mont Orford - <network's publicTitle>"
+    function updateTitle() {
+      const network = APP_CONFIG.networks[Network.current()];
+      const brand = APP_CONFIG.branding;
+      const title = `Mont Orford - ${network.publicTitle}`;
+      el('page-title').textContent = `${brand.logoImage ? '' : brand.logo + ' '}${title}`;
+      document.title = title;
+    }
+
+    // Preview toggle at the bottom (?network=): it only changes what THIS load of the page shows
+    function renderSeasonToggle() {
+      const ids = Network.ids;
+      const params = new URLSearchParams(window.location.search);
+      const forced = ids.includes(params.get('network')) ? params.get('network') : null;
+      const auto = Network.ofSeason();
+      const urlFor = id => {
+        const p = new URLSearchParams(window.location.search);
+        if (id) p.set('network', id); else p.delete('network');
+        const qs = p.toString();
+        return window.location.pathname + (qs ? '?' + qs : '');
+      };
+      const buttons = [{ id: null, label: `Auto (${APP_CONFIG.networks[auto].name})` }]
+        .concat(ids.map(id => ({ id, label: `${APP_CONFIG.networks[id].icon} ${APP_CONFIG.networks[id].name}` })));
+      el('season-toggle').replaceChildren(...buttons.map(b => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = b.label;
+        if (b.id ? forced === b.id : !forced) btn.classList.add('is-active');
+        btn.addEventListener('click', () => { window.location.href = urlFor(b.id); });
+        return btn;
+      }));
+      // the link to the map keeps the preview choice
+      if (forced) el('map-link').href = 'public-status.html?network=' + forced;
+    }
+
+    function showError(message) {
+      el('loading').hidden = true;
+      el('error').textContent = message;
+      el('error').hidden = false;
+    }
+
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error(`Failed to load ${src}`));
+        document.head.appendChild(s);
+      });
+    }
+
+    // ---- The data: the public file first (no Firestore read at all), Firestore only when the file cannot be read ----
+    // Same as the map page: public/status.json, rewritten every minute or so by the Cloud Function "publishStatus"; it also holds the
+    // sectors (names and order). If it cannot be read, the live Firestore listeners below take over.
+    let fallbackStarted = false;
+    let snapshotTimer = null;
+    let snapshotMismatch = false;   // the file is for another activity than the one this page shows
+
+    function applySnapshot(snapshot) {
+      allTrails = snapshot.trails.filter(t => Network.matches(t) && t.archived !== true);
+      allSectors = snapshot.sectors || [];
+      lastWeather = snapshot.weather;
+      if (snapshot.generatedAt) {
+        el('data-checked').textContent = formatDateTime(snapshot.generatedAt);
+        el('data-checked-wrap').hidden = false;
+      }
+      el('loading').hidden = true;
+      el('error').hidden = true;
+      const note = el('stale-note');
+      if (StatusSnapshot.isStale(snapshot)) {
+        note.textContent = snapshot.generatedAt
+          ? `Les données n'ont pas été mises à jour depuis le ${formatDateTime(snapshot.generatedAt)}.`
+          : 'Les données ne sont peut-être pas à jour.';
+        note.hidden = false;
+      } else {
+        note.hidden = true;
+      }
+      render();
+      redrawWeather();
+    }
+
+    async function readSnapshot() {
+      try {
+        const snapshot = await StatusSnapshot.fetchSnapshot(APP_CONFIG.firebase.storageBucket);
+        // The file holds the activity of the season only; a page showing the other one (a preview) reads Firestore instead.
+        snapshotMismatch = !!snapshot.network && snapshot.network !== Network.current();
+        if (snapshotMismatch) throw new Error('The public file is for the activity ' + snapshot.network);
+        applySnapshot(snapshot);
+        return true;
+      } catch (error) {
+        console.warn('Status file:', error);
+        return false;
+      }
+    }
+
+    async function startData() {
+      if (await readSnapshot()) {
+        snapshotTimer = setInterval(async () => {
+          if (document.hidden) return;
+          if (!(await readSnapshot()) && snapshotMismatch && !fallbackStarted) {   // the season changed while the page was open
+            fallbackStarted = true;
+            clearInterval(snapshotTimer);
+            startFirestore();
+          }
+        }, StatusSnapshot.POLL_MS);
+        setInterval(redrawWeather, 10 * 60 * 1000);   // the "(ancien)" mark appears by itself on a screen left open
+        return;
+      }
+      if (fallbackStarted) return;
+      fallbackStarted = true;
+      await startFirestore();
+    }
+
+    // Public page: only the app + Firestore SDKs are needed (no auth, no storage)
+    async function startFirestore() {
+      await loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js');
+      await loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js');
+      if (!firebase.apps.length) firebase.initializeApp(APP_CONFIG.firebase);
+      const fs = firebase.firestore();
+
+      // The sector names are read once (they hardly ever change); a failed read only means the trails are listed together
+      try {
+        const sectorSnap = await fs.collection('sectors').get();
+        allSectors = sectorSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(s => s.network === Network.current());
+      } catch (error) { console.warn('Sectors:', error); allSectors = []; }
+
+      // Live updates: a status change shows up without a refresh
+      fs.collection('trails').onSnapshot(snapshot => {
+        // An empty snapshot from the local cache means "not connected yet", not "no trails"
+        if (snapshot.empty && snapshot.metadata.fromCache) {
+          el('loading').textContent = 'Connexion en cours...';
+          return;
+        }
+        allTrails = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(t => Network.matches(t) && t.archived !== true);
+        el('loading').hidden = true;
+        el('error').hidden = true;
+        render();
+      }, error => {
+        console.error('Error loading trails:', error);
+        showError("Impossible de charger l'état des sentiers. Veuillez réessayer plus tard.");
+      });
+
+      watchWeather();
+    }
+
+    // The weather panel (same as the map page): an extra, whatever goes wrong here only hides it, never the list
+    function redrawWeather() {
+      const panel = el('weather-panel');
+      const plain = Network.feature('weather') ? lastWeather : null;   // no weather panel in an activity without weather (bike, for now)
+      if (!plain) { panel.hidden = true; panel.innerHTML = ''; return; }
+      WeatherPublic.injectStyles();
+      panel.innerHTML = WeatherPublic.panelHtml(plain, { icon: Network.seasonIcon() });
+      panel.hidden = false;
+    }
+
+    function watchWeather() {
+      firebase.firestore().collection('weather_public').doc('latest').onSnapshot(snap => {
+        lastWeather = snap.exists ? WeatherPublic.fromSdk(snap.data()) : null;
+        redrawWeather();
+      }, error => {
+        console.error('Weather:', error);
+        lastWeather = null;
+        redrawWeather();
+      });
+      setInterval(redrawWeather, 10 * 60 * 1000);
+    }
+
+    function init() {
+      el('footer').textContent = APP_CONFIG.branding.footerText;
+      Network.usePublic();   // the season's activity, or ?network=bike|ski
+      updateTitle();
+      renderSeasonToggle();
+
+      const themeBtn = el('theme-btn');
+      const syncThemeBtn = () => { themeBtn.textContent = window.themeManager.isDark() ? '☀️' : '🌙'; };
+      themeBtn.addEventListener('click', () => window.themeManager.toggle());
+      document.addEventListener('themeChanged', syncThemeBtn);
+      syncThemeBtn();
+
+      startData().catch(error => {
+        console.error('Failed to load the status:', error);
+        showError("Impossible de charger l'application. Veuillez rafraîchir la page.");
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

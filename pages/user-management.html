@@ -62,6 +62,11 @@
       border-color: #166534;
     }
 
+    .access-badge--clickable.is-active.access-badge--regis {
+      background: rgba(15, 118, 110, 0.15);
+      border-color: #0f766e;
+    }
+
     .access-badge--clickable.is-active.access-badge--meteo {
       background: rgba(202, 138, 4, 0.15);
       border-color: #ca8a04;
@@ -429,6 +434,7 @@
               <option value="allowSignalisation">🚧 Signalisations</option>
               <option value="allowMaintenance">🪏 Entretien</option>
               <option value="allowMeteo">🌦️ Météo</option>
+                    <option value="allowRegis">🏔️ Régis gère</option>
             </select>
             <div class="page-size-select">
               <label for="users-page-size">Afficher:</label>
@@ -492,7 +498,7 @@
           <strong>role</strong> (<code>inspector</code> par défaut, ou <code>admin</code>),
           <strong>phone</strong>,
           <strong>allowInspection</strong> (vrai par défaut),
-          <strong>allowInfraction</strong>, <strong>allowSignalisation</strong>, <strong>allowMaintenance</strong>, <strong>allowMeteo</strong> (faux par défaut ; valeurs <code>true</code> ou <code>false</code>),
+          <strong>allowInfraction</strong>, <strong>allowSignalisation</strong>, <strong>allowMaintenance</strong>, <strong>allowMeteo</strong>, <strong>allowRegis</strong> (faux par défaut ; valeurs <code>true</code> ou <code>false</code>),
           <strong>networks</strong> : activités séparées par « | », par exemple <code>ski|bike</code> (sans cette colonne, l'utilisateur reçoit l'activité par défaut : ski).
           Les utilisateurs importés sont créés actifs.
         </p>
@@ -1087,8 +1093,14 @@
           <h3>Statut public des sentiers</h3>
         </div>
         <p class="data-export-section__description">
-          Page publique, sans connexion. À partager ou à copier dans un navigateur.
+          Deux pages publiques, sans connexion. À partager ou à copier dans un navigateur.
         </p>
+        <p class="data-export-section__description"><strong>La liste par secteur</strong> (sans carte) : toutes les pistes, montées et remontées, avec la météo en bas. C'est celle du portail.</p>
+        <div class="links-row">
+          <a class="links-url" id="link-public-list" target="_blank" rel="noopener"></a>
+          <button class="btn btn-secondary btn-sm" type="button" data-copy="link-public-list">📋 Copier</button>
+        </div>
+        <p class="data-export-section__description" style="margin-top: 1rem;"><strong>La carte</strong> des sentiers, avec la météo.</p>
         <div class="links-row">
           <a class="links-url" id="link-public-status" target="_blank" rel="noopener"></a>
           <button class="btn btn-secondary btn-sm" type="button" data-copy="link-public-status">📋 Copier</button>
@@ -1190,6 +1202,10 @@
             <div class="form-check">
               <input type="checkbox" class="form-check-input" id="access-meteo">
               <label class="form-check-label" for="access-meteo">🌦️ Météo</label>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="access-regis">
+              <label class="form-check-label" for="access-regis">🏔️ Régis gère</label>
             </div>
           </div>
 
@@ -1299,6 +1315,8 @@
     function setupLinksTab(showVolunteers) {
       const status = document.getElementById('link-public-status');
       status.href = status.textContent = pageLink('public-status.html');
+      const list = document.getElementById('link-public-list');
+      list.href = list.textContent = pageLink('public-list.html');
 
       document.getElementById('links-volunteer-card').hidden = !showVolunteers;
       if (showVolunteers) {
@@ -1628,6 +1646,7 @@
               ${appBadge(user, manageable, 'allowSignalisation', 'signalisation', '🚧', 'Signalisation')}
               ${appBadge(user, manageable, 'allowMaintenance', 'maintenance', '🪏', 'Entretien')}
               ${appBadge(user, manageable, 'allowMeteo', 'meteo', '🌦️', 'Météo')}
+          ${appBadge(user, manageable, 'allowRegis', 'regis', '🏔️', 'Régis gère')}
             </div>
           </td>
           <td data-label="Statut">
@@ -1754,7 +1773,7 @@
         filterAndRenderUsers(true);
         
         const user = users.find(u => u.id === userId);
-        const fieldNames = { allowInspection: 'Inspection', allowInfraction: 'Infraction', allowSignalisation: 'Signalisation', allowMaintenance: 'Entretien', allowMeteo: 'Météo' };
+        const fieldNames = { allowInspection: 'Inspection', allowInfraction: 'Infraction', allowSignalisation: 'Signalisation', allowMaintenance: 'Entretien', allowMeteo: 'Météo', allowRegis: 'Régis gère' };
         showMessage(`${fieldNames[field]} ${newValue ? 'activé' : 'désactivé'} pour ${user?.name || 'utilisateur'}.`, 'success');
       } catch (error) {
         console.error('Error toggling access:', error);
@@ -1843,6 +1862,7 @@
       document.getElementById('access-signalisation').checked = user.allowSignalisation === true;
       document.getElementById('access-maintenance').checked = user.allowMaintenance === true;
       document.getElementById('access-meteo').checked = user.allowMeteo === true;
+      document.getElementById('access-regis').checked = user.allowRegis === true;
       
       document.getElementById('password-group').style.display = 'none';
       document.getElementById('user-password').required = false;
@@ -1898,7 +1918,8 @@
         allowInfraction: document.getElementById('access-infraction').checked,
         allowSignalisation: document.getElementById('access-signalisation').checked,
         allowMaintenance: document.getElementById('access-maintenance').checked,
-        allowMeteo: document.getElementById('access-meteo').checked
+        allowMeteo: document.getElementById('access-meteo').checked,
+        allowRegis: document.getElementById('access-regis').checked
       };
 
       if (userData.networks.length === 0) {
@@ -1988,7 +2009,8 @@
           Infraction: u.allowInfraction === true ? 'Oui' : 'Non',
           Signalisation: u.allowSignalisation === true ? 'Oui' : 'Non',
           Entretien: u.allowMaintenance === true ? 'Oui' : 'Non',
-          Météo: u.allowMeteo === true ? 'Oui' : 'Non'
+          Météo: u.allowMeteo === true ? 'Oui' : 'Non',
+          'Régis gère': u.allowRegis === true ? 'Oui' : 'Non'
         };
       });
 
@@ -2315,6 +2337,7 @@
         user.allowSignalisation = user.allowsignalisation === 'true' || user.allowsignalisation === '1';
         user.allowMaintenance = user.allowmaintenance === 'true' || user.allowmaintenance === '1';
         user.allowMeteo = user.allowmeteo === 'true' || user.allowmeteo === '1';
+      user.allowRegis = user.allowregis === 'true' || user.allowregis === '1';
 
         // Activities: "ski|bike". A system admin gets all of them; anyone else only gets
         // activities the importing admin holds. Empty column = default activity.
@@ -2370,6 +2393,7 @@
             <span class="access-badge--clickable access-badge--signalisation ${user.allowSignalisation ? 'is-active' : ''}" style="width:24px;height:24px;font-size:0.875rem;">🚧</span>
             <span class="access-badge--clickable access-badge--maintenance ${user.allowMaintenance ? 'is-active' : ''}" style="width:24px;height:24px;font-size:0.875rem;">🪏</span>
             <span class="access-badge--clickable access-badge--meteo ${user.allowMeteo ? 'is-active' : ''}" style="width:24px;height:24px;font-size:0.875rem;">🌦️</span>
+            <span class="access-badge--clickable access-badge--regis ${user.allowRegis ? 'is-active' : ''}" style="width:24px;height:24px;font-size:0.875rem;">🏔️</span>
           </td>
         </tr>
       `}).join('');
@@ -2451,6 +2475,7 @@
             allowSignalisation: user.allowSignalisation,
             allowMaintenance: user.allowMaintenance,
             allowMeteo: user.allowMeteo,
+          allowRegis: user.allowRegis === true,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdBy: currentUser.uid,
             importedVia: 'bulk_import'
@@ -2519,10 +2544,10 @@
     }
 
     // One column per field of a user profile that an import can set (status is always "active")
-    const CSV_TEMPLATE = `name,email,password,role,phone,allowInspection,allowInfraction,allowSignalisation,allowMaintenance,allowMeteo,networks
-Jean Dupont,jean.dupont@example.com,MotDePasse123,inspector,514-555-1234,true,false,false,false,false,ski
-Sophie Gagnon,sophie.gagnon@example.com,MotDePasse789,inspector,,true,false,false,true,false,bike
-Marie Tremblay,marie.tremblay@example.com,MotDePasse456,admin,,true,true,true,false,true,ski|bike`;
+    const CSV_TEMPLATE = `name,email,password,role,phone,allowInspection,allowInfraction,allowSignalisation,allowMaintenance,allowMeteo,allowRegis,networks
+Jean Dupont,jean.dupont@example.com,MotDePasse123,inspector,514-555-1234,true,false,false,false,false,false,ski
+Sophie Gagnon,sophie.gagnon@example.com,MotDePasse789,inspector,,true,false,false,true,false,false,bike
+Marie Tremblay,marie.tremblay@example.com,MotDePasse456,admin,,true,true,true,false,true,true,ski|bike`;
 
     function downloadCsvTemplate() {
       downloadFile('\uFEFF' + CSV_TEMPLATE, 'modele_import_utilisateurs.csv', 'text/csv;charset=utf-8');

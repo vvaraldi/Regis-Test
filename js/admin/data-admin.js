@@ -347,6 +347,8 @@ const DataAdmin = (function () {
     checkAuthStatus({
       requireAuth: true,
       requiredRoles: ['admin', 'system_admin'],
+      requiredFeature: cfg.requiredFeature || null,        // e.g. 'weather': the activity must use that feature
+      featureMessage: cfg.featureMessage || null,
       onAuthenticated: async (userData) => {
         // (needs the activity, known only now)
         const deleteSpec = cfg.management.deleteOld;

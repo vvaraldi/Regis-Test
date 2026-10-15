@@ -105,6 +105,12 @@
   --color-meteo-dark: #a16207;
   --color-meteo-rgb: 202, 138, 4;
 
+  /* Régis gère (the mountain manager) */
+  --color-regis: #0f766e;
+  --color-regis-light: #5eead4;
+  --color-regis-dark: #115e59;
+  --color-regis-rgb: 15, 118, 110;
+
   /* ===== TRAIL DIFFICULTY COLORS ===== */
   --color-difficulty-easy: #22c55e;
   --color-difficulty-medium: #3b82f6;

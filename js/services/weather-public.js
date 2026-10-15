@@ -16,14 +16,12 @@
 const WeatherPublic = (() => {
   const CLOUD = { clear: 'Dégagé', partly: 'Partiellement nuageux', overcast: 'Couvert' };
   const SKY = { sun: 'Soleil', snow: 'Neige', rain: 'Pluie', fog: 'Brouillard' };
-  const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO'];
-  const OLD_AFTER_MS = 36 * 3600 * 1000;      // a reading older than this is shown as old
+    const OLD_AFTER_MS = 36 * 3600 * 1000;      // a reading older than this is shown as old
 
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const num = v => String(Math.round(Number(v) * 10) / 10).replace('.', ',');
   const has = (m, k) => m[k] !== undefined && m[k] !== null;
-  const compass = deg => COMPASS[Math.round((((Number(deg) % 360) + 360) % 360) / 22.5) % 16];
-
+  
   // ---- reading the document ----
 
   /** The web address of the latest reading in Firestore's REST API (no key needed: the rules make it public). */
@@ -95,9 +93,9 @@ const WeatherPublic = (() => {
 
   /**
    * The weather panel as HTML. options: { icon (the season's symbol), now (ms, tests) }.
-   * Only what skiers and riders look for, in ONE row on a wide screen (it wraps on a phone): the temperature (and the feels-like),
-   * the wind (speed, direction, force, gusts) and every snow condition (fresh snow, depth on the ground, conditions, fond, couverture).
-   * Only what exists is shown, always with the day and time of the reading. No source line, no sky, rain, humidity, pressure or visibility.
+   * The 11 measures of the Météo app, in ONE row on a wide screen (it wraps on a phone): the temperature (and the feels-like), the wind
+   * (km/h and force), every snow condition (fresh snow, depth on the ground, conditions, fond, couverture), the clouds and the general
+   * conditions. Only what exists is shown, always with the day and time of the reading. No source line.
    */
   function panelHtml(plain, options) {
     const o = options || {};
@@ -115,8 +113,7 @@ const WeatherPublic = (() => {
       // the force is typed words (Faible, Moyen, Fort...), published as words
       const subs = [];
       if (has(m, 'windKmh') && has(m, 'windForce')) subs.push(`Force : ${esc(m.windForce)}`);
-      if (has(m, 'gustKmh')) subs.push(`Rafales ${esc(num(m.gustKmh))} km/h`);
-      tile('Vent', has(m, 'windKmh') ? `${esc(num(m.windKmh))} km/h${has(m, 'windDir') ? ' ' + esc(compass(m.windDir)) : ''}` : esc(m.windForce), subs.join(' · '), !has(m, 'windKmh'));
+      tile('Vent', has(m, 'windKmh') ? `${esc(num(m.windKmh))} km/h` : esc(m.windForce), subs.join(' · '), !has(m, 'windKmh'));
     }
     // every snow condition is a tile of its own: fresh snow, depth, conditions, fond, couverture
     if (has(m, 'newSnowCm')) tile('Neige fraîche (24 h)', `${esc(num(m.newSnowCm))} cm`, '');
@@ -124,6 +121,8 @@ const WeatherPublic = (() => {
     if (has(m, 'snowType')) tile('Conditions de neige', esc(m.snowType), '', true);
     if (has(m, 'snowBase')) tile('Fond', esc(m.snowBase), '', true);
     if (has(m, 'snowCover')) tile('Couverture', esc(m.snowCover), '', true);
+    if (has(m, 'cloudCover')) tile('Nuages', esc(m.cloudCover), '', true);
+    if (has(m, 'sky')) tile('Conditions générales', esc(m.sky), '', true);
 
     const old = isOld(plain, o.now);
     return `<div class="wxp${old ? ' wxp--old' : ''}">
@@ -133,14 +132,14 @@ const WeatherPublic = (() => {
     </div>`;
   }
 
-  // The tiles share one row as long as they fit (up to seven of at least 130 px: a full screen, the page being 1100 px wide), then wrap
+  // The tiles share one row as long as they fit (up to nine of at least 105 px: a full screen, the page being 1100 px wide), then wrap
   const CSS = `
     .wxp { background: var(--theme-surface, #fff); color: var(--theme-text, #1f2937); border: 1px solid var(--theme-border, #e5e7eb); border-radius: 12px; padding: 0.85rem 1rem; margin-bottom: 1rem; font-family: inherit; }
     .wxp--old { opacity: 0.75; }
     .wxp__head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem 1rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
     .wxp__title { font-weight: 700; font-size: 1.05rem; }
     .wxp__when { font-size: 0.85rem; color: var(--theme-text-light, #6b7280); }
-    .wxp__tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.5rem; }
+    .wxp__tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 0.5rem; }
     .wxp-tile { background: var(--theme-surface-alt, #f3f4f6); border-radius: 10px; padding: 0.55rem 0.7rem; min-width: 0; }
     .wxp-tile__label { font-size: 0.75rem; color: var(--theme-text-light, #6b7280); }
     .wxp-tile__value { font-size: 1.35rem; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }

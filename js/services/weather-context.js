@@ -89,7 +89,7 @@ const WeatherContext = (() => {
 
   // ---- drawing it ----
 
-  const SHORT = { windForce: 'Force du vent', snowType: 'Conditions de neige', snowBase: 'Fond', snowCover: 'Couverture', windKmh: 'Vent', gustKmh: 'Rafales', rainMm: 'Pluie 24 h', newSnowCm: 'Neige fraîche 24 h', snowDepthCm: 'Neige au sol', cloudCover: 'Nuages', sky: 'Conditions', visibilityKm: 'Visibilité', humidityPct: 'Humidité', pressureKpa: 'Pression' };
+  const SHORT = { windForce: 'Force du vent', snowType: 'Conditions de neige', snowBase: 'Fond', snowCover: 'Couverture', windKmh: 'Vent', newSnowCm: 'Neige fraîche 24 h', snowDepthCm: 'Neige au sol', cloudCover: 'Nuages', sky: 'Conditions générales' };
 
   /** The values of a reading as one line: typed values first-class, an airport estimate marked ≈ */
   function valuesText(record) {
@@ -99,8 +99,8 @@ const WeatherContext = (() => {
     if (eff.tempC) parts.push(`Température ${mark('tempC')}${WS().format('tempC', eff.tempC.value)}${eff.feelsLikeC && eff.feelsLikeC.value !== eff.tempC.value ? ` (ressentie ${WS().format('feelsLikeC', eff.feelsLikeC.value)})` : ''}`);
     else if (eff.feelsLikeC) parts.push(`Température ressentie ${WS().format('feelsLikeC', eff.feelsLikeC.value)}`);
     WS().KEYS.forEach(k => {
-      if (!eff[k] || k === 'tempC' || k === 'feelsLikeC' || k === 'windDir') return;
-      if (k === 'windKmh') parts.push(`Vent ${mark(k)}${WS().format('windKmh', eff.windKmh.value)}${eff.windDir ? ' ' + WS().compass(eff.windDir.value) : ''}`);
+      if (!eff[k] || k === 'tempC' || k === 'feelsLikeC') return;
+      if (k === 'windKmh') parts.push(`Vent ${mark(k)}${WS().format('windKmh', eff.windKmh.value)}`);
       else parts.push(`${SHORT[k]} ${mark(k)}${WS().format(k, eff[k].value)}`);
     });
     return { text: parts.join(' · '), estimated: Object.values(eff).some(v => v.source === 'sherbrooke') };
@@ -140,6 +140,7 @@ const WeatherContext = (() => {
    */
   async function attach(container, at, options) {
     if (!container || !at) return;
+    if (typeof Network !== 'undefined' && Network.feature && !Network.feature('weather')) return;   // an activity without weather (bike, for now): no box, not even "no reading"
     const o = options || {};
     const db = o.db || window.db, fb = o.fb || window.firebase;
     const token = String(Date.now() + Math.random());

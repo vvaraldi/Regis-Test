@@ -84,6 +84,8 @@
 
       DataAdmin.init({
         deniedUrl: 'meteo-report.html',
+        requiredFeature: 'weather',
+        featureMessage: 'La météo n\'est pas utilisée pendant la saison vélo.',
 
         // The switch for the weather in reports. It must never stop the statistics from loading.
         async onReady(userData) {

@@ -14,8 +14,6 @@
     .map-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--theme-border); flex-wrap: wrap; gap: 1rem; }
     .map-header__title { font-size: 1.125rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
     .map-controls { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-left: auto; }
-    .bulk-actions { display: none; gap: 0.5rem; }
-    .bulk-actions.show { display: flex; align-items: center; }
     .map-header__season { font-size: 0.8125rem; font-weight: 400; color: var(--theme-text-secondary); }
     .map-hint { font-size: 0.8125rem; color: var(--theme-text-secondary); margin-right: 0.5rem; }
     .map-hint[hidden] { display: none; }
@@ -151,10 +149,6 @@
         <h2 class="map-header__title">🗺️ Carte des sentiers <span class="map-header__season" id="season-note"></span></h2>
         <div class="map-controls">
           <span class="map-hint" id="map-hint" hidden></span>
-          <div class="bulk-actions" id="bulk-actions">
-            <button class="btn btn-sm btn-success" onclick="bulkSetStatus('open')">Tout ouvrir</button>
-            <button class="btn btn-sm btn-danger" onclick="bulkSetStatus('closed')">Tout fermer</button>
-          </div>
           <div class="view-toggle">
             <span class="view-toggle__label" id="label-inspection">Inspection</span>
             <label class="toggle-switch">
@@ -402,7 +396,6 @@
       currentView = toggle.checked ? 'status' : 'inspection';
       document.getElementById('label-inspection').classList.toggle('is-active', currentView === 'inspection');
       document.getElementById('label-status').classList.toggle('is-active', currentView === 'status');
-      document.getElementById('bulk-actions').classList.toggle('show', currentView === 'status' && isAdmin);
       renderMapMarkers();
       updateLegend();
     }
@@ -441,76 +434,6 @@
     // with that shelter preselected. Shelters have no open/closed status, so nothing else to pass.
     function reportUrlForShelter(shelter) {
       return `inspection-shelter-report.html?${new URLSearchParams({ shelter: shelter.id })}`;
-    }
-
-    async function bulkSetStatus(status) {
-      const trails = visibleTrails();
-      const action = status === 'open' ? 'ouvrir' : 'fermer';
-      const kindNote = currentKind ? ` (${TrailService.kindLabel(currentKind)})` : '';
-      if (!confirm(`Êtes-vous sûr de vouloir ${action} tous les ${trails.length} sentiers${kindNote}?\n\nCette action créera une inspection pour chaque sentier, avec l'état général « Non inspecté ».`)) return;
-
-      try {
-        const now = new Date();
-        const comment = status === 'open'
-          ? 'Ouverture de toutes les pistes en une seule fois pour réinitialiser la montagne'
-          : 'Fermeture de toutes les pistes en une seule fois pour réinitialiser la montagne';
-
-        // Firebase batch limit is 500 operations, we do 2 per trail
-        const BATCH_SIZE = 200;
-        const chunks = [];
-        for (let i = 0; i < trails.length; i += BATCH_SIZE) {
-          chunks.push(trails.slice(i, i + BATCH_SIZE));
-        }
-        
-        for (const chunk of chunks) {
-          const batch = db.batch();
-          
-          chunk.forEach(t => {
-            const lastInsp = trailInspections[t.id] || {};
-            
-            // Create inspection record for each trail
-            const inspectionData = {
-              network: Network.current(),
-              trail_id: t.id,
-              inspector_id: currentUser.uid,
-              inspector_name: window.currentUserData?.name || currentUser.email,
-              date: firebase.firestore.Timestamp.fromDate(now),
-              trail_status: status,
-              // A mass open/close says nothing about the trail's actual condition
-              condition: 'not-inspected',
-              snow_condition: Network.feature('snowCondition') ? (lastInsp.snow_condition || null) : null,
-              issues: lastInsp.issues || [],
-              notes: comment,
-              photos: [],
-              createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-              isBulkToggle: true
-            };
-            
-            const inspRef = db.collection('trail_inspections').doc();
-            batch.set(inspRef, inspectionData);
-            batch.update(db.collection('trails').doc(t.id), {
-              status: status,
-              lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
-              lastInspectionId: inspRef.id
-            });
-            
-            // Update local state
-            t.status = status;
-            trailInspections[t.id] = { id: inspRef.id, ...inspectionData };
-          });
-          
-          await batch.commit();
-        }
-        
-        updateStatistics();
-        renderMapMarkers();
-        updateLegend();
-        loadRecentInspections();
-        alert(`✅ ${trails.length} sentiers ${status === 'open' ? 'ouverts' : 'fermés'} avec succès!\n\n${trails.length} inspections créées.`);
-      } catch (e) { 
-        console.error('Error:', e); 
-        alert('Erreur: ' + e.message); 
-      }
     }
 
     /**

@@ -35,6 +35,8 @@ function checkAuthStatus(options = {}) {
     requiredRoles = null,        // Array of allowed roles, e.g., ['admin', 'system_admin']
     requiredPermission = null,   // Permission field name, e.g., 'allowInspection'
     permissionDefault = false,   // Default value if permission field is undefined (false = must be explicitly granted)
+    requiredFeature = null,      // A feature of the current activity the page needs (config: networks.<id>.features), e.g. 'weather'
+    featureMessage = null,       // What to say when the activity does not have it
     adminsAlways = false,        // true: admins and system admins pass the permission check whatever their flags (history pages every admin may open)
     onAuthenticated = null,
     onUnauthenticated = null,
@@ -107,6 +109,12 @@ function checkAuthStatus(options = {}) {
           if (typeof Network !== 'undefined' && !Network.setUser(currentUserData)) {
             showAccessDenied('Aucune activité ne vous est attribuée. Contactez l\'administrateur.', true);
             await auth.signOut();
+            return;
+          }
+
+          // A page for a feature the current activity does not use (e.g. the weather in the bike season)
+          if (requiredFeature && typeof Network !== 'undefined' && !Network.feature(requiredFeature)) {
+            showAccessDenied(featureMessage || 'Cette fonction n\'est pas utilisée dans cette activité.');
             return;
           }
 

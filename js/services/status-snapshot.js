@@ -6,7 +6,7 @@
  *
  *   StatusSnapshot.url(bucket)                 the web address of the file (bucket: "trail-inspection.firebasestorage.app")
  *   StatusSnapshot.fetchSnapshot(bucket)       reads and revives it (rejects when the file cannot be read)
- *   StatusSnapshot.revive(json)                the file's JSON as { generatedAt (Date), refreshMinutes, network, trails, weather }:
+ *   StatusSnapshot.revive(json)                the file's JSON as { generatedAt (Date), refreshMinutes, network, trails, sectors, weather }:
  *                                              each trail has lastUpdated = { toDate() } like a Firestore timestamp, and
  *                                              weather is the object WeatherPublic.panelHtml() draws (or null)
  *   StatusSnapshot.isStale(snapshot, now)      true when the file has not been rewritten for much longer than it should
@@ -33,6 +33,7 @@ const StatusSnapshot = (() => {
       trails: json.trails.map(t => Object.assign({}, t, {
         lastUpdated: t.lastUpdated ? { toDate: () => new Date(t.lastUpdated), toMillis: () => t.lastUpdated } : null
       })),
+      sectors: Array.isArray(json.sectors) ? json.sectors : [],   // { id, name, order, aliases }: the list page groups the trails by sector
       weather: json.weather || null
     };
   }

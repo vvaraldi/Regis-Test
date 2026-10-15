@@ -45,6 +45,18 @@
       .wx-label { grid-column: 1 / -1; }
     }
 
+    /* the lifts: open / closed at one click (the Météo person decides for the lifts, nothing to do with a reading) */
+    .lf-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.5rem 1.5rem; }
+    .lf-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.4rem 0.25rem; border-bottom: 1px solid var(--theme-border, #e5e7eb); }
+    .lf-name small { color: var(--theme-text-secondary); margin-left: 0.4rem; }
+    .lf-status { min-width: 6.5rem; border: none; border-radius: 999px; padding: 0.45rem 0.9rem; font-weight: 700; cursor: pointer; color: #fff; font-size: 0.9rem; }
+    .lf-status:hover { filter: brightness(1.1); }
+    .lf-status:disabled { opacity: 0.55; cursor: wait; }
+    .lf-status--open { background: #16a34a; }
+    .lf-status--closed { background: #dc2626; }
+    .lf-status--unknown { background: #6b7280; }
+    .lf-hint { margin: 0 0 0.75rem; color: var(--theme-text-secondary); font-size: 0.9rem; }
+
     .wx-day { display: block; font-size: 0.8rem; color: var(--theme-text-secondary); }
     .wx-list-nav { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
     .wx-src { font-size: 0.7rem; color: var(--theme-text-secondary); margin-left: 0.2rem; }
@@ -68,6 +80,18 @@
         <p class="page-subtitle">Relevés météo : température, vent, neige et conditions</p>
       </div>
     </div>
+
+    <!-- The lifts: their status, switched here by the Météo person (lifts only) -->
+    <section class="content-section" id="lifts-section" hidden>
+      <div class="section-card">
+        <div class="section-card__header"><h2 class="section-card__title">🚠 Remontées</h2></div>
+        <div class="section-card__body">
+          <p class="lf-hint">Un clic sur le statut ouvre ou ferme la remontée tout de suite. Le changement est enregistré avec votre nom, l'heure et l'application.</p>
+          <div class="lf-list" id="lifts-list"></div>
+          <p class="lf-hint" id="lifts-empty" hidden>Aucune remontée n'est configurée pour le moment.</p>
+        </div>
+      </div>
+    </section>
 
     <!-- The reading -->
     <section class="content-section">
@@ -159,6 +183,9 @@
   <script src="../js/core/firebase-loader.js"></script>
   <script src="../js/core/auth.js"></script>
   <script src="../js/services/weather-service.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/sector-service.js"></script>
+  <script src="../js/services/status-service.js"></script>
 
   <script>
     const WS = WeatherService;
@@ -187,11 +214,10 @@
     }
     const toDate = ts => ts && typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
 
-    /** A value as shown: 12 cm, 297° (ONO), Couvert */
+    /** A value as shown: 12 cm, Couvert */
     function display(key, value) {
       const f = WS.fieldOf(key);
       if (f.type === 'choice') return f.choices[value] || String(value);
-      if (key === 'windDir') return `${num(value)}° (${WS.compass(value)})`;
       return `${num(value)}${f.unit ? ' ' + f.unit : ''}`;
     }
 
@@ -424,7 +450,7 @@
         const mark = k => v[k] ? `<span class="wx-src" title="${v[k].source === 'manual' ? 'Valeur saisie' : 'Environnement Canada'}">${v[k].source === 'manual' ? '✎' : '🌐'}</span>` : '';
         const show = k => v[k] ? escapeHtml(display(k, v[k].value)) + mark(k) : '';
         const temp = v.tempC ? show('tempC') + (v.feelsLikeC && v.feelsLikeC.value !== v.tempC.value ? ` (ressenti ${show('feelsLikeC')})` : '') : '';
-        const wind = (v.windForce && !v.windKmh) ? show('windForce') : v.windKmh ? (v.windForce ? show('windForce') + ', ' : '') + show('windKmh') + (v.windDir ? ' ' + escapeHtml(WS.compass(v.windDir.value)) : '') + (v.gustKmh ? `, rafales ${show('gustKmh')}` : '') : '';
+        const wind = (v.windForce && !v.windKmh) ? show('windForce') : v.windKmh ? (v.windForce ? show('windForce') + ', ' : '') + show('windKmh') : '';
         const snow = cellText([v.newSnowCm ? 'frais ' + show('newSnowCm') : '', v.snowType ? show('snowType') : '', v.snowDepthCm ? 'base ' + show('snowDepthCm') : '', v.snowBase ? 'fond ' + show('snowBase') : '', v.snowCover ? 'couv. ' + show('snowCover') : '']);
         const sky = cellText([v.cloudCover ? show('cloudCover') : '', v.sky ? show('sky') : '']);
         const comment = r.comment ? `<div class="wx-comment" title="${escapeHtml(r.comment)}">${escapeHtml(r.comment)}</div>` : '—';
@@ -510,15 +536,66 @@
         requireAuth: true,
         requiredPermission: 'allowMeteo',
         permissionDefault: false,
+        requiredFeature: 'weather',   // not in the bike activity (config: features.weather)
+        featureMessage: 'La météo n\'est pas utilisée pendant la saison vélo.',
         onAuthenticated: async (userData) => {
           isSystemAdmin = userData.role === 'system_admin';
           if (userData.role === 'admin' || isSystemAdmin) {
             document.querySelectorAll('.nav__link--admin, .mobile-nav__link--admin').forEach(link => link.style.display = '');
           }
           resetForm();
+          el('lifts-list').addEventListener('click', e => { const b = e.target.closest('[data-lift]'); if (b) switchLift(b.dataset.lift); });
+          loadLifts().catch(e => console.warn('Lifts could not be read.', e));
           await loadList();
         }
       });
+    }
+
+    // ---- The lifts: open / closed (the Météo person may change the lifts, nothing else) ----
+    let lifts = [];
+    let liftsBusy = false;
+    const LIFT_WORD = { open: 'Ouvert', closed: 'Fermé', unknown: 'Inconnu' };
+
+    function renderLifts() {
+      el('lifts-list').innerHTML = lifts.map(l => {
+        const status = StatusService.statusOf(l);
+        return `<div class="lf-row" data-id="${escapeHtml(l.id)}"><span class="lf-name">${escapeHtml(l.name || l.id)}${l.number != null && l.number !== '' ? `<small>n° ${escapeHtml(String(l.number))}</small>` : ''}</span>`
+          + `<button type="button" class="lf-status lf-status--${status}" data-lift="${escapeHtml(l.id)}" ${liftsBusy ? 'disabled' : ''} title="Cliquer pour ${status === 'open' ? 'fermer' : 'ouvrir'}">${status === 'unknown' ? '' : '● '}${LIFT_WORD[status]}</button></div>`;
+      }).join('');
+      el('lifts-empty').hidden = lifts.length > 0;
+    }
+
+    async function loadLifts() {
+      const snap = await db.collection('trails').get();
+      lifts = [];
+      snap.forEach(doc => {
+        const t = { id: doc.id, ...doc.data() };
+        if (Network.matches(t) && t.archived !== true && t.kind === 'lift') lifts.push(t);
+      });
+      lifts.sort(TrailService.compare);
+      el('lifts-section').hidden = false;
+      renderLifts();
+    }
+
+    async function switchLift(id) {
+      const lift = lifts.find(l => l.id === id);
+      if (!lift || liftsBusy) return;
+      const status = StatusService.statusOf(lift) === 'open' ? 'closed' : 'open';
+      liftsBusy = true; renderLifts();
+      try {
+        let sectorNames = {};
+        try { const secs = await SectorService.loadAll(); const s = SectorService.find(secs, lift.sector); if (s) sectorNames[lift.sector] = s.name; } catch (e) { /* the log line just has no sector name */ }
+        await StatusService.change(db, firebase, [lift], status, {
+          user: { uid: currentUser.uid, name: (window.currentUserData && window.currentUserData.name) || currentUser.email || '' },
+          app: 'meteo', mode: 'individual', scope: null, network: Network.current(), sectorNames
+        });
+        lift.status = status; lift.lastUpdated = new Date();
+        if (lift.recommendation && lift.recommendation.status === status) lift.recommendation = null;
+      } catch (e) {
+        console.error('Lifts:', e);
+        showMessage('Le changement n\'a pas pu être enregistré : ' + (e.message || e), 'error', 6000);
+        await loadLifts().catch(() => {});
+      } finally { liftsBusy = false; renderLifts(); }
     }
 
     onFirebaseReady(initMeteoReport);

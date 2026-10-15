@@ -63,6 +63,16 @@
     // App definitions for the portal
     const portalApps = [
       {
+        id: 'regis',
+        title: 'Régis gère',
+        icon: '🏔️',
+        description: 'Le statut de toutes les pistes, montées et remontées au même endroit, avec les recommandations des inspections.',
+        url: 'pages/regis-manage.html',
+        permission: 'allowRegis',
+        permissionDefault: false,
+        actionText: 'Accéder à l\'application'
+      },
+      {
         id: 'inspection',
         title: 'Inspections',
         icon: '🔍',
@@ -114,6 +124,7 @@
         url: 'pages/meteo-report.html',
         permission: 'allowMeteo',
         permissionDefault: false,
+        feature: 'weather',   // hidden in an activity that does not use the weather (the bike activity, for now)
         actionText: 'Accéder à l\'application'
       },
       {
@@ -138,8 +149,8 @@
         id: 'status',
         title: 'Statut des sentiers',
         icon: '🗺️',
-        description: 'Consultez l\'état actuel des sentiers de la saison (ski en hiver, vélo en été) - page publique.',
-        url: 'pages/public-status.html',
+        description: 'Consultez l\'état actuel des pistes, montées et remontées de la saison, par secteur, avec la météo - page publique.',
+        url: 'pages/public-list.html',
         permission: null, // Public
         actionText: 'Voir le statut',
         isPublic: true
@@ -192,6 +203,7 @@
 
         // Some apps only apply to one network (e.g. Entretien is bike-only)
         if (app.network && Network.current() !== app.network) hasAccess = false;
+    if (app.feature && !Network.feature(app.feature)) hasAccess = false;
 
         // Skip card entirely if user doesn't have access (instead of showing disabled)
         if (!hasAccess) return;
@@ -219,6 +231,27 @@
 
         appGrid.appendChild(card);
       });
+      addRegisBadge(userData);
+    }
+
+    /** On the Régis gère tile: how many recommendations of the inspections wait for a decision (one read of the trails, only for the people who manage) */
+    async function addRegisBadge(userData) {
+      const card = document.querySelector('.app-card--regis');
+      if (!card || userData.allowRegis !== true) return;
+      try {
+        const snap = await db.collection('trails').get();
+        let waiting = 0;
+        snap.forEach(doc => {
+          const t = doc.data();
+          if (Network.matches(t) && t.archived !== true && t.recommendation && t.recommendation.status && t.recommendation.status !== t.status) waiting++;
+        });
+        if (!waiting) return;
+        const badge = document.createElement('span');
+        badge.className = 'app-card__badge';
+        badge.title = waiting + ' recommandation' + (waiting > 1 ? 's' : '') + ' à traiter';
+        badge.textContent = waiting;
+        card.querySelector('.app-card__header').appendChild(badge);
+      } catch (e) { console.warn('Régis gère: the recommendations could not be counted.', e); }
     }
 
     /**

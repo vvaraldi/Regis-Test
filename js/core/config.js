@@ -71,7 +71,7 @@ const APP_CONFIG = {
   // stations, best first: a value comes from the FIRST station that has it. publish: false = the station's values
   // only help the person typing in the office (the airport data carries a NAV CANADA "all rights reserved"
   // notice): they are stored but never put on the public page. More places can be added later.
-  //   profile  'ground' = a plain weather station, 'airport' = an airport (adds pressure, clouds, visibility)
+  //   profile  'ground' = a plain weather station, 'airport' = an airport (adds the clouds and the general conditions)
   weather: {
     api: 'https://api.weather.gc.ca/collections/swob-realtime/items',
     maxAgeHours: 3,                 // an observation older than this (before the chosen time) is not offered
@@ -158,7 +158,7 @@ const APP_CONFIG = {
       trailKinds: ['uphill', 'downhill', 'lift'],
       reportMaps: ['ski-downhill-geo', 'ski-geo'],
       inspectionKinds: ['uphill', 'downhill'],
-      features: { shelters: true, snowCondition: true },
+      features: { shelters: true, snowCondition: true, weather: true },
       publicTitle: 'État des sentiers de randonnée alpine',
       infractions: {
         faults: {
@@ -181,7 +181,7 @@ const APP_CONFIG = {
       trailKinds: ['bike'],
       reportMaps: ['bike-geo'],
       inspectionKinds: ['bike'],
-      features: { shelters: false, snowCondition: false },
+      features: { shelters: false, snowCondition: false, weather: false },   // weather: the Météo app, its public panel and the weather in reports are for the ski season only, for now (true brings them back)
       publicTitle: 'État des sentiers de vélo de montagne',
       infractions: {
         faults: {
@@ -222,7 +222,7 @@ const APP_CONFIG = {
     uphill:   { label: 'Montée',   idPrefix: 'trail', map: 'ski', geoMap: 'ski-geo',
       issues: ['Glace sur le sentier', 'Érosion du sentier', 'Arbres/branches tombés', 'Obstacles sur le sentier', 'Signalisation manquante/endommagée'] },
     downhill: { label: 'Descente', idPrefix: 'run',   map: 'ski-downhill', geoMap: 'ski-downhill-geo',
-      issues: ['Plaques de glace / verglas', 'Manque de neige / roches exposées', 'Arbres/branches tombés sur la piste', 'Filet de sécurité endommagé', 'Balisage de piste manquant/endommagé'] },
+      issues: ['Plaques de glace / verglas', 'Manque de neige / roches exposées', 'Arbres/branches tombés sur la piste', 'Filet de sécurité endommagé', 'Signalisation manquante/endommagée'] },
     bike:     { label: 'Vélo',     idPrefix: 'bike',  map: 'bike', geoMap: 'bike-geo',
       issues: ['Ornières / érosion importante', 'Arbres/branches tombés sur le sentier', 'Pont/passerelle endommagé', 'Obstacle technique endommagé (saut, module, virage relevé)', 'Signalisation manquante/endommagée', 'Boue excessive / sentier détrempé'] },
     // Lifts (Remontées mécaniques): listed so reports can be filed against them; no difficulty,
@@ -318,6 +318,10 @@ const APP_CONFIG = {
         { id: 'meteo-stats', label: 'Admin', icon: '⚙️', href: 'pages/meteo-stats.html', admin: true }
         // no separate "Gestion": readings are listed, corrected (and deleted by the system admin) on the Relevés page
       ]
+    },
+    regis: {
+      title: 'Régis gère',
+      items: []   // one page for now
     },
     support: {
       title: 'Support',

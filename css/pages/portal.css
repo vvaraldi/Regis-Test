@@ -104,6 +104,25 @@
   background: linear-gradient(135deg, var(--color-meteo) 0%, var(--color-meteo-dark) 100%);
 }
 
+.app-card__badge {
+  margin-left: auto;
+  min-width: 1.6rem;
+  height: 1.6rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-card--regis .app-card__header {
+  background: linear-gradient(135deg, var(--color-regis) 0%, var(--color-regis-dark) 100%);
+}
+
 .app-card__icon {
   display: flex;
   align-items: center;

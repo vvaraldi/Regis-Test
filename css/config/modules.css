@@ -165,6 +165,20 @@
   --theme-gradient-hover: linear-gradient(135deg, var(--color-meteo-dark) 0%, var(--color-meteo) 100%);
 }
 
+/* ===== RÉGIS GÈRE (MOUNTAIN MANAGER) MODULE ===== */
+[data-module="regis"] {
+  --theme-accent: var(--color-regis);
+  --theme-accent-light: var(--color-regis-light);
+  --theme-accent-dark: var(--color-regis-dark);
+  --theme-accent-rgb: var(--color-regis-rgb);
+
+  --theme-gradient: linear-gradient(135deg, var(--color-regis) 0%, var(--color-regis-dark) 100%);
+
+  --theme-header-from: var(--color-regis);
+
+  --theme-header-to: var(--color-regis-dark);
+  --theme-gradient-hover: linear-gradient(135deg, var(--color-regis-dark) 0%, var(--color-regis) 100%);
+}
 /* ===== INSPECTION RANDONNÉE MODULE ===== */
 [data-module="inspection-rando"] {
   --theme-accent: var(--color-inspection-rando);
@@ -291,6 +305,18 @@
   --theme-header-to: #047857;
 }
 
+[data-theme="dark"][data-module="regis"] {
+  --theme-accent: #2dd4bf;
+  --theme-accent-light: #5eead4;
+  --theme-accent-dark: #14b8a6;
+  --theme-accent-rgb: 45, 212, 191;
+
+  --theme-gradient: linear-gradient(135deg, #14b8a6 0%, #115e59 100%);
+
+  --theme-header-from: #14b8a6;
+
+  --theme-header-to: #115e59;
+}
 [data-theme="dark"][data-module="meteo"] {
   --theme-accent: #facc15;
   --theme-accent-light: #fde047;
