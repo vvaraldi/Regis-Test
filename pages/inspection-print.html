@@ -115,6 +115,7 @@
   <script src="../js/services/map-service.js"></script>
   <script src="../js/services/photo-map-modal.js"></script>
   <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/status-service.js"></script>
 
   <script>
     // The filters come in the address, from the "Fiche à imprimer" button of Inspections > Gestion:
@@ -225,7 +226,9 @@
       const line = (label, value) => `<div><span class="sign__label">${escapeHtml(label)} :</span> ${escapeHtml(value)}</div>`;
       const out = [];
       if (i.type === 'trail') {
-        if (i.trail_status) out.push(line('Statut du sentier', i.trail_status === 'open' ? 'Ouvert' : 'Fermé'));
+        if (i.trail_status) out.push(line(i.raw && i.raw.status_is_recommendation ? 'Statut recommandé' : 'Statut du sentier', i.trail_status === 'open' ? 'Ouvert' : 'Fermé'));
+        const outcome = StatusService.outcomeText(i.raw);   // what the manager did with the recommendation (Régis gère)
+        if (outcome) out.push(line('Suite donnée', outcome));
         if (i.snow_condition) out.push(line('Conditions de neige', SNOW[i.snow_condition] || i.snow_condition));
       } else {
         if (i.cleanliness) out.push(line('Propreté', CLEAN[i.cleanliness] || i.cleanliness));

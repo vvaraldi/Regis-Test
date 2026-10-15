@@ -246,6 +246,7 @@
   <script src="../js/core/auth.js"></script>
   <script src="../js/services/photo-service.js"></script>
   <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/status-service.js"></script>
   <script src="../js/services/weather-service.js"></script>
   <script src="../js/services/weather-context.js"></script>
   <script src="../js/services/map-service.js"></script>
@@ -703,7 +704,9 @@
       if (insp.type === 'trail') {
         if (insp.trail_status) {
           const statusBadge = insp.trail_status === 'open' ? '<span class="badge badge-success">🟢 Ouvert</span>' : '<span class="badge badge-danger">🔴 Fermé</span>';
-          html += `<div class="detail-row"><span class="detail-row__label">Statut sentier</span><span>${statusBadge}</span></div>`;
+          html += `<div class="detail-row"><span class="detail-row__label">${insp.raw && insp.raw.status_is_recommendation ? 'Statut recommandé' : 'Statut sentier'}</span><span>${statusBadge}</span></div>`;
+          const outcome = StatusService.outcomeText(insp.raw);   // what the manager did with the recommendation (Régis gère)
+          if (outcome) html += `<div class="detail-row" data-outcome="${insp.raw.recommendationOutcome.decision}"><span class="detail-row__label">Suite donnée</span><span>📌 ${escapeHtml(outcome)}</span></div>`;
         }
         if (insp.snow_condition) {
           const snowMap = { good: 'Bonnes', warning: 'Moyennes', critical: 'Mauvaises' };

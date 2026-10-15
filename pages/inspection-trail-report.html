@@ -398,6 +398,7 @@
           date: firebase.firestore.Timestamp.fromDate(dateTime),
           previous_trail_status: currentTrailStatus || 'unknown',
           trail_status: form.querySelector('input[name="trail-status"]:checked').value,
+          status_is_recommendation: true,   // since the manager decides: trail_status is the status RECOMMENDED (older records: the status chosen)
           condition: form.querySelector('input[name="condition"]:checked').value,
           snow_condition: Network.feature('snowCondition') ? (form.querySelector('input[name="snow-condition"]:checked')?.value || null) : null,
           issues: issues,
