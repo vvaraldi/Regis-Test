@@ -163,16 +163,18 @@
       return blocks.filter(b => b.list.length).map(b => sectorBox(b.name, b.list)).join('');
     }
 
-    /** A full-width part (lifts, uphill): one card, the rows side by side, ordered by sector then number, the sector named small */
+    /** A full-width part (lifts, uphill): one card, the rows side by side, ordered by sector then number. When all of them are in ONE
+     *  sector, its name goes in the title ("Montées - Randonnée alpine") instead of after every trail; otherwise each row names its sector, small. */
     function widePartHtml(title, list) {
       if (!list.length) return '';
       const order = t => { const s = sectorOf(t); return s ? sortedSectors().indexOf(allSectors.find(x => x.id === s.id)) : 999; };
       const rows = list.slice().sort((a, b) => order(a) - order(b) || TrailService.compare(a, b));
       const open = list.filter(t => statusOf(t) === 'open').length;
-      return `<section class="pl-part" data-part="${esc(title)}"><h2 class="pl-part__title">${esc(title)} <span class="pl-sector__count">${open} / ${list.length} ouverts</span></h2>`
-        + `<div class="pl-wide"><div class="pl-wide__grid">${rows.map(t => rowHtml(t, (sectorOf(t) || {}).name)).join('')}</div></div></section>`;
+      const names = [...new Set(list.map(t => (sectorOf(t) || {}).name || ''))];
+      const single = names.length === 1 && names[0] ? names[0] : null;
+      return `<section class="pl-part" data-part="${esc(title)}"><h2 class="pl-part__title">${esc(single ? title + ' - ' + single : title)} <span class="pl-sector__count">${open} / ${list.length} ouverts</span></h2>`
+        + `<div class="pl-wide"><div class="pl-wide__grid">${rows.map(t => rowHtml(t, single ? null : (sectorOf(t) || {}).name)).join('')}</div></div></section>`;
     }
-
     function render() {
       const kind = t => TrailService.kindOf(t);
       let html;

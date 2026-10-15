@@ -121,7 +121,7 @@
           <button type="button" class="btn btn-danger" id="delete-btn" style="display:none; margin-right:auto;">🗑️ Supprimer ce relevé</button>
           <button type="button" class="btn btn-secondary" id="cancel-btn" style="display:none;">Annuler la modification</button>
           <button type="button" class="btn btn-secondary" id="reset-btn">Réinitialiser</button>
-          <button type="submit" class="btn btn-primary" id="save-btn">Enregistrer</button>
+          <button type="submit" class="btn btn-primary" id="save-btn">Enregistrer la météo</button>
         </div>
       </form>
     </section>
@@ -333,7 +333,7 @@
       WS.KEYS.forEach(k => { el(`in-${k}`).value = ''; });
       el('comment').value = '';
       el('form-title').textContent = '☀️ Relevé Météo';
-      el('save-btn').textContent = 'Enregistrer';
+      el('save-btn').textContent = 'Enregistrer la météo';
       el('cancel-btn').style.display = 'none';
       el('delete-btn').style.display = 'none';
       el('fetch-web-btn').disabled = false;
