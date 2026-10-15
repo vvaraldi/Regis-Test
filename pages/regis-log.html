@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Régis gère : le journal des changements de statut">
+  <meta name="theme-color" content="#0f766e">
+  <title>Régis gère - Gestion</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔️</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .lg-filters { display: flex; align-items: center; gap: 0.5rem 0.75rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .lg-filters .form-input, .lg-filters .form-select { width: auto; }
+    .lg-pill { display: inline-block; border-radius: 999px; padding: 0.1rem 0.6rem; color: #fff; font-weight: 700; font-size: 0.8rem; }
+    .lg-pill--open { background: #16a34a; }
+    .lg-pill--closed { background: #dc2626; }
+    .lg-pill--unknown { background: #6b7280; }
+    .lg-arrow { margin: 0 0.25rem; color: var(--theme-text-secondary); }
+    .lg-sub { display: block; font-size: 0.8rem; color: var(--theme-text-secondary); }
+    .lg-reco--accepted { color: #15803d; font-weight: 600; }
+    .lg-reco--ignored { color: #b45309; font-weight: 600; }
+    #log-table td[data-label="Date"] { white-space: nowrap; }
+  </style>
+</head>
+<body data-theme="light" data-module="regis" data-nav="regis" data-page="regis-log">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <main id="main-content" class="main" style="display: none;">
+    <section class="content-section">
+      <div class="section-card">
+        <div class="section-card__header"><h2 class="section-card__title" id="log-title">📋 Journal des statuts</h2></div>
+        <div class="section-card__body">
+          <div class="lg-filters">
+            <label class="form-label" for="date-filter" style="margin:0;">Période</label>
+            <select class="form-select" id="date-filter" title="Selon la date et l'heure du changement">
+              <option value="all">Toutes les saisons</option>
+              <option value="season" id="season-option">Saison en cours</option><!-- label filled with the dates -->
+              <option value="today">Aujourd'hui</option>
+              <option value="week" selected>7 derniers jours</option>
+              <option value="month">30 derniers jours</option>
+              <option value="custom">Dates personnalisées</option>
+            </select>
+            <span id="custom-date-range" style="display:none; gap:0.5rem; align-items:center;">
+              <input type="date" class="form-input" id="start-date" aria-label="Du">
+              <span>à</span>
+              <input type="date" class="form-input" id="end-date" aria-label="Au">
+            </span>
+            <select class="form-select" id="f-action" aria-label="Genre de ligne">
+              <option value="">Tous les genres</option>
+              <option value="status">Changements de statut</option>
+              <option value="ignore">Recommandations ignorées</option>
+            </select>
+            <select class="form-select" id="f-mode" aria-label="Comment">
+              <option value="">Tous (sentier, secteur, montagne)</option>
+              <option value="individual">Un sentier</option>
+              <option value="sector">Un secteur</option>
+              <option value="mountain">Toute la montagne</option>
+            </select>
+            <select class="form-select" id="f-app" aria-label="Application">
+              <option value="">Toutes les applications</option>
+              <option value="regis">Régis gère</option>
+              <option value="meteo">Remontées &amp; Météo</option>
+            </select>
+            <input type="search" class="form-input" id="f-search" placeholder="Sentier, secteur ou personne" aria-label="Recherche">
+          </div>
+          <div class="data-table__body">
+            <table class="table table--hover table--responsive" id="log-table">
+              <thead>
+                <tr><th>Date</th><th>Sentier</th><th>Changement</th><th>Comment</th><th>Application</th><th>Par</th><th>Recommandation</th><th>Raison</th></tr>
+              </thead>
+              <tbody id="log-tbody"></tbody>
+            </table>
+          </div>
+          <p id="log-empty" style="display:none; color: var(--theme-text-secondary);">Aucun changement pour cette période.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+
+  <div id="status-messages"></div>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/period-filter.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script>
+    // Régis gère > Gestion: the status log, read only. Every change of status (and every recommendation that was ignored) with who,
+    // when, from which app, how (one trail, a sector, the whole mountain), and what was done with an inspection's recommendation.
+    let lines = [];        // the lines of the chosen period, newest first
+    let periodFilter = null;
+    const el = id => document.getElementById(id);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const STATUS_WORD = { open: 'Ouvert', closed: 'Fermé', unknown: 'Inconnu' };
+    const MODE_WORD = { individual: 'Un sentier', sector: 'Un secteur', mountain: 'Toute la montagne' };
+    const APP_WORD = { regis: 'Régis gère', meteo: 'Remontées & Météo' };
+    const toDate = v => v && typeof v.toDate === 'function' ? v.toDate() : (v ? new Date(v) : null);
+    const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+    // The dates [from, to) that the chosen period covers, for the query (the exact rule is PeriodFilter.matches)
+    function periodRange(state) {
+      const now = new Date(), tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const day = text => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+      const open = new Date(2000, 0, 1), far = new Date(2100, 0, 1);
+      if (state.value === 'today') return [startOfDay(now), tomorrow];
+      if (state.value === 'week') return [new Date(now.getTime() - 7 * 86400000), tomorrow];
+      if (state.value === 'month') return [new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()), tomorrow];
+      if (state.value === 'season') return [Network.seasonStart(), tomorrow];
+      if (state.value === 'custom') {
+        const from = day(state.start), to = day(state.end);
+        return [from || open, to ? new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1) : far];
+      }
+      return [open, far];
+    }
+
+    const pill = s => `<span class="lg-pill lg-pill--${s === 'open' || s === 'closed' ? s : 'unknown'}">${STATUS_WORD[s] || STATUS_WORD.unknown}</span>`;
+
+    function lineHtml(l) {
+      const d = toDate(l.at);
+      const ignore = l.action === 'ignore';
+      const change = ignore ? `${pill(l.from)} <span class="lg-sub">recommandation ignorée</span>` : `${pill(l.from)}<span class="lg-arrow">→</span>${pill(l.to)}`;
+      const how = (MODE_WORD[l.mode] || l.mode || '') + (l.mode === 'sector' && l.scope ? ` : ${l.scope}` : '');
+      const reco = l.recommended
+        ? `${l.recommended === 'open' ? 'Ouvrir' : 'Fermer'} → <span class="lg-reco--${l.decision === 'ignored' ? 'ignored' : 'accepted'}">${l.decision === 'ignored' ? 'ignorée' : 'acceptée'}</span>`
+        : '—';
+      return `<tr data-id="${esc(l.id)}">
+        <td data-label="Date"><strong>${esc(d ? d.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' }) : '')}</strong> <span class="lg-sub">${esc(d ? d.toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' }) : '')}</span></td>
+        <td data-label="Sentier"><strong>${esc(l.trailNumber != null && l.trailNumber !== '' ? l.trailNumber + ' · ' : '')}${esc(l.trailName || l.trailId)}</strong>${l.sectorName ? `<span class="lg-sub">${esc(l.sectorName)}</span>` : ''}</td>
+        <td data-label="Changement">${change}</td>
+        <td data-label="Comment">${esc(how)}</td>
+        <td data-label="Application">${esc(APP_WORD[l.app] || l.app || '')}</td>
+        <td data-label="Par">${esc(l.byName || '')}</td>
+        <td data-label="Recommandation">${reco}</td>
+        <td data-label="Raison">${esc(l.reason || '—')}</td>
+      </tr>`;
+    }
+
+    function render() {
+      const action = el('f-action').value, mode = el('f-mode').value, app = el('f-app').value;
+      const q = el('f-search').value.trim().toLowerCase();
+      const shown = lines.filter(l =>
+        (!action || l.action === action) && (!mode || l.mode === mode) && (!app || l.app === app) &&
+        (!q || [l.trailName, l.trailNumber, l.sectorName, l.scope, l.byName, l.reason].join(' ').toLowerCase().includes(q)));
+      el('log-title').textContent = `📋 Journal des statuts · ${PeriodFilter.label(periodFilter.state())} (${shown.length})`;
+      el('log-tbody').innerHTML = shown.map(lineHtml).join('');
+      el('log-empty').style.display = shown.length ? 'none' : '';
+    }
+
+    async function load() {
+      const state = periodFilter.state(), [from, to] = periodRange(state);
+      const snap = await db.collection('status_log')
+        .where('at', '>=', firebase.firestore.Timestamp.fromDate(from))
+        .where('at', '<', firebase.firestore.Timestamp.fromDate(to))
+        .orderBy('at', 'desc').get();
+      lines = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .filter(l => Network.matches(l) && PeriodFilter.matches(toDate(l.at), state))
+        .sort((a, b) => (toDate(b.at) || 0) - (toDate(a.at) || 0));
+      render();
+    }
+
+    function initLog() {
+      ['f-action', 'f-mode', 'f-app'].forEach(id => el(id).addEventListener('change', render));
+      el('f-search').addEventListener('input', render);
+      periodFilter = PeriodFilter.attach({
+        select: el('date-filter'), custom: el('custom-date-range'),
+        start: el('start-date'), end: el('end-date'),
+        seasonOption: el('season-option'),
+        onChange: () => load().catch(e => console.error('Journal:', e))
+      });
+      checkAuthStatus({
+        requireAuth: true,
+        requiredPermission: 'allowRegis',
+        permissionDefault: false,
+        adminsAlways: true,   // the rules let the administrators read the log too
+        onAuthenticated: () => load().catch(e => { console.error('Journal:', e); showMessage('Le journal n\'a pas pu être lu.', 'error', 5000); })
+      });
+    }
+
+    onFirebaseReady(initLog);
+  </script>
+</body>
+</html>

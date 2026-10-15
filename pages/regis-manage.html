@@ -28,14 +28,42 @@
     .rg-dot--closed { background: #dc2626; }
     .rg-dots { display: flex; gap: 0.5rem; align-items: center; }
 
-    .rg-sector { margin-bottom: 1rem; }
+    /* the groups (Montées, Descentes), each a grid of sector boxes: three per line on a wide screen */
+    .rg-group-block { margin-bottom: 1.25rem; }
+    .rg-group-block__title { margin: 0 0 0.5rem; font-size: 1.2rem; }
+    .rg-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; align-items: start; }
+    @media (max-width: 1100px) { .rg-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 700px) { .rg-grid { grid-template-columns: 1fr; } }
+    .rg-sector { margin: 0; }
+    .rg-sector .section-card__header { padding: 0.5rem 0.75rem; }
+    .rg-sector .section-card__body { padding: 0.25rem 0.75rem 0.5rem; }
+    .rg-link { background: none; border: 0; padding: 0; color: var(--theme-accent-dark, #115e59); text-decoration: underline; cursor: pointer; font-size: inherit; }
+    .rg-filter-box { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .rg-filter-box label { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; font-size: 0.9rem; }
+
+    /* the last inspection of a trail, in a window */
+    .rg-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+    .rg-modal.show { display: flex; }
+    .rg-modal__content { background: var(--theme-surface); border-radius: var(--radius-lg, 12px); max-width: 600px; width: 100%; max-height: 90vh; overflow: auto; }
+    .rg-modal__header { display: flex; align-items: center; justify-content: space-between; padding: 1rem; border-bottom: 1px solid var(--theme-border); }
+    .rg-modal__title { margin: 0; font-size: 1.15rem; }
+    .rg-modal__close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--theme-text-secondary); }
+    .rg-modal__body { padding: 1rem; }
+    .rg-detail { display: flex; justify-content: space-between; gap: 1rem; padding: 0.3rem 0; border-bottom: 1px solid var(--theme-border); }
+    .rg-detail__label { color: var(--theme-text-secondary); }
+    .rg-tags { display: flex; gap: 0.35rem; flex-wrap: wrap; margin-top: 0.3rem; }
+    .rg-tag { background: rgba(245,158,11,0.15); color: #92400e; border-radius: 999px; padding: 0.15rem 0.6rem; font-size: 0.85rem; }
+    .rg-notes { background: var(--theme-surface-alt, #f3f4f6); border-radius: 8px; padding: 0.6rem 0.75rem; margin-top: 0.3rem; }
+    .rg-photos { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.4rem; }
+    .rg-photos img { width: 110px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid var(--theme-border); }
+    .rg-section-title { font-weight: 600; margin-top: 0.8rem; }
     .rg-sector__head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
     .rg-sector__title { margin: 0; font-size: 1.15rem; }
     .rg-sector__meta { font-size: 0.85rem; color: var(--theme-text-secondary); font-weight: normal; margin-left: 0.5rem; }
     .rg-group { margin-top: 0.75rem; }
     .rg-group__title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--theme-text-secondary); margin: 0 0 0.25rem; }
 
-    .rg-row { display: grid; grid-template-columns: 3rem 1fr auto auto; align-items: center; gap: 0.5rem 0.75rem; padding: 0.45rem 0.25rem; border-bottom: 1px solid var(--theme-border, #e5e7eb); }
+    .rg-row { display: grid; grid-template-columns: 2.2rem 1fr auto auto; align-items: center; gap: 0.5rem 0.75rem; padding: 0.45rem 0.25rem; border-bottom: 1px solid var(--theme-border, #e5e7eb); }
     .rg-row:last-child { border-bottom: none; }
     .rg-row--reco { background: rgba(var(--theme-accent-rgb, 15,118,110), 0.07); border-radius: 8px; }
     .rg-num { font-weight: 700; color: var(--theme-text-secondary); text-align: right; }
@@ -45,7 +73,7 @@
     .rg-note--reco .rg-up { color: #15803d; font-weight: 600; }
     .rg-note--reco .rg-down { color: #b91c1c; font-weight: 600; }
 
-    .rg-status { min-width: 6.5rem; border: none; border-radius: 999px; padding: 0.4rem 0.9rem; font-weight: 700; cursor: pointer; color: #fff; font-size: 0.9rem; transition: filter 0.1s; }
+    .rg-status { min-width: 5.5rem; border: none; border-radius: 999px; padding: 0.3rem 0.7rem; font-weight: 700; cursor: pointer; color: #fff; font-size: 0.85rem; transition: filter 0.1s; }
     .rg-status:hover { filter: brightness(1.1); }
     .rg-status:disabled { opacity: 0.55; cursor: wait; }
     .rg-status--open { background: #16a34a; }
@@ -77,7 +105,6 @@
     <div class="page-header">
       <div class="page-header__content">
         <h1 class="page-title">🏔️ Régis gère</h1>
-        <p class="page-subtitle">Le statut des pistes, des montées et des remontées. Un clic sur le statut le change tout de suite.</p>
       </div>
     </div>
 
@@ -87,6 +114,7 @@
           <div class="rg-mountain">
             <div class="rg-counts" id="mountain-counts"></div>
             <div class="rg-tools">
+              <div class="rg-filter-box" id="group-filter" aria-label="Afficher"></div>
               <label class="rg-filter"><input type="checkbox" id="only-reco"> Seulement les recommandations</label>
               <div class="rg-all"><span>Toute la montagne</span>
                 <span class="rg-dots">
@@ -103,6 +131,14 @@
     <section class="content-section" id="sectors"></section>
     <p class="rg-empty" id="empty" style="display:none;">Aucun sentier à afficher.</p>
   </main>
+
+  <!-- The last inspection of a trail -->
+  <div class="rg-modal" id="insp-modal" role="dialog" aria-modal="true" aria-labelledby="insp-title">
+    <div class="rg-modal__content">
+      <div class="rg-modal__header"><h3 class="rg-modal__title" id="insp-title">-</h3><button type="button" class="rg-modal__close" id="insp-close" aria-label="Fermer">×</button></div>
+      <div class="rg-modal__body" id="insp-body"></div>
+    </div>
+  </div>
 
   <div id="status-messages"></div>
 
@@ -125,6 +161,8 @@
     let lastInspection = {};    // trail id -> its latest inspection of the season
     let busy = false;
     let onlyReco = false;
+    let hiddenGroups = {};      // groups the manager hid with the filter (Montées, Descentes)
+    let inspectionsById = {};   // this season's inspections by id
     const el = id => document.getElementById(id);
     const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const STATUS_WORD = { open: 'Ouvert', closed: 'Fermé', unknown: 'Inconnu' };
@@ -166,11 +204,12 @@
       sectors = (await SectorService.loadAll(true)).filter(s => s.network === Network.current());
       // the latest inspection of each trail this season (to help decide)
       lastInspection = {};
+      inspectionsById = {};
       try {
         const ids = new Set(trails.map(t => t.id));
         const seasonStart = firebase.firestore.Timestamp.fromDate(Network.seasonStart());
         const snap = await db.collection('trail_inspections').where('date', '>=', seasonStart).orderBy('date', 'desc').get();
-        snap.forEach(doc => { const d = doc.data(); if (ids.has(d.trail_id) && !lastInspection[d.trail_id]) lastInspection[d.trail_id] = { id: doc.id, ...d }; });
+        snap.forEach(doc => { const d = doc.data(); if (!ids.has(d.trail_id)) return; inspectionsById[doc.id] = { id: doc.id, ...d }; if (!lastInspection[d.trail_id]) lastInspection[d.trail_id] = inspectionsById[doc.id]; });
       } catch (e) { console.warn('Régis gère: the inspections could not be read.', e); }
       render();
     }
@@ -182,25 +221,34 @@
       unknown: list.filter(t => statusOf(t) === 'unknown').length,
       reco: list.filter(t => recOf(t)).length
     });
-    function countsHtml(c, total) {
+    function countsHtml(c) {
       return `<span class="rg-count rg-count--open"><strong>${c.open}</strong> ouverts</span>`
         + `<span class="rg-count rg-count--closed"><strong>${c.closed}</strong> fermés</span>`
         + (c.unknown ? `<span class="rg-count"><strong>${c.unknown}</strong> inconnus</span>` : '')
         + `<span class="rg-count rg-count--reco"><strong>${c.reco}</strong> recommandation${c.reco > 1 ? 's' : ''} à traiter</span>`;
     }
 
+    // The groups of the page: Montées on top, Descentes (with the lifts) below; the bike activity has its trails only.
+    function groupDefs() {
+      const kinds = (APP_CONFIG.networks[Network.current()] || {}).trailKinds || [];
+      if (kinds.includes('bike') && !kinds.includes('uphill') && !kinds.includes('downhill')) return [{ id: 'bike', title: 'Sentiers', kinds: ['bike'] }];
+      return [{ id: 'uphill', title: 'Montées', kinds: ['uphill'] }, { id: 'downhill', title: 'Descentes', kinds: ['downhill', 'lift'] }];
+    }
+    const groupOf = t => { const k = TrailService.kindOf(t); return groupDefs().find(g => g.kinds.includes(k)) || groupDefs()[groupDefs().length - 1]; };
+    const KIND_TITLE = { downhill: 'Descentes', uphill: 'Montées', lift: 'Remontées', bike: 'Sentiers' };
+
     function rowHtml(t) {
-      const status = statusOf(t), rec = recOf(t), insp = lastInspection[t.id];
+      const status = statusOf(t), rec = recOf(t), insp = inspectionFor(t);
       const isLift = TrailService.kindOf(t) === 'lift';
-      const diff = TrailService.difficultyOf(t) ? TrailService.difficultyLabel(TrailService.difficultyOf(t)) : '';
+      const seeLink = insp ? ` <button type="button" class="rg-link" data-act="inspection" data-id="${esc(t.id)}">Voir l'inspection</button>` : '';
       let note = '';
       if (rec) {
         const when = toDate(rec.at) || (insp && toDate(insp.date));
         const detail = [when ? `inspection du ${day(when)}` : '', rec.condition ? TrailService.conditionText(rec.condition) : '', rec.issueCount ? `${rec.issueCount} problème${rec.issueCount > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ');
-        note = `<div class="rg-note rg-note--reco">${rec.status === 'open' ? '<span class="rg-up">▲ Recommandation : ouvrir</span>' : '<span class="rg-down">▼ Recommandation : fermer</span>'}${detail ? ' (' + esc(detail) + ')' : ''}</div>`;
+        note = `<div class="rg-note rg-note--reco">${rec.status === 'open' ? '<span class="rg-up">▲ Recommandation : ouvrir</span>' : '<span class="rg-down">▼ Recommandation : fermer</span>'}${detail ? ' (' + esc(detail) + ')' : ''}${seeLink}</div>`;
       } else if (!isLift) {
         note = insp
-          ? `<div class="rg-note">Dernière inspection ${esc(agoText(toDate(insp.date)))} · ${esc(TrailService.conditionText(insp.condition))}${insp.issues && insp.issues.length ? ' · ' + insp.issues.length + ' problème' + (insp.issues.length > 1 ? 's' : '') : ''}</div>`
+          ? `<div class="rg-note">Dernière inspection ${esc(agoText(toDate(insp.date)))} · ${esc(TrailService.conditionText(insp.condition))}${insp.issues && insp.issues.length ? ' · ' + insp.issues.length + ' problème' + (insp.issues.length > 1 ? 's' : '') : ''}${seeLink}</div>`
           : '<div class="rg-note">Pas d\'inspection cette saison</div>';
       }
       const arrow = rec
@@ -208,46 +256,88 @@
         : '<span class="rg-arrow-slot"></span>';
       return `<div class="rg-row${rec ? ' rg-row--reco' : ''}" data-id="${esc(t.id)}">
         <span class="rg-num">${esc(TrailService.markerLabel(t))}</span>
-        <span class="rg-name">${esc(t.name || t.id)}${diff ? `<small>${esc(diff)}</small>` : ''}</span>
+        <span class="rg-name">${esc(t.name || t.id)}</span>
         ${arrow}
-        <button type="button" class="rg-status rg-status--${status}" data-act="toggle" data-id="${esc(t.id)}" title="Cliquer pour ${status === 'open' ? 'fermer' : 'ouvrir'}">${status === 'open' ? '● ' : status === 'closed' ? '● ' : ''}${STATUS_WORD[status]}</button>
+        <button type="button" class="rg-status rg-status--${status}" data-act="toggle" data-id="${esc(t.id)}" title="Cliquer pour ${status === 'open' ? 'fermer' : 'ouvrir'}">${status === 'unknown' ? '' : '● '}${STATUS_WORD[status]}</button>
         ${note}
       </div>`;
     }
 
-    function groupsHtml(list) {
-      const byKind = {};
-      list.forEach(t => { (byKind[TrailService.kindOf(t)] = byKind[TrailService.kindOf(t)] || []).push(t); });
-      const kinds = KIND_ORDER.filter(k => byKind[k]).concat(Object.keys(byKind).filter(k => !KIND_ORDER.includes(k)));
-      const plural = { downhill: 'Descentes', uphill: 'Montées', lift: 'Remontées', bike: 'Sentiers' };
-      return kinds.map(k => `<div class="rg-group"><h4 class="rg-group__title">${esc(plural[k] || TrailService.kindLabel(k))}</h4>${byKind[k].sort(TrailService.compare).map(rowHtml).join('')}</div>`).join('');
+    /** Inside a sector box: the trails, with a small title per kind when the group has several (Descentes, Remontées) */
+    function boxBodyHtml(list, group) {
+      if (group.kinds.length < 2) return list.slice().sort(TrailService.compare).map(rowHtml).join('');
+      return group.kinds.filter(k => list.some(t => TrailService.kindOf(t) === k)).map(k =>
+        `<div class="rg-group"><h4 class="rg-group__title">${esc(KIND_TITLE[k] || TrailService.kindLabel(k))}</h4>${list.filter(t => TrailService.kindOf(t) === k).sort(TrailService.compare).map(rowHtml).join('')}</div>`).join('');
+    }
+
+    /** The trails of one box: a sector (or '__none') inside a group */
+    function boxTrails(groupId, sectorId) {
+      return trails.filter(t => groupOf(t).id === groupId && (sectorId === '__none' ? !sectorOf(t) : (sectorOf(t) || {}).id === sectorId));
+    }
+
+    function renderFilter() {
+      const groups = groupDefs();
+      const box = el('group-filter');
+      if (groups.length < 2) { box.innerHTML = ''; return; }
+      box.innerHTML = groups.map(g => `<label><input type="checkbox" data-group="${g.id}" ${hiddenGroups[g.id] ? '' : 'checked'}> ${esc(g.title)}</label>`).join('');
     }
 
     function render() {
       const shown = onlyReco ? trails.filter(t => recOf(t)) : trails;
-      el('mountain-counts').innerHTML = countsHtml(countOf(trails), trails.length);
-      // sectors in order, then what has no sector
-      const groups = sectors.map(s => ({ id: s.id, name: s.name, list: shown.filter(t => (sectorOf(t) || {}).id === s.id) }));
-      const loose = shown.filter(t => !sectorOf(t));
-      if (loose.length) groups.push({ id: '__none', name: 'Sans secteur', list: loose });
-      const full = id => id === '__none' ? trails.filter(t => !sectorOf(t)) : trails.filter(t => (sectorOf(t) || {}).id === id);   // a sector's buttons act on all of it, even when filtered
-      el('sectors').innerHTML = groups.filter(g => g.list.length).map(g => {
-        const c = countOf(full(g.id));
-        return `<div class="section-card rg-sector" data-sector="${esc(g.id)}">
-          <div class="section-card__header rg-sector__head">
-            <h3 class="rg-sector__title">${esc(g.name)}<span class="rg-sector__meta">${c.open} ouverts · ${c.closed} fermés${c.unknown ? ' · ' + c.unknown + ' inconnus' : ''}${c.reco ? ' · ▲▼ ' + c.reco : ''}</span></h3>
-            <span class="rg-dots">
-              <button type="button" class="rg-dot rg-dot--closed" data-act="sector-closed" data-sector="${esc(g.id)}" title="Fermer tout le secteur ${esc(g.name)}" aria-label="Fermer tout le secteur ${esc(g.name)}"></button>
-              <button type="button" class="rg-dot rg-dot--open" data-act="sector-open" data-sector="${esc(g.id)}" title="Ouvrir tout le secteur ${esc(g.name)}" aria-label="Ouvrir tout le secteur ${esc(g.name)}"></button>
-            </span>
-          </div>
-          <div class="section-card__body">${groupsHtml(g.list)}</div>
-        </div>`;
+      el('mountain-counts').innerHTML = countsHtml(countOf(trails));
+      renderFilter();
+      const html = groupDefs().filter(g => !hiddenGroups[g.id]).map(g => {
+        // sectors in order, then what has no sector
+        const boxes = sectors.map(s => ({ id: s.id, name: s.name })).concat([{ id: '__none', name: 'Sans secteur' }]).map(s => ({
+          id: s.id, name: s.name,
+          list: shown.filter(t => groupOf(t).id === g.id && (s.id === '__none' ? !sectorOf(t) : (sectorOf(t) || {}).id === s.id))
+        })).filter(b => b.list.length);
+        if (!boxes.length) return '';
+        return `<div class="rg-group-block" data-group="${esc(g.id)}">${groupDefs().length > 1 ? `<h2 class="rg-group-block__title">${esc(g.title)}</h2>` : ''}<div class="rg-grid">`
+          + boxes.map(b => {
+            const c = countOf(boxTrails(g.id, b.id));   // a box's buttons act on all of it, even when filtered
+            return `<div class="section-card rg-sector" data-sector="${esc(b.id)}" data-group="${esc(g.id)}">
+              <div class="section-card__header rg-sector__head">
+                <h3 class="rg-sector__title">${esc(b.name)}<span class="rg-sector__meta">${c.open} ouverts · ${c.closed} fermés${c.unknown ? ' · ' + c.unknown + ' inconnus' : ''}${c.reco ? ' · ▲▼ ' + c.reco : ''}</span></h3>
+                <span class="rg-dots">
+                  <button type="button" class="rg-dot rg-dot--closed" data-act="sector-closed" data-sector="${esc(b.id)}" data-group="${esc(g.id)}" title="Fermer tout : ${esc(b.name)} (${esc(g.title)})" aria-label="Fermer tout : ${esc(b.name)} (${esc(g.title)})"></button>
+                  <button type="button" class="rg-dot rg-dot--open" data-act="sector-open" data-sector="${esc(b.id)}" data-group="${esc(g.id)}" title="Ouvrir tout : ${esc(b.name)} (${esc(g.title)})" aria-label="Ouvrir tout : ${esc(b.name)} (${esc(g.title)})"></button>
+                </span>
+              </div>
+              <div class="section-card__body">${boxBodyHtml(b.list, g)}</div>
+            </div>`;
+          }).join('') + '</div></div>';
       }).join('');
-      el('empty').style.display = groups.some(g => g.list.length) ? 'none' : '';
+      el('sectors').innerHTML = html;
+      el('empty').style.display = html ? 'none' : '';
       el('empty').textContent = onlyReco ? 'Aucune recommandation à traiter.' : 'Aucun sentier à afficher.';
       document.querySelectorAll('.rg-status, .rg-arrow, .rg-dot').forEach(b => { b.disabled = busy; });
     }
+
+    // ---- the last inspection of a trail, in a window ----
+    function inspectionFor(t) {
+      const rec = recOf(t);
+      return (rec && rec.inspectionId && inspectionsById[rec.inspectionId]) || lastInspection[t.id] || null;
+    }
+    function openInspection(id) {
+      const t = trails.find(x => x.id === id), insp = t && inspectionFor(t);
+      if (!insp) return;
+      const date = toDate(insp.date);
+      const cond = insp.condition || 'unknown';
+      const photos = (insp.photos || []).map(p => typeof p === 'string' ? p : (p && p.url)).filter(Boolean);
+      el('insp-title').textContent = `${TrailService.markerLabel(t)} · ${t.name || t.id}`;
+      el('insp-body').innerHTML =
+        `<div class="rg-detail"><span class="rg-detail__label">Date de l'inspection</span><span>${esc(date ? date.toLocaleDateString('fr-CA', { year: 'numeric', month: 'long', day: 'numeric' }) + ' · ' + date.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' }) : '')}</span></div>`
+        + `<div class="rg-detail"><span class="rg-detail__label">Inspecteur</span><span>${esc(insp.inspector_name || 'Non spécifié')}</span></div>`
+        + `<div class="rg-detail"><span class="rg-detail__label">État général</span><span>${esc(TrailService.conditionText(cond, true))}</span></div>`
+        + (insp.trail_status ? `<div class="rg-detail"><span class="rg-detail__label">Statut recommandé</span><span>${esc(insp.trail_status === 'open' ? 'Ouvrir' : 'Fermer')}</span></div>` : '')
+        + (insp.snow_condition ? `<div class="rg-detail"><span class="rg-detail__label">Condition de la neige</span><span>${esc(insp.snow_condition)}</span></div>` : '')
+        + (insp.issues && insp.issues.length ? `<div class="rg-section-title">⚠️ Problèmes identifiés</div><div class="rg-tags">${insp.issues.map(i => `<span class="rg-tag">${esc(i)}</span>`).join('')}</div>` : '')
+        + (insp.notes && String(insp.notes).trim() ? `<div class="rg-section-title">📝 Notes</div><div class="rg-notes">${esc(insp.notes).replace(/\n/g, '<br>')}</div>` : '')
+        + (photos.length ? `<div class="rg-section-title">📷 Photos</div><div class="rg-photos">${photos.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="Photo de l'inspection" loading="lazy"></a>`).join('')}</div>` : '');
+      el('insp-modal').classList.add('show');
+    }
+    function closeInspection() { el('insp-modal').classList.remove('show'); }
 
     // ---- acting ----
     async function run(work) {
@@ -277,8 +367,10 @@
 
     function onClick(e) {
       const btn = e.target.closest('[data-act]');
-      if (!btn || busy) return;
+      if (!btn) return;
       const act = btn.dataset.act;
+      if (act === 'inspection') { openInspection(btn.dataset.id); return; }
+      if (busy) return;
       const trail = trails.find(t => t.id === btn.dataset.id);
       if (act === 'toggle' && trail) {
         changeTrails([trail], statusOf(trail) === 'open' ? 'closed' : 'open', 'individual', null);
@@ -289,12 +381,10 @@
         });
       } else if (act === 'sector-open' || act === 'sector-closed') {
         const id = btn.dataset.sector;
-        const list = id === '__none' ? trails.filter(t => !sectorOf(t)) : trails.filter(t => (sectorOf(t) || {}).id === id);
         const name = id === '__none' ? 'Sans secteur' : (sectors.find(s => s.id === id) || {}).name;
-        changeTrails(list, act === 'sector-open' ? 'open' : 'closed', 'sector', name);
+        changeTrails(boxTrails(btn.dataset.group, id), act === 'sector-open' ? 'open' : 'closed', 'sector', name);
       }
     }
-
     function mountainAll(status) {
       const word = status === 'open' ? 'ouvrir' : 'fermer';
       if (!confirm(`Voulez-vous vraiment ${word} toute la montagne (${trails.length} pistes, montées et remontées) ?`)) return;
@@ -306,6 +396,10 @@
       el('mountain-open').addEventListener('click', () => mountainAll('open'));
       el('mountain-close').addEventListener('click', () => mountainAll('closed'));
       el('only-reco').addEventListener('change', e => { onlyReco = e.target.checked; render(); });
+      el('group-filter').addEventListener('change', e => { const g = e.target.dataset.group; if (g) { hiddenGroups[g] = !e.target.checked; render(); } });
+      el('insp-close').addEventListener('click', closeInspection);
+      el('insp-modal').addEventListener('click', e => { if (e.target.id === 'insp-modal') closeInspection(); });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeInspection(); });
       checkAuthStatus({
         requireAuth: true,
         requiredPermission: 'allowRegis',

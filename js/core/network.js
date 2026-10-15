@@ -62,6 +62,14 @@ const Network = (function () {
   /** Called by auth.js once the user is known. Returns the current network id (or null). */
   function setUser(userData) {
     allowed = allowedFor(userData);
+    // A page for a feature only some activities have (<body data-feature="weather">: the Météo app is for the ski season) offers only those
+    // activities: no switch to the others, and nobody lands on a bike season that has no such page. A user who has none of them keeps their
+    // own list, so the page can say that the feature is not used in their activity.
+    const wanted = document.body && document.body.dataset.feature;
+    if (wanted) {
+      const withFeature = allowed.filter(id => APP_CONFIG.networks[id].features && APP_CONFIG.networks[id].features[wanted]);
+      if (withFeature.length) allowed = withFeature;
+    }
     const season = ofSeason();
     const choice = readChoice();
 

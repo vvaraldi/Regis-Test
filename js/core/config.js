@@ -312,7 +312,7 @@ const APP_CONFIG = {
       ]
     },
     meteo: {
-      title: 'Météo',
+      title: 'Remontées & Météo',
       items: [
         { id: 'meteo-report', label: 'Relevés', icon: '🌡️', href: 'pages/meteo-report.html' },
         { id: 'meteo-stats', label: 'Admin', icon: '⚙️', href: 'pages/meteo-stats.html', admin: true }
@@ -321,7 +321,10 @@ const APP_CONFIG = {
     },
     regis: {
       title: 'Régis gère',
-      items: []   // one page for now
+      items: [
+        { id: 'regis-manage', label: 'Tableau de bord', icon: '🏔️', href: 'pages/regis-manage.html' },
+        { id: 'regis-log', label: 'Gestion', icon: '📋', href: 'pages/regis-log.html' }   // the status log, read only
+      ]
     },
     support: {
       title: 'Support',
