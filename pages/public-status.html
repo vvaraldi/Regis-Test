@@ -50,6 +50,7 @@
     .ps-message--error { color: #dc2626; }
     .ps-message--warn { color: #b45309; font-size: 0.875rem; padding: 0.5rem 1rem; }
     .ps-footer { text-align: center; font-size: 0.75rem; color: var(--theme-text-light); padding: 0 1rem 0.4rem; }
+    .ps-footer a { color: inherit; }
 
     /* Small, unobtrusive: lets you preview the other activity's page without waiting for the season to change */
     .ps-season-toggle { display: flex; justify-content: center; align-items: center; gap: 0.4rem; flex-wrap: wrap; font-size: 0.75rem; color: var(--theme-text-light); padding: 0 1rem 1.5rem; }
@@ -95,6 +96,7 @@
     <section id="weather-panel" aria-label="Météo" hidden></section>
   </main>
 
+  <p class="ps-footer"><a id="list-link" href="public-list.html">📋 Voir la liste des sentiers</a></p>
   <p class="ps-footer" id="footer"></p>
   <!-- Preview: switch the activity shown regardless of today's date. The page still opens on the
        season's own activity every time (no choice is remembered): this is only a look-around tool. -->
@@ -205,6 +207,8 @@
         btn.addEventListener('click', () => { window.location.href = urlFor(b.id); });
         return btn;
       }));
+      // the link to the list page keeps the preview choice
+      if (forced) el('list-link').href = 'public-list.html?network=' + forced;
     }
 
     // Kind toggle: shown only when the current activity inspects more than one kind (ski:

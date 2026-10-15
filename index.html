@@ -125,7 +125,6 @@
         permission: 'allowMeteo',
         permissionDefault: false,
         feature: 'weather',   // hidden in an activity that does not use the weather (the bike activity, for now)
-        seasonFeature: 'weather',   // and hidden whenever the SEASON is not one that uses it (summer), whatever activity the person works in
         actionText: 'Accéder à l\'application'
       },
       {
@@ -205,8 +204,7 @@
         // Some apps only apply to one network (e.g. Entretien is bike-only)
         if (app.network && Network.current() !== app.network) hasAccess = false;
         if (app.feature && !Network.feature(app.feature)) hasAccess = false;
-        // the season decides too (like Entretien in winter): a ski-only user opening the portal in July does not see the Météo tile
-        if (app.seasonFeature && !((APP_CONFIG.networks[Network.ofSeason()] || {}).features || {})[app.seasonFeature]) hasAccess = false;
+        // Like Entretien (network: 'bike'), Météo follows the activity the person is working in (the winter / ski mode), not today's date
 
         // Skip card entirely if user doesn't have access (instead of showing disabled)
         if (!hasAccess) return;
