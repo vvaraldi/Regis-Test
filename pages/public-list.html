@@ -23,16 +23,22 @@
     .ps-theme-btn { background: rgba(255,255,255,0.18); border: 0; border-radius: 8px; color: #fff; cursor: pointer; font-size: 1.1rem; line-height: 1; padding: 0.4rem 0.55rem; }
 
     /* body is a flex column (main.css): width/min-width keep the page from widening */
-    .ps-main { width: 100%; min-width: 0; max-width: 1100px; margin: 0 auto; padding: 1.25rem 1rem 2rem; box-sizing: border-box; }
+    .ps-main { width: 100%; min-width: 0; max-width: 1500px; margin: 0 auto; padding: 1.25rem 1rem 2rem; box-sizing: border-box; }
 
-    /* The sectors in two columns (one on a phone). A sector is never cut between two columns. */
-    .pl-sectors { column-count: 2; column-gap: 1.5rem; }
-    .pl-sector { break-inside: avoid; margin: 0 0 1rem; background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 12px; padding: 0.75rem 1rem 0.5rem; }
+    /* From the top: the lifts (all the width), the descents by sector (3 or 4 boxes per line on a wide screen, fewer on a smaller one,
+       one on a phone), then the uphill trails (all the width). The page is up to 1500 px wide. */
+    .pl-part__title { margin: 0 0 0.5rem; font-size: 1.2rem; font-weight: 700; }
+    .pl-part { margin-bottom: 1.25rem; }
+    .pl-sectors { display: grid; grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr)); gap: 0.75rem; align-items: start; }
+    .pl-sector { margin: 0; background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 12px; padding: 0.75rem 1rem 0.5rem; }
+    .pl-wide { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 12px; padding: 0.5rem 1rem; }
+    .pl-wide__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr)); column-gap: 1.5rem; }
+    .pl-where { color: var(--theme-text-light); font-size: 0.75rem; margin-left: 0.35rem; }
     .pl-sector__head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; margin: 0 0 0.25rem; }
     .pl-sector__title { margin: 0; font-size: 1.1rem; font-weight: 700; }
     .pl-sector__count { font-size: 0.8rem; color: var(--theme-text-light); white-space: nowrap; }
     .pl-group__title { margin: 0.6rem 0 0.15rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--theme-text-light); }
-    .pl-row { display: grid; grid-template-columns: 2.2rem 1fr auto; align-items: center; gap: 0.5rem; padding: 0.3rem 0; border-bottom: 1px solid var(--theme-border); }
+    .pl-row { display: grid; grid-template-columns: 25px minmax(0, 1fr) auto; align-items: center; gap: 0.5rem; padding: 0.3rem 0; border-bottom: 1px solid var(--theme-border); }
     .pl-row:last-child { border-bottom: none; }
     .pl-num { text-align: right; font-weight: 700; color: var(--theme-text-light); font-size: 0.9rem; }
     .pl-name small { color: var(--theme-text-light); margin-left: 0.35rem; }
@@ -58,7 +64,7 @@
     .ps-season-toggle button.is-active { background: var(--color-logo-blue); border-color: transparent; color: #fff; font-weight: 600; }
 
     @media (max-width: 760px) {
-      .pl-sectors { column-count: 1; }
+      .pl-sectors, .pl-wide__grid { grid-template-columns: 1fr; }
       .ps-header { padding: 0.9rem 1rem; }
       .ps-header h1 { font-size: 1.05rem; }
     }
@@ -89,7 +95,7 @@
     </div>
 
     <!-- Every trail and lift of the season's activity, by sector -->
-    <div class="pl-sectors" id="sectors"></div>
+    <div id="sectors"></div>
 
     <!-- Météo: the latest published reading (weather_public/latest), at the bottom; hidden when there is none -->
     <section id="weather-panel" aria-label="Météo" hidden></section>
@@ -128,35 +134,63 @@
       return allSectors.find(s => s.id === trail.sector) || allSectors.find(s => (s.aliases || []).includes(trail.sector)) || null;
     }
 
-    function rowHtml(t) {
+    /** where: the sector's name, shown small after the name in the full-width parts (lifts, uphill) that are not cut by sector */
+    function rowHtml(t, where) {
       const status = statusOf(t);
+      const kind = TrailService.kindOf(t);
       const diff = TrailService.difficultyOf(t) ? TrailService.difficultyLabel(TrailService.difficultyOf(t)) : '';
       return `<div class="pl-row"><span class="pl-num">${esc(TrailService.markerLabel(t))}</span>`
-        + `<span class="pl-name">${esc(t.name || t.id)}${diff && TrailService.kindOf(t) !== 'lift' ? `<small>${esc(diff)}</small>` : ''}</span>`
+        + `<span class="pl-name">${esc(t.name || t.id)}${diff && kind !== 'lift' ? `<small>${esc(diff)}</small>` : ''}${where ? `<span class="pl-where">${esc(where)}</span>` : ''}</span>`
         + `<span class="pl-pill pl-pill--${status}">${STATUS_WORD[status]}</span></div>`;
     }
 
-    function sectorHtml(name, list) {
-      const byKind = {};
-      list.forEach(t => { (byKind[TrailService.kindOf(t)] = byKind[TrailService.kindOf(t)] || []).push(t); });
-      const kinds = KIND_ORDER.filter(k => byKind[k]).concat(Object.keys(byKind).filter(k => !KIND_ORDER.includes(k)));
+    function sectorBox(name, list) {
       const open = list.filter(t => statusOf(t) === 'open').length;
-      return `<section class="pl-sector"><div class="pl-sector__head"><h2 class="pl-sector__title">${esc(name)}</h2><span class="pl-sector__count">${open} / ${list.length} ouverts</span></div>`
-        + kinds.map(k => `<h3 class="pl-group__title">${esc(KIND_TITLE[k] || TrailService.kindLabel(k))}</h3>${byKind[k].slice().sort(TrailService.compare).map(rowHtml).join('')}`).join('')
+      return `<section class="pl-sector"><div class="pl-sector__head"><h3 class="pl-sector__title">${esc(name)}</h3><span class="pl-sector__count">${open} / ${list.length} ouverts</span></div>`
+        + list.slice().sort(TrailService.compare).map(t => rowHtml(t)).join('')
         + '</section>';
     }
 
+    function sortedSectors() {
+      return allSectors.slice().sort((a, b) => (a.order == null ? 999 : a.order) - (b.order == null ? 999 : b.order) || String(a.name).localeCompare(String(b.name), 'fr'));
+    }
+
+    /** The sector boxes of a list of trails: the sectors in their order, then what has no sector */
+    function boxesHtml(list, otherName) {
+      const blocks = sortedSectors().map(s => ({ name: s.name, list: list.filter(t => (sectorOf(t) || {}).id === s.id) }));
+      const loose = list.filter(t => !sectorOf(t));
+      if (loose.length) blocks.push({ name: otherName, list: loose });
+      return blocks.filter(b => b.list.length).map(b => sectorBox(b.name, b.list)).join('');
+    }
+
+    /** A full-width part (lifts, uphill): one card, the rows side by side, ordered by sector then number, the sector named small */
+    function widePartHtml(title, list) {
+      if (!list.length) return '';
+      const order = t => { const s = sectorOf(t); return s ? sortedSectors().indexOf(allSectors.find(x => x.id === s.id)) : 999; };
+      const rows = list.slice().sort((a, b) => order(a) - order(b) || TrailService.compare(a, b));
+      const open = list.filter(t => statusOf(t) === 'open').length;
+      return `<section class="pl-part" data-part="${esc(title)}"><h2 class="pl-part__title">${esc(title)} <span class="pl-sector__count">${open} / ${list.length} ouverts</span></h2>`
+        + `<div class="pl-wide"><div class="pl-wide__grid">${rows.map(t => rowHtml(t, (sectorOf(t) || {}).name)).join('')}</div></div></section>`;
+    }
+
     function render() {
-      const sectors = allSectors.slice().sort((a, b) => (a.order == null ? 999 : a.order) - (b.order == null ? 999 : b.order) || String(a.name).localeCompare(String(b.name), 'fr'));
-      const blocks = sectors.map(s => ({ name: s.name, list: allTrails.filter(t => (sectorOf(t) || {}).id === s.id) }));
-      const loose = allTrails.filter(t => !sectorOf(t));
-      if (loose.length) blocks.push({ name: allSectors.length ? 'Autres' : 'Sentiers', list: loose });
-      el('sectors').innerHTML = blocks.filter(b => b.list.length).map(b => sectorHtml(b.name, b.list)).join('');
+      const kind = t => TrailService.kindOf(t);
+      let html;
+      if (allTrails.some(t => kind(t) === 'bike')) {
+        // the bike activity: the trails by sector, nothing else
+        html = `<section class="pl-part" data-part="Sentiers"><div class="pl-sectors">${boxesHtml(allTrails, allSectors.length ? 'Autres' : 'Sentiers')}</div></section>`;
+      } else {
+        const lifts = allTrails.filter(t => kind(t) === 'lift'), uphill = allTrails.filter(t => kind(t) === 'uphill');
+        const downhill = allTrails.filter(t => kind(t) !== 'lift' && kind(t) !== 'uphill');
+        html = widePartHtml('Remontées', lifts)
+          + (downhill.length ? `<section class="pl-part" data-part="Descentes"><h2 class="pl-part__title">Descentes</h2><div class="pl-sectors">${boxesHtml(downhill, 'Autres')}</div></section>` : '')
+          + widePartHtml('Montées', uphill);
+      }
+      el('sectors').innerHTML = html;
       el('legend').hidden = !allTrails.length;
       const times = allTrails.map(t => t.lastUpdated && t.lastUpdated.toDate ? t.lastUpdated.toDate().getTime() : 0).filter(Boolean);
       el('last-update').textContent = times.length ? formatDateTime(new Date(Math.max(...times))) : '--';
     }
-
     // "Mont Orford - <network's publicTitle>"
     function updateTitle() {
       const network = APP_CONFIG.networks[Network.current()];
