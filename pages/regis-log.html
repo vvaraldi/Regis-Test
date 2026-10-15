@@ -177,7 +177,6 @@
         requireAuth: true,
         requiredPermission: 'allowRegis',
         permissionDefault: false,
-        adminsAlways: true,   // the rules let the administrators read the log too
         onAuthenticated: () => load().catch(e => { console.error('Journal:', e); showMessage('Le journal n\'a pas pu être lu.', 'error', 5000); })
       });
     }
