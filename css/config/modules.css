@@ -214,6 +214,30 @@
   --theme-header-to: #1d4ed8;
 }
 
+/* Portal in dark mode, summer (bike): the winter portal stays blue; the summer one is green. The top bar, the page background, the
+   tiles' surfaces and the accent (small headings, links, borders) all take a faint green tint, as the light mode already does for the
+   header and the background pattern. Only the portal-level pages (portal, profile) - the apps keep their own module colours.
+   Placed after the dark portal rule above so that it wins (same specificity + one more attribute). */
+[data-theme="dark"][data-module="portal"][data-network="bike"] {
+  --theme-accent: #4ade80;
+  --theme-accent-light: #86efac;
+  --theme-accent-dark: #22c55e;
+  --theme-accent-rgb: 74, 222, 128;
+
+  --theme-gradient: linear-gradient(135deg, #2f8f5b 0%, #1f6b45 100%);
+  --theme-header-from: #2f8f5b;
+  --theme-header-to: #1f6b45;
+
+  --theme-bg: #0d1a13;
+  --theme-bg-alt: #13261c;
+  --theme-surface: #172a20;
+  --theme-surface-alt: #1f3a2c;
+  --theme-surface-hover: #1f3a2c;
+  --theme-border: #2a4a38;
+  --theme-border-light: #172a20;
+  --theme-input-bg: #172a20;
+  --theme-modal-bg: #172a20;
+}
 [data-theme="dark"][data-module="infraction"] {
   --theme-accent: #f87171;
   --theme-accent-light: #fca5a5;
