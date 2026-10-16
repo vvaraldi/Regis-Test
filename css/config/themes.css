@@ -81,6 +81,15 @@
   --color-info-dark: #3b82f6;
 }
 
+/* Dark mode, by activity: ski (winter) a touch LIGHTER, bike (summer) a touch DARKER than the base slate, so that the mountain triangles
+   of the page background (css/main.css) can just be seen on both: dark triangles on the lighter ski page, light green ones on the
+   darker bike page. The portal-level bike page has its own green-tinted background (css/config/modules.css). */
+[data-theme="dark"][data-network="ski"] {
+  --theme-bg: #162033;
+}
+[data-theme="dark"][data-network="bike"] {
+  --theme-bg: #0b1220;
+}
 /* ===== SEASONAL THEME: SUMMER ===== */
 [data-theme="summer"] {
   --theme-bg: #f0fdf4;

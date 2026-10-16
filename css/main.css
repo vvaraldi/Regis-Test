@@ -92,13 +92,13 @@ body::before {
 body[data-network="bike"]::before {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200' opacity='0.07'%3E%3Cpath d='M100 0 L200 200 L0 200 Z' fill='%233b8f5c'/%3E%3C/svg%3E");
 }
-/* Dark mode: the same triangles, but LIGHT ones (the dark blue / green of the light mode vanish on a dark page). data-theme is on <body>
+/* Dark mode: the ski page is a touch lighter than the base slate and gets DARK triangles; the bike page is a touch darker and gets LIGHT green ones (the dark blue / green of the light mode vanish on a dark page). data-theme is on <body>
    itself, so the selector is body[data-theme="dark"] (the old "[data-theme=dark] body" never matched and the triangles disappeared). */
 body[data-theme="dark"]::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200' opacity='0.06'%3E%3Cpath d='M100 0 L200 200 L0 200 Z' fill='%2360a5fa'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200' opacity='0.6'%3E%3Cpath d='M100 0 L200 200 L0 200 Z' fill='%23080e1a'/%3E%3C/svg%3E");
 }
 body[data-theme="dark"][data-network="bike"]::before {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200' opacity='0.08'%3E%3Cpath d='M100 0 L200 200 L0 200 Z' fill='%234ade80'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200' opacity='0.1'%3E%3Cpath d='M100 0 L200 200 L0 200 Z' fill='%234ade80'/%3E%3C/svg%3E");
 }
 
 /* Focus outline for accessibility */
