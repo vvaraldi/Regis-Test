@@ -314,13 +314,16 @@
 
     async function readSnapshot() {
       try {
-        const snapshot = await StatusSnapshot.fetchSnapshot(APP_CONFIG.firebase.storageBucket);
-        // The file holds the activity of the season only. A page showing the other one (a preview with ?network=, or the day the season
-        // changes) cannot use it: it reads Firestore instead.
+        let snapshot = await StatusSnapshot.fetchSnapshot(APP_CONFIG.firebase.storageBucket);
+        // status.json holds the activity of the SEASON. A page showing the other one (the preview toggle, or the day the season changes) reads
+        // status-preview.json, which the function writes for the other activity - never Firestore (its public reads are closed).
         snapshotMismatch = !!snapshot.network && snapshot.network !== Network.current();
-        if (snapshotMismatch) throw new Error('The public file is for the activity ' + snapshot.network);
-        applySnapshot(snapshot);
-        return true;
+        if (snapshotMismatch) {
+          snapshot = await StatusSnapshot.fetchSnapshot(APP_CONFIG.firebase.storageBucket, undefined, true);
+          snapshotMismatch = !!snapshot.network && snapshot.network !== Network.current();
+          if (snapshotMismatch) throw new Error('No public file for the activity ' + Network.current());
+        }
+        applySnapshot(snapshot);        return true;
       } catch (error) {
         console.warn('Status file:', error);
         return false;

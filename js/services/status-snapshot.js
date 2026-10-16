@@ -4,7 +4,7 @@
  * public page (ours, or the Mont Orford web site) needs no Firestore at all: the number of visitors never changes what
  * Firestore is asked, or billed.
  *
- *   StatusSnapshot.url(bucket)                 the web address of the file (bucket: "trail-inspection.firebasestorage.app")
+ *   StatusSnapshot.url(bucket, preview)        the web address of the file (preview: the other activity's file) (bucket: "trail-inspection.firebasestorage.app")
  *   StatusSnapshot.fetchSnapshot(bucket)       reads and revives it (rejects when the file cannot be read)
  *   StatusSnapshot.revive(json)                the file's JSON as { generatedAt (Date), refreshMinutes, network, trails, sectors, weather }:
  *                                              each trail has lastUpdated = { toDate() } like a Firestore timestamp, and
@@ -19,8 +19,8 @@ const StatusSnapshot = (() => {
   const MIN_STALE_MINUTES = 30;
 
   /** The address of the file. Cloud Storage's download address; the Storage rules make this one folder public. */
-  function url(bucket) {
-    return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/public%2Fstatus.json?alt=media`;
+  function url(bucket, preview) {
+    return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/public%2F${preview ? 'status-preview' : 'status'}.json?alt=media`;
   }
 
   function revive(json) {
@@ -46,8 +46,9 @@ const StatusSnapshot = (() => {
     return ageMinutes(snapshot, now) > Math.max(MIN_STALE_MINUTES, 3 * every + 5);
   }
 
-  async function fetchSnapshot(bucket, fetchFn) {
-    const res = await (fetchFn || ((...a) => window.fetch(...a)))(url(bucket));
+  /** preview = true reads the file of the OTHER activity (status-preview.json), for the preview toggle */
+  async function fetchSnapshot(bucket, fetchFn, preview) {
+    const res = await (fetchFn || ((...a) => window.fetch(...a)))(url(bucket, preview));
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const snapshot = revive(await res.json());
     if (!snapshot) throw new Error('Unreadable status file');
