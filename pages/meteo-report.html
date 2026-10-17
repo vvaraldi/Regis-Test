@@ -19,7 +19,18 @@
     .wx-web-notes { font-size: 0.8125rem; color: var(--theme-text-secondary); margin: 0 0 0.75rem; padding-left: 1.1rem; }
 
     /* One line per measure: name | what Environment Canada says | what you type (blank by default) */
-    .wx-row, .wx-head { display: grid; grid-template-columns: minmax(150px, 1.2fr) minmax(150px, 1.4fr) minmax(130px, 1fr); gap: 0.4rem 0.75rem; align-items: center; }
+    /* Four columns: the measure | Environnement Canada | the Davis station | your value (a narrow box: three digits at most) */
+    .wx-row, .wx-head { display: grid; grid-template-columns: minmax(110px, 1.3fr) minmax(76px, 0.9fr) minmax(64px, 0.7fr) minmax(104px, 1fr); gap: 0.4rem 0.6rem; align-items: center; }
+    .wx-input-wrap input.form-input { width: 5.5rem; max-width: 100%; text-align: right; padding-left: 0.4rem; padding-right: 0.4rem; }
+    .wx-input-wrap .form-select { width: 100%; }
+    /* a box filled from the station: tinted (it is still yours to change); the raw value stays in the Station column */
+    .wx-from-station { background: var(--theme-accent-light, #dbeafe) !important; border-color: var(--theme-accent, #2563eb) !important; }
+    /* fields that no source gives (wind force, the snow lists): the typed box takes the room of the three columns */
+    .wx-row--typed .wx-web, .wx-row--typed .wx-station { display: none; }
+    .wx-row--typed .wx-input-wrap { grid-column: 2 / -1; }
+    .wx-station { font-size: 0.9rem; }
+    .wx-station--none { color: var(--theme-text-secondary); }
+    .wx-station__src { display: block; font-size: 0.7rem; color: var(--theme-text-secondary); }
     .wx-head { font-size: 0.8125rem; font-weight: 600; color: var(--theme-text-secondary); border-bottom: 1px solid var(--theme-border); padding-bottom: 0.3rem; margin-bottom: 0.25rem; }
     .wx-row { padding: 0.35rem 0; border-bottom: 1px dashed var(--theme-border); }
     .wx-label { font-weight: 500; }
@@ -43,7 +54,7 @@
     }
     @media (max-width: 640px) {
       .wx-heads { display: none; }
-      .wx-row { grid-template-columns: 1fr 1fr; }
+      .wx-row { grid-template-columns: 1fr 1fr 1fr; }
       .wx-label { grid-column: 1 / -1; }
     }
 
@@ -102,12 +113,13 @@
           <div class="wx-top">
             <input type="datetime-local" class="form-input wx-top__at" id="recorded-at" required aria-label="Date et heure du relevé" title="Date et heure du relevé">
             <input type="text" class="form-input wx-top__place" id="place-name" readonly aria-label="Lieu" title="Lieu">
-            <button type="button" class="btn btn-secondary" id="fetch-web-btn">🌐 Charger les données d'Environnement Canada</button>
+            <button type="button" class="btn btn-secondary" id="fetch-web-btn" title="Charger les données d'Environnement Canada">🌐 Environnement Canada</button>
+            <button type="button" class="btn btn-secondary" id="fetch-station-btn" title="Charger les données de la station météo du Mont Orford (Davis)">📡 Station Mont Orford</button>
             <span class="wx-web-status" id="web-status"></span>
           </div>
           <ul class="wx-web-notes" id="web-notes" hidden></ul>
 
-          <div class="wx-heads" aria-hidden="true"><div class="wx-head"><div>Mesure</div><div>Environnement Canada</div><div>Votre valeur</div></div><div class="wx-head wx-head--second"><div>Mesure</div><div>Environnement Canada</div><div>Votre valeur</div></div></div>
+          <div class="wx-heads" aria-hidden="true"><div class="wx-head"><div>Mesure</div><div>Env. Canada</div><div>Station</div><div>Votre valeur</div></div><div class="wx-head wx-head--second"><div>Mesure</div><div>Env. Canada</div><div>Station</div><div>Votre valeur</div></div></div>
           <div id="fields-grid"></div>
 
           <div class="form-group" style="margin-top: 1rem;">
@@ -181,6 +193,7 @@
     const WS = WeatherService;
     // State
     let editing = null;        // { id, record } while a saved reading is being corrected
+    let stationResult = null;   // the Davis station's raw values as loaded (or saved with the reading)
     let webResult = null;      // what Environment Canada gave (or the stored web part while editing): { fields, fetchedAt, observedAt }
     let webForTime = null;     // the time (ms) the web values were loaded for
     let periodFilter = null;   // the Période controls of the list (js/core/period-filter.js); the list opens on the last 7 days
@@ -218,25 +231,33 @@
         const input = f.type === 'choice'
           ? `<select class="form-select" id="in-${f.key}"><option value="">—</option>${Object.entries(f.choices).map(([id, label]) => `<option value="${id}">${label}</option>`).join('')}</select>`
           : `<input type="number" class="form-input" id="in-${f.key}" step="${f.step}" min="${f.min}" max="${f.max}" inputmode="decimal" autocomplete="off">`;
-        return `<div class="wx-row" data-key="${f.key}">
+        // the four lists typed by hand have no source at all: their box takes the room of the two source columns
+        const typedOnly = ['windForce', 'snowType', 'snowBase', 'snowCover'].includes(f.key);
+        return `<div class="wx-row${typedOnly ? ' wx-row--typed' : ''}" data-key="${f.key}">
           <label class="wx-label" for="in-${f.key}">${f.label}${unit}</label>
           <div class="wx-web wx-web--none" id="web-${f.key}">—</div>
-          <div class="wx-input-wrap">${input}<button type="button" class="wx-restore" data-restore="${f.key}" title="Effacer ma valeur et reprendre celle d'Environnement Canada">↺</button></div>
+          <div class="wx-station wx-station--none" id="station-${f.key}">—</div>
+          <div class="wx-input-wrap">${input}<button type="button" class="wx-restore" data-restore="${f.key}" title="Reprendre la valeur de la station (ou d'Environnement Canada)">↺</button></div>
         </div>`;
       }).join('');
       WS.FIELDS.forEach(f => {
-        el(`in-${f.key}`).addEventListener('input', () => { updateRestore(f.key); clearErrors(); });
+        el(`in-${f.key}`).addEventListener('input', () => { el(`in-${f.key}`).classList.remove('wx-from-station'); updateRestore(f.key); clearErrors(); });
         el(`in-${f.key}`).addEventListener('change', () => updateRestore(f.key));
       });
       document.querySelectorAll('[data-restore]').forEach(b => b.addEventListener('click', () => {
-        el(`in-${b.dataset.restore}`).value = '';
-        updateRestore(b.dataset.restore);
+        const key = b.dataset.restore, s = stationResult && stationResult.fields && stationResult.fields[key];
+        const box = el(`in-${key}`);
+        if (s && s.value !== null && s.value !== undefined) { box.value = fitToField(WS.fieldOf(key), s.value); box.classList.add('wx-from-station'); }
+        else { box.value = ''; box.classList.remove('wx-from-station'); }
+        updateRestore(key);
       }));
     }
 
     /** The "↺" shows only when a value was typed AND the web has one to come back to */
     function updateRestore(key) {
-      const has = el(`in-${key}`).value !== '' && !!(webResult && webResult.fields && webResult.fields[key]);
+      const box = el(`in-${key}`);
+      const source = !!(webResult && webResult.fields && webResult.fields[key]) || !!(stationResult && stationResult.fields && stationResult.fields[key]);
+      const has = box.value !== '' && source && !box.classList.contains('wx-from-station');
       document.querySelector(`[data-restore="${key}"]`).classList.toggle('is-visible', has);
     }
 
@@ -248,6 +269,13 @@
         else {
           box.className = 'wx-web';
           box.innerHTML = `${escapeHtml(display(f.key, w.value))}<span class="wx-web__src">${escapeHtml(SOURCE_LABEL[w.source] || w.source)}${w.observedAt ? ' · ' + clock(ms(w.observedAt)) : ''}</span>`;
+        }
+        const sbox = el(`station-${f.key}`);
+        const s = stationResult && stationResult.fields && stationResult.fields[f.key];
+        if (!s) { sbox.className = 'wx-station wx-station--none'; sbox.textContent = '—'; }
+        else {
+          sbox.className = 'wx-station';
+          sbox.innerHTML = `${escapeHtml(display(f.key, s.value))}${s.observedAt ? `<span class="wx-station__src">${clock(ms(s.observedAt))}</span>` : ''}`;
         }
         updateRestore(f.key);
       });
@@ -302,8 +330,51 @@
 
     // The hour was changed after the web values were loaded: say so (nothing is lost)
     function warnIfTimeMoved() {
-      if (webResult && !editing && webForTime !== null && Math.abs(readAt().getTime() - webForTime) > 30 * 60000) {
+      if ((webResult || stationResult) && !editing && webForTime !== null && Math.abs(readAt().getTime() - webForTime) > 30 * 60000) {
         setWebStatus('L\'heure a changé depuis le chargement : rechargez les données du web pour cette heure.', true);
+      }
+    }
+
+    /** A station value as the box takes it: rounded to the precision of the field (a whole number for km/h, one decimal for degrees) */
+    function fitToField(f, v) {
+      if (!f || f.type === 'choice') return String(v);
+      const step = String(f.step || 1), decimals = step.includes('.') ? step.split('.')[1].length : 0;
+      return String(Number(Number(v).toFixed(decimals)));
+    }
+
+    /**
+     * The Davis station (button "Station Mont Orford"). Its RAW values go to their own column and are saved with the reading; every typed
+     * box that is still EMPTY is filled from it (tinted), and stays yours to change - changing it never touches the raw value.
+     * Boxes that already hold something are left alone. Environnement Canada never fills a box; only the station does.
+     */
+    async function loadStation() {
+      const at = readAt();
+      if (!Number.isFinite(at.getTime())) { showErrors({ recordedAt: 'Choisissez d\'abord la date et l\'heure du relevé.' }); return; }
+      const btn = el('fetch-station-btn');
+      btn.disabled = true;
+      setWebStatus('Chargement de la station…');
+      try {
+        const result = await WS.fetchStationValues({ at });
+        webForTime = at.getTime();
+        if (!result || !result.fields || !Object.keys(result.fields).length) {
+          stationResult = null;
+          setWebStatus('La station n\'a donné aucune valeur pour cette heure.', true);
+        } else {
+          stationResult = result;
+          let filled = 0;
+          WS.FIELDS.forEach(f => {
+            const s = result.fields[f.key], box = el(`in-${f.key}`);
+            if (s && s.value !== null && s.value !== undefined && box.value === '') { box.value = fitToField(f, s.value); box.classList.add('wx-from-station'); filled++; }
+          });
+          setWebStatus(`Station Mont Orford : valeurs de ${result.observedAt ? clock(result.observedAt) : 'maintenant'}. ${filled} case${filled > 1 ? 's' : ''} vide${filled > 1 ? 's' : ''} remplie${filled > 1 ? 's' : ''} (en couleur) ; les valeurs brutes restent dans la colonne Station.`);
+        }
+      } catch (e) {
+        stationResult = null;
+        if (e && e.code === 'not-connected') setWebStatus('La station météo du Mont Orford (Davis) n\'est pas encore branchée à Regis.', true);
+        else { console.error('Station:', e); setWebStatus('La station du Mont Orford est inaccessible pour le moment. Vous pouvez saisir les valeurs à la main.', true); }
+      } finally {
+        btn.disabled = false;
+        showWebValues();
       }
     }
 
@@ -327,16 +398,17 @@
     }
 
     function resetForm() {
-      editing = null; webResult = null; webForTime = null;
+      editing = null; webResult = null; stationResult = null; webForTime = null;
       el('recorded-at').value = toLocalInput(new Date());
       el('place-name').value = WS.location().name;
-      WS.KEYS.forEach(k => { el(`in-${k}`).value = ''; });
+      WS.KEYS.forEach(k => { el(`in-${k}`).value = ''; el(`in-${k}`).classList.remove('wx-from-station'); });
       el('comment').value = '';
       el('form-title').textContent = '☀️ Relevé Météo';
       el('save-btn').textContent = 'Enregistrer la météo';
       el('cancel-btn').style.display = 'none';
       el('delete-btn').style.display = 'none';
       el('fetch-web-btn').disabled = false;
+    el('fetch-station-btn').disabled = false;
       setWebStatus('');
       setWebNotes([]);
       clearErrors();
@@ -356,7 +428,7 @@
           result = await WS.update(db, firebase, editing.id, editing.record,
             { at: readAt(), manual: collectManual(), comment: el('comment').value }, user);
         } else {
-          result = await WS.save(db, firebase, { at: readAt(), manual: collectManual(), web: webResult, comment: el('comment').value }, user);
+          result = await WS.save(db, firebase, { at: readAt(), manual: collectManual(), web: webResult, station: stationResult, comment: el('comment').value }, user);
         }
         if (!result.ok) { showErrors(result.errors); return; }
         // the public copy of the latest reading follows (a failure there never loses the reading)
@@ -388,12 +460,15 @@
       el('comment').value = record.comment || '';
       // the web values are those read when the reading was saved: they are not read again
       webResult = record.web && record.web.fields ? { fields: record.web.fields, fetchedAt: record.web.fetchedAt, observedAt: null } : null;
+      stationResult = record.station && record.station.fields ? { fields: record.station.fields, fetchedAt: record.station.fetchedAt, observedAt: null } : null;
+      WS.KEYS.forEach(k => el(`in-${k}`).classList.remove('wx-from-station'));
       webForTime = null;
       el('form-title').textContent = `✏️ Modifier le relevé de ${clock(toDate(record.recordedAt))}`;
       el('save-btn').textContent = 'Enregistrer la modification';
       el('cancel-btn').style.display = '';
       el('delete-btn').style.display = isSystemAdmin ? '' : 'none';
       el('fetch-web-btn').disabled = true;
+    el('fetch-station-btn').disabled = true;
       setWebStatus(webResult ? `Valeurs d'Environnement Canada conservées telles que lues le ${toDate(record.web.fetchedAt).toLocaleDateString('fr-CA')} à ${clock(ms(record.web.fetchedAt))}.` : 'Ce relevé n\'a pas de valeurs du web.');
       setWebNotes([]);
       clearErrors();
@@ -510,6 +585,7 @@
       DateTimeField.init(el('recorded-at'));   // the two-field version only where the browser has no date-and-time field
       el('weather-form').addEventListener('submit', saveReading);
       el('fetch-web-btn').addEventListener('click', loadWeb);
+      el('fetch-station-btn').addEventListener('click', loadStation);
       el('reset-btn').addEventListener('click', resetForm);
       el('cancel-btn').addEventListener('click', resetForm);
       el('delete-btn').addEventListener('click', () => deleteReading());

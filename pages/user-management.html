@@ -374,6 +374,9 @@
       <button class="admin-tabs__btn" data-tab="publication" id="publication-tab-btn" onclick="switchTab('publication')" style="display: none;">
         🌐 Statut public
       </button>
+      <button class="admin-tabs__btn" data-tab="station" id="station-tab-btn" onclick="switchTab('station')" style="display: none;">
+        🌦️ Station météo
+      </button>
       <button class="admin-tabs__btn" data-tab="links" onclick="switchTab('links')">
         💡 Liens et astuces
       </button>
@@ -1085,6 +1088,16 @@
         </p>
       </div>
     </div>
+    <!-- TAB: WEATHER STATION (system admin): the connection to the Davis station of the mountain - content to come -->
+    <div class="admin-tab-content" id="station-tab">
+      <div class="data-export-section">
+        <div class="data-export-section__header">
+          <span>🌦️</span>
+          <h3>Station météo du Mont Orford</h3>
+        </div>
+        <p class="data-export-section__description" id="station-tab-placeholder">Contenu à venir plus tard.</p>
+      </div>
+    </div>
     <!-- TAB: LINKS AND TIPS -->
     <div class="admin-tab-content" id="links-tab">
       <div class="data-export-section links-card">
@@ -1291,7 +1304,7 @@
     // ========================================
     
     // Sentiers, Cartes, Données and Statut public are for the system admin only (the others never see these tabs)
-    const SYSTEM_ADMIN_TABS = ['trails', 'maps', 'data', 'publication'];
+    const SYSTEM_ADMIN_TABS = ['trails', 'maps', 'data', 'publication', 'station'];
 
     function switchTab(tabName) {
       if (SYSTEM_ADMIN_TABS.includes(tabName) && !isCurrentUserSystemAdmin) return;

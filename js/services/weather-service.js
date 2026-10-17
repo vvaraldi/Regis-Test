@@ -197,10 +197,23 @@ const WeatherService = (() => {
     return { ok: Object.keys(errors).length === 0, values, errors };
   }
 
-  const hasAnyValue = (manual, web) =>
-    KEYS.some(k => manual && manual[k] !== null && manual[k] !== undefined) || !!(web && web.fields && Object.keys(web.fields).length);
+  const hasAnyValue = (manual, web, station) =>
+    KEYS.some(k => manual && manual[k] !== null && manual[k] !== undefined) || !!(web && web.fields && Object.keys(web.fields).length) || !!(station && station.fields && Object.keys(station.fields).length);
 
-  /** The web part as stored: Timestamps instead of milliseconds. */
+  /**
+   * The Davis station of the mountain (WeatherLink). NOT CONNECTED YET: waiting for the customer to say how the station reaches the
+   * internet (see README). When it is, this returns the same shape as fetchWebValues():
+   *   { fields: { tempC: { value, source: 'station', observedAt (ms), publishable }, ... }, fetchedAt, observedAt, errors: [], missing: [] }
+   * and the page does the rest (a column of its own, the empty typed boxes filled from it, the raw values kept in the record).
+   * Until then it fails with code 'not-connected'.
+   */
+  async function fetchStationValues(options) {
+    const e = new Error('La station météo n\'est pas encore connectée.');
+    e.code = 'not-connected';
+    throw e;
+  }
+
+  /** The web part (Environnement Canada) or the station part as stored: Timestamps instead of milliseconds. */
   function webForStorage(web, fb) {
     if (!web || !web.fields || !Object.keys(web.fields).length) return null;
     const ts = t => (t === null || t === undefined) ? null : fb.firestore.Timestamp.fromDate(new Date(t));
@@ -221,7 +234,7 @@ const WeatherService = (() => {
     const errors = Object.assign({}, checked.errors);
     const at = input.at instanceof Date ? input.at : new Date(input.at);
     if (!Number.isFinite(at.getTime())) errors.recordedAt = 'La date et l\'heure du relevé sont invalides.';
-    if (!errors.recordedAt && !hasAnyValue(checked.values, input.web)) errors.values = 'Entrez au moins une valeur.';
+    if (!errors.recordedAt && !hasAnyValue(checked.values, input.web, input.station)) errors.values = 'Entrez au moins une valeur.';
     if (Object.keys(errors).length) return { ok: false, errors };
     const stamp = fb.firestore.FieldValue.serverTimestamp();
     return {
@@ -231,6 +244,7 @@ const WeatherService = (() => {
         recordedAt: fb.firestore.Timestamp.fromDate(at),
         manual: checked.values,
         web: webForStorage(input.web, fb),
+        station: webForStorage(input.station, fb),   // the RAW values of the Davis station, as read: typing over a box never changes them
         comment: (input.comment || '').trim().slice(0, 1000),
         createdBy: user.uid, createdByName: user.name || '', createdAt: stamp,
         modifiedBy: user.uid, modifiedByName: user.name || '', modifiedAt: stamp
@@ -248,6 +262,9 @@ const WeatherService = (() => {
     KEYS.forEach(k => {
       const typed = record.manual && record.manual[k];
       if (typed !== null && typed !== undefined) { out[k] = { value: typed, source: 'manual' }; return; }
+      // then the mountain's own station, then Environnement Canada
+      const s = record.station && record.station.fields && record.station.fields[k];
+      if (s && s.value !== null && s.value !== undefined && (!publicOnly || s.publishable === true)) { out[k] = { value: s.value, source: 'station' }; return; }
       const w = record.web && record.web.fields && record.web.fields[k];
       if (w && w.value !== null && w.value !== undefined && (!publicOnly || w.publishable === true)) out[k] = { value: w.value, source: w.source };
     });
@@ -350,7 +367,7 @@ const WeatherService = (() => {
     keys.forEach(k => {
       // every choice goes out as its words (the other website has no copy of the lists); numbers as stored
       measures[k] = fieldOf(k).type === 'choice' ? (fieldOf(k).choices[eff[k].value] || String(eff[k].value)) : eff[k].value;
-      if (eff[k].source !== 'manual') {
+      if (eff[k].source !== 'manual' && eff[k].source !== 'station') {   // the mountain's own station is not credited to Environnement Canada
         webFields.push(k);
         const st = loc.stations.find(s => s.id === eff[k].source);
         if (st) stations.add(st.name);
@@ -425,7 +442,7 @@ const WeatherService = (() => {
 
   return {
     COLLECTION, FIELDS, KEYS, CLOUD_COVER, SKY, fieldOf, location,
-    format, feelsLike, mapObservation, observationUrl, fetchWebValues,
+    format, feelsLike, mapObservation, observationUrl, fetchWebValues, fetchStationValues,
     validateManual, buildRecord, effectiveValues, save, update, remove, list, listDay,
     publicDocument, publishLatest, dayKey, dailyValues, missingDays
   };
