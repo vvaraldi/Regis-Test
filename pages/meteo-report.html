@@ -26,8 +26,7 @@
     .wx-input-wrap .form-select { width: 145px; max-width: 100%; }
     /* a box filled from the station: tinted (it is still yours to change); the raw value stays in the Station column */
     .wx-from-station { background: var(--theme-accent-light, #dbeafe) !important; border-color: var(--theme-accent, #2563eb) !important; }
-    /* fields that no source gives (wind force, the snow lists): the two source cells stay empty so that the typed boxes line up in one column */
-    .wx-row--typed .wx-web, .wx-row--typed .wx-station { visibility: hidden; }
+    /* fields that no source gives (wind force, the snow lists): the two source cells stay in place and show "—", like every other empty cell, so the typed boxes line up in one column */
     .wx-station { font-size: 0.9rem; }
     .wx-station--none { color: var(--theme-text-secondary); }
     .wx-station__src { display: block; font-size: 0.7rem; color: var(--theme-text-secondary); }
