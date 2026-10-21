@@ -235,7 +235,10 @@
       addRegisBadge(userData);
     }
 
-    /** On the Régis gère tile: how many recommendations of the inspections wait for a decision (one read of the trails, only for the people who manage) */
+    /**
+     * On the Régis gère tile: how many recommendations of the inspections wait for a decision. ONE read of the trails when the portal opens
+     * (only for the people who manage); the portal is not a live page: the count is as of the opening, Régis gère itself is live.
+     */
     async function addRegisBadge(userData) {
       const card = document.querySelector('.app-card--regis');
       if (!card || userData.allowRegis !== true) return;
@@ -246,12 +249,15 @@
           const t = doc.data();
           if (Network.matches(t) && t.archived !== true && t.recommendation && t.recommendation.status && t.recommendation.status !== t.status) waiting++;
         });
-        if (!waiting) return;
+        const current = document.querySelector('.app-card--regis');   // the cards may have been drawn again meanwhile
+        const old = current && current.querySelector('.app-card__badge');
+        if (old) old.remove();
+        if (!waiting || !current) return;
         const badge = document.createElement('span');
         badge.className = 'app-card__badge';
         badge.title = waiting + ' recommandation' + (waiting > 1 ? 's' : '') + ' à traiter';
         badge.textContent = waiting;
-        card.querySelector('.app-card__header').appendChild(badge);
+        current.querySelector('.app-card__header').appendChild(badge);
       } catch (e) { console.warn('Régis gère: the recommendations could not be counted.', e); }
     }
 

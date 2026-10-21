@@ -20,14 +20,14 @@
 
     /* One line per measure: name | what Environment Canada says | what you type (blank by default) */
     /* Four columns: the measure | Environnement Canada | the Davis station | your value (a narrow box: three digits at most) */
-    .wx-row, .wx-head { display: grid; grid-template-columns: minmax(110px, 1.3fr) minmax(76px, 0.9fr) minmax(64px, 0.7fr) minmax(104px, 1fr); gap: 0.4rem 0.6rem; align-items: center; }
-    .wx-input-wrap input.form-input { width: 5.5rem; max-width: 100%; text-align: right; padding-left: 0.4rem; padding-right: 0.4rem; }
-    .wx-input-wrap .form-select { width: 100%; }
+    .wx-row, .wx-head { display: grid; grid-template-columns: minmax(110px, 1.3fr) minmax(76px, 0.9fr) minmax(64px, 0.7fr) 145px; gap: 0.4rem 0.6rem; align-items: center; }
+    /* the typed boxes make ONE column, 145 px wide for every row: a drop-down fills it (145 px), a number box is 100 px */
+    .wx-input-wrap input.form-input { width: 100px; max-width: 100%; text-align: right; padding-left: 0.4rem; padding-right: 0.4rem; }
+    .wx-input-wrap .form-select { width: 145px; max-width: 100%; }
     /* a box filled from the station: tinted (it is still yours to change); the raw value stays in the Station column */
     .wx-from-station { background: var(--theme-accent-light, #dbeafe) !important; border-color: var(--theme-accent, #2563eb) !important; }
-    /* fields that no source gives (wind force, the snow lists): the typed box takes the room of the three columns */
-    .wx-row--typed .wx-web, .wx-row--typed .wx-station { display: none; }
-    .wx-row--typed .wx-input-wrap { grid-column: 2 / -1; }
+    /* fields that no source gives (wind force, the snow lists): the two source cells stay empty so that the typed boxes line up in one column */
+    .wx-row--typed .wx-web, .wx-row--typed .wx-station { visibility: hidden; }
     .wx-station { font-size: 0.9rem; }
     .wx-station--none { color: var(--theme-text-secondary); }
     .wx-station__src { display: block; font-size: 0.7rem; color: var(--theme-text-secondary); }
@@ -38,9 +38,9 @@
     .wx-web { font-size: 0.9rem; }
     .wx-web--none { color: var(--theme-text-secondary); }
     .wx-web__src { display: block; font-size: 0.75rem; color: var(--theme-text-secondary); }
-    .wx-input-wrap { display: flex; align-items: center; gap: 0.25rem; }
+    .wx-input-wrap { display: flex; align-items: center; gap: 0.25rem; position: relative; width: 145px; max-width: 100%; }
     .wx-input-wrap .form-input, .wx-input-wrap .form-select { min-width: 0; }
-    .wx-restore { border: 0; background: none; cursor: pointer; font-size: 0.8125rem; color: var(--theme-accent-dark); padding: 0 0.25rem; display: none; }
+    .wx-restore { border: 0; background: none; cursor: pointer; font-size: 0.8125rem; color: var(--theme-accent-dark); padding: 0 0.25rem; display: none; position: absolute; right: -1.5rem; }   /* beside the box, so the box keeps its width */
     .wx-restore.is-visible { display: inline; }
     .is-invalid { border-color: var(--color-danger) !important; box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2) !important; }
     .wx-errors { color: var(--color-danger); font-size: 0.875rem; margin: 0.5rem 0; }
@@ -56,6 +56,8 @@
       .wx-heads { display: none; }
       .wx-row { grid-template-columns: 1fr 1fr 1fr; }
       .wx-label { grid-column: 1 / -1; }
+      .wx-input-wrap, .wx-input-wrap input.form-input, .wx-input-wrap .form-select { width: 100%; }   /* a phone: the box takes its cell */
+      .wx-restore { position: static; }
     }
 
     /* the lifts: open / closed at one click (the Météo person decides for the lifts, nothing to do with a reading) */
@@ -188,6 +190,7 @@
   <script src="../js/services/trail-service.js"></script>
   <script src="../js/services/sector-service.js"></script>
   <script src="../js/services/status-service.js"></script>
+  <script src="../js/core/live-listener.js"></script>
 
   <script>
     const WS = WeatherService;
@@ -611,7 +614,7 @@
           }
           resetForm();
           el('lifts-list').addEventListener('click', e => { const b = e.target.closest('[data-lift]'); if (b) switchLift(b.dataset.lift); });
-          loadLifts().catch(e => console.warn('Lifts could not be read.', e));
+          startLiftsLive();
           await loadList();
         }
       });
@@ -620,6 +623,7 @@
     // ---- The lifts: open / closed (the Météo person may change the lifts, nothing else) ----
     let lifts = [];
     let liftsBusy = false;
+    let pendingLifts = null;   // an answer of the live listener that came while a lift was being switched here
     const LIFT_WORD = { open: 'Ouvert', closed: 'Fermé', unknown: 'Inconnu' };
 
     function renderLifts() {
@@ -643,6 +647,20 @@
       renderLifts();
     }
 
+    /**
+     * The lifts follow the database: a listener on the lifts only (about ten documents: billed at the start, then once per change), so a lift
+     * the manager switched shows here by itself. Nothing else on this page is refreshed. Paused when the tab is hidden for 5 minutes.
+     */
+    function startLiftsLive() {
+      LiveListener.watch(() => db.collection('trails').where('kind', '==', 'lift'), snap => {
+        const list = [];
+        snap.forEach(doc => { const t = { id: doc.id, ...doc.data() }; if (Network.matches(t) && t.archived !== true && t.kind === 'lift') list.push(t); });
+        list.sort(TrailService.compare);
+        if (liftsBusy) { pendingLifts = list; return; }
+        lifts = list; el('lifts-section').hidden = false; renderLifts();
+      }, error => console.warn('Lifts: the live update stopped.', error));
+    }
+
     async function switchLift(id) {
       const lift = lifts.find(l => l.id === id);
       if (!lift || liftsBusy) return;
@@ -661,7 +679,7 @@
         console.error('Lifts:', e);
         showMessage('Le changement n\'a pas pu être enregistré : ' + (e.message || e), 'error', 6000);
         await loadLifts().catch(() => {});
-      } finally { liftsBusy = false; renderLifts(); }
+      } finally { liftsBusy = false; if (pendingLifts) { lifts = pendingLifts; pendingLifts = null; } renderLifts(); }
     }
 
     onFirebaseReady(initMeteoReport);

@@ -102,6 +102,13 @@
     .rg-arrow:disabled { opacity: 0.5; cursor: wait; }
     .rg-arrow-slot { width: 1.4rem; height: 1.4rem; display: inline-block; }
 
+    /* the live note: "En direct · mis à jour à 14 h 32", and what a colleague changed */
+    .rg-live { margin: 0 0 0.6rem; font-size: 0.85rem; color: var(--theme-text-secondary); min-height: 1.2em; }
+    .rg-live__dot { color: #16a34a; }
+    .rg-live--paused .rg-live__dot, .rg-live--error .rg-live__dot { color: #b45309; }
+    .rg-live__changes { color: var(--theme-text); font-weight: 600; }
+    @keyframes rg-flash { from { background: rgba(250, 204, 21, 0.55); } to { background: transparent; } }
+    .rg-flash { animation: rg-flash 4s ease-out; border-radius: 6px; }
     .rg-empty { padding: 1.5rem; text-align: center; color: var(--theme-text-secondary); }
     @media (max-width: 640px) {
       .rg-row { grid-template-columns: 2.2rem 1fr auto auto; }
@@ -143,6 +150,7 @@
       </div>
     </section>
 
+    <p class="rg-live" id="live-note" aria-live="polite"></p>
     <section class="content-section" id="sectors"></section>
     <p class="rg-empty" id="empty" style="display:none;">Aucun sentier à afficher.</p>
   </main>
@@ -165,6 +173,7 @@
   <script src="../js/services/trail-service.js"></script>
   <script src="../js/services/sector-service.js"></script>
   <script src="../js/services/status-service.js"></script>
+  <script src="../js/core/live-listener.js"></script>
   <script>
     // Régis gère - the dashboard of the mountain manager.
     // Every trail and lift of the activity, by sector. The status button switches the status at once (no question asked); the two
@@ -212,15 +221,19 @@
     }
 
     // ---- loading ----
-    async function load() {
-      const trailsSnap = await db.collection('trails').get();
-      trails = [];
-      trailsSnap.forEach(doc => {
+    /** The trails of the activity (not hidden) in a snapshot of the trails collection */
+    function trailsFromSnapshot(snap) {
+      const list = [];
+      snap.forEach(doc => {
         const trail = { id: doc.id, ...doc.data() };
-        if (Network.matches(trail) && !TrailService.isArchived(trail)) trails.push(trail);
+        if (Network.matches(trail) && !TrailService.isArchived(trail)) list.push(trail);
       });
+      return list;
+    }
+
+    /** The sectors, and this season's inspections (read once: to help decide) - the trails must be loaded */
+    async function loadExtras() {
       sectors = (await SectorService.loadAll(true)).filter(s => s.network === Network.current());
-      // the latest inspection of each trail this season (to help decide)
       lastInspection = {};
       inspectionsById = {};
       try {
@@ -229,7 +242,76 @@
         const snap = await db.collection('trail_inspections').where('date', '>=', seasonStart).orderBy('date', 'desc').get();
         snap.forEach(doc => { const d = doc.data(); if (!ids.has(d.trail_id)) return; inspectionsById[doc.id] = { id: doc.id, ...d }; if (!lastInspection[d.trail_id]) lastInspection[d.trail_id] = inspectionsById[doc.id]; });
       } catch (e) { console.warn('Régis gère: the inspections could not be read.', e); }
+    }
+
+    /** One full re-read (after a refused write): the live listener does the rest */
+    async function load() {
+      trails = trailsFromSnapshot(await db.collection('trails').get());
+      await loadExtras();
       render();
+    }
+
+    // ---- live: the trails follow the database (a listener: billed once at the start, then once per change) ----
+    let live = null, extrasLoaded = false, lastStampAt = null, lastChanges = [], changesTimer = null, liveState = 'live';
+    const hm = d => d.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' });
+    const recKey = t => { const r = recOf(t); return r ? r.status : ''; };
+
+    function renderLiveNote() {
+      const note = el('live-note');
+      const time = lastStampAt ? hm(lastStampAt) : '';
+      const dot = '<span class="rg-live__dot">●</span> ';
+      note.className = 'rg-live' + (liveState === 'live' ? '' : ' rg-live--' + liveState);
+      if (liveState === 'error') { note.innerHTML = dot + 'La mise à jour en direct est interrompue' + (time ? ' (dernière à ' + esc(time) + ')' : '') + '. Elle reprend quand vous revenez sur l\'onglet.'; return; }
+      if (liveState === 'paused') { note.innerHTML = dot + 'En pause (onglet masqué)' + (time ? ' · dernière mise à jour à ' + esc(time) : '') + '. Elle reprend quand vous revenez.'; return; }
+      note.innerHTML = dot + 'En direct' + (time ? ' · mis à jour à ' + esc(time) : '')
+        + (lastChanges.length ? ' : <span class="rg-live__changes">' + esc(lastChanges.slice(0, 3).join(', ') + (lastChanges.length > 3 ? ' et ' + (lastChanges.length - 3) + ' autre' + (lastChanges.length - 3 > 1 ? 's' : '') : '')) + '</span>' : '');
+    }
+    function setLiveState(s) { liveState = s; renderLiveNote(); }
+
+    /** A later answer of the listener: what a colleague (or an inspection) changed is shown, the rest stays as it is */
+    function applyTrails(list, info) {
+      const before = new Map(trails.map(t => [t.id, t]));
+      const changes = [], changedIds = [];
+      list.forEach(n => {
+        const o = before.get(n.id);
+        if (!o) { changes.push(n.name + ' (nouveau)'); changedIds.push(n.id); return; }
+        if (statusOf(o) !== statusOf(n)) { changes.push(n.name + ' (' + (statusOf(n) === 'open' ? 'ouvert' : statusOf(n) === 'closed' ? 'fermé' : 'inconnu') + ')'); changedIds.push(n.id); }
+        else if (recKey(o) !== recKey(n)) { const k = recKey(n); changes.push(n.name + ' (' + (k ? 'recommandation ' + (k === 'open' ? 'd\'ouvrir' : 'de fermer') : 'recommandation traitée') + ')'); changedIds.push(n.id); }
+      });
+      trails = list;
+      lastStampAt = new Date();
+      if (changes.length) { lastChanges = changes; clearTimeout(changesTimer); changesTimer = setTimeout(() => { lastChanges = []; renderLiveNote(); }, 60000); }
+      render();
+      renderLiveNote();
+      changedIds.forEach(id => { const row = document.querySelector('.rg-row[data-id="' + id + '"]'); if (row) { row.classList.add('rg-flash'); setTimeout(() => row.classList.remove('rg-flash'), 4000); } });
+      // a new recommendation comes from an inspection this page has not read yet: read that one inspection (not all of them again)
+      list.forEach(tr => {
+        const r = recOf(tr);
+        if (r && r.inspectionId && !inspectionsById[r.inspectionId]) {
+          db.collection('trail_inspections').doc(r.inspectionId).get().then(d => {
+            if (d.exists) { const data = { id: r.inspectionId, ...d.data() }; inspectionsById[r.inspectionId] = data; if (!lastInspection[tr.id] || toDate(data.date) > toDate(lastInspection[tr.id].date)) lastInspection[tr.id] = data; render(); }
+          }).catch(() => {});
+        }
+      });
+    }
+
+    async function onLiveSnapshot(snap) {
+      const list = trailsFromSnapshot(snap);
+      if (!extrasLoaded) {   // the first answer is the first load: the sectors and the inspections are read once, then the page is drawn
+        trails = list;
+        await loadExtras();
+        extrasLoaded = true;
+        lastStampAt = new Date();
+        render();
+        renderLiveNote();
+        return;
+      }
+      applyTrails(list);
+    }
+
+    function startLive() {
+      live = LiveListener.watch(() => db.collection('trails').where('network', '==', Network.current()), onLiveSnapshot,
+        error => console.error('Régis gère: the live update stopped.', error), { onState: setLiveState });
     }
 
     // ---- drawing ----
@@ -431,10 +513,9 @@
         requireAuth: true,
         requiredPermission: 'allowRegis',
         permissionDefault: false,
-        onAuthenticated: async () => {
-          await load();
-          // other people may change statuses or inspect meanwhile: read again every minute while the page is on screen
-          setInterval(() => { if (!busy && !document.hidden) load().catch(() => {}); }, 60000);
+        onAuthenticated: () => {
+          // other people change statuses and inspect meanwhile: a live listener (no polling), paused when the tab stays hidden for 5 minutes
+          startLive();
         }
       });
     }
