@@ -12,7 +12,6 @@
   <style>
     .wx-top { display: flex; align-items: center; gap: 0.5rem 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
     .wx-top__at { width: auto; flex: 0 1 15rem; }
-    .wx-top__place { width: auto; flex: 0 1 11rem; }
     .wx-web-status { font-size: 0.875rem; color: var(--theme-text-secondary); }
     .wx-web-status:empty { display: none; }
     .wx-web-status--warn { color: var(--color-warning-dark, #92400e); }
@@ -113,7 +112,6 @@
           <!-- One line: the date and time of the reading, the place, and Environment Canada on request -->
           <div class="wx-top">
             <input type="datetime-local" class="form-input wx-top__at" id="recorded-at" required aria-label="Date et heure du relevé" title="Date et heure du relevé">
-            <input type="text" class="form-input wx-top__place" id="place-name" readonly aria-label="Lieu" title="Lieu">
             <button type="button" class="btn btn-secondary" id="fetch-web-btn" title="Charger les données d'Environnement Canada">🌐 Environnement Canada</button>
             <button type="button" class="btn btn-secondary" id="fetch-station-btn" title="Charger les données de la station météo du Mont Orford (Davis)">📡 Station Mont Orford</button>
             <span class="wx-web-status" id="web-status"></span>
@@ -402,7 +400,6 @@
     function resetForm() {
       editing = null; webResult = null; stationResult = null; webForTime = null;
       el('recorded-at').value = toLocalInput(new Date());
-      el('place-name').value = WS.location().name;
       WS.KEYS.forEach(k => { el(`in-${k}`).value = ''; el(`in-${k}`).classList.remove('wx-from-station'); });
       el('comment').value = '';
       el('form-title').textContent = '☀️ Relevé Météo';
@@ -454,7 +451,6 @@
       if (!record) return;
       editing = { id, record };
       el('recorded-at').value = toLocalInput(toDate(record.recordedAt));
-      el('place-name').value = (WS.location(record.locationId) || WS.location()).name;
       WS.KEYS.forEach(k => {
         const v = record.manual && record.manual[k];
         el(`in-${k}`).value = v === null || v === undefined ? '' : v;
