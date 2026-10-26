@@ -55,15 +55,20 @@ const BRANDING = {
 const APP_CONFIG = {
   branding: BRANDING,
 
+  // ===== TRAINING SITE =====
+  // Always false in this project (= the real data). tools/publish-site.ps1 -Training turns it on, and swaps the
+  // firebase block below for tools/training-firebase.json, ONLY in the copy it publishes to the test site
+  // (Regis-Test): that site then works on a separate training database and shows a "MODE FORMATION" banner.
+  training: true,
+
   // ===== FIREBASE CONFIGURATION =====
   firebase: {
-    apiKey: "AIzaSyDcBZrwGTskM7QUvanzLTACEJ_T-55j-DA",
-    authDomain: "trail-inspection.firebaseapp.com",
-    projectId: "trail-inspection",
-    storageBucket: "trail-inspection.firebasestorage.app",
-    messagingSenderId: "415995272058",
-    appId: "1:415995272058:web:dc476de8ffee052e2ad4c3",
-    measurementId: "G-EBLYWBM9YB"
+    apiKey: "AIzaSyDXiiolsjBoZkbCQqYsY_d466HxHKFbMOk",
+    authDomain: "regis-training.firebaseapp.com",
+    projectId: "regis-training",
+    storageBucket: "regis-training.firebasestorage.app",
+    messagingSenderId: "54467864852",
+    appId: "1:54467864852:web:8388509ab87a8aec243a01"
   },
 
   // ===== WEATHER (Météo app, js/services/weather-service.js) =====
@@ -397,6 +402,26 @@ Object.freeze(APP_CONFIG.labels);
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fill); else fill();
 })();
+
+// ===== Training site banner (browser only) =====
+// On the training copy of the site (APP_CONFIG.training, see above) every page starts with a bar saying so,
+// and the browser tab title starts with "FORMATION". Nothing happens on the real site.
+function showTrainingBanner(force) {
+  if (typeof document === 'undefined' || !(force || APP_CONFIG.training)) return;
+  const add = () => {
+    if (document.getElementById('training-banner')) return;
+    const bar = document.createElement('div');
+    bar.id = 'training-banner';
+    bar.setAttribute('role', 'status');
+    bar.style.cssText = 'flex-shrink:0;padding:6px 12px;background:#b45309;color:#fff;text-align:center;font:600 14px/1.3 system-ui,sans-serif;position:relative;z-index:9999';
+    bar.textContent = 'MODE FORMATION – données fictives, effacées après la session. Ceci n’est pas le vrai site.';
+    document.body.prepend(bar);
+    const title = document.querySelector('title');
+    if (title && !/^FORMATION/.test(title.textContent)) title.textContent = 'FORMATION - ' + title.textContent;
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add); else add();
+}
+showTrainingBanner();
 
 // Export for use
 if (typeof module !== 'undefined' && module.exports) {
