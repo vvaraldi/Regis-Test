@@ -160,6 +160,19 @@
 
   body.insertAdjacentHTML('afterbegin', html);
 
+  // ---- Occasion themes (Noël, Nouvel An...) ------------------------------------------------------
+  // Working pages only: the public pages do not use this file. js/core/occasions.js draws the
+  // festive header colours and the greeting banner on the days listed in it.
+  try {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = url('css/occasions.css');
+    document.head.appendChild(css);
+    const script = document.createElement('script');
+    script.src = url('js/core/occasions.js');
+    document.head.appendChild(script);
+  } catch (e) { /* the occasions are a decoration: never block the page */ }
+
   // ---- Activity (network) switcher ---------------------------------------------------
   // Filled once the user is known (network.js fires "networkReady" from auth.js). Only
   // users with more than one activity see it. Switching reloads the page.

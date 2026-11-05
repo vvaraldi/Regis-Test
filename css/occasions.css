@@ -1,0 +1,88 @@
+/* ========================================
+   OCCASIONS.CSS - Occasion themes (Noël, Nouvel An, Pâques...)
+   Loaded by layout.js on the working pages only. The header colours are set by
+   js/core/occasions.js (--theme-header-from / --theme-header-to); this file draws the banner
+   and the falling pieces on the portal.
+   ======================================== */
+
+.occasion-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3, 12px);
+  min-height: 34px;
+  padding: 4px 44px 4px 16px;
+  position: relative;
+  background: var(--occasion-banner, #1f6b3a);
+  color: #fff;
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 600;
+  text-align: center;
+}
+
+.occasion-banner__icon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.occasion-banner__close {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.occasion-banner__close:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+/* Falling pieces (portal): above the page, never in the way of a click */
+.occasion-fx {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.occasion-fx__piece {
+  position: absolute;
+  top: -8vh;
+  animation-name: occasion-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+.occasion-fx__piece--snow {
+  color: #fff;
+  text-shadow: 0 0 3px rgba(60, 90, 140, 0.55);
+  opacity: 0.9;
+}
+
+.occasion-fx__piece--icons {
+  opacity: 0.95;
+}
+
+.occasion-fx__piece--confetti {
+  border-radius: 1px;
+  opacity: 0.9;
+}
+
+@keyframes occasion-fall {
+  from { transform: translate3d(0, 0, 0) rotate(0deg); }
+  to   { transform: translate3d(var(--drift, 0px), 112vh, 0) rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .occasion-fx { display: none; }
+}
