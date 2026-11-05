@@ -16,6 +16,7 @@
  * ?occasion=off to switch it off again. The ids are the ones below.
  * Or pretend it is another day: ?fakedate=2026-12-25 (then ?fakedate=off, or ?occasion=off for both).
  * Pages of the tab then behave as on that day (nothing for an ordinary day); the banner says "(aperçu)".
+ * The × of a preview banner ends the preview (it would otherwise stay on for the whole tab).
  *
  * Status colours (green open / red closed) are never touched. Nothing moves for people who
  * asked their device for less motion.
@@ -167,6 +168,7 @@ const Occasions = (function () {
       banner.remove();
       removeFx();
       if (!preview) store(() => localStorage.setItem(CLOSED_KEY, `${o.id}:${now.getFullYear()}-${key(now)}`));
+      else { store(() => sessionStorage.removeItem(PREVIEW_KEY)); store(() => sessionStorage.removeItem(FAKE_KEY)); }   // closing a preview ends it
     });
     header.insertAdjacentElement('afterend', banner);
 

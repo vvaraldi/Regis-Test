@@ -175,7 +175,7 @@
 
   // ---- Activity (network) switcher ---------------------------------------------------
   // Filled once the user is known (network.js fires "networkReady" from auth.js). Only
-  // users with more than one activity see it. Switching reloads the page.
+  // administrators and system admins with more than one activity see it. Switching reloads the page.
   document.addEventListener('networkReady', event => {
     const { current, allowed } = event.detail;
     const networks = APP_CONFIG.networks;
@@ -185,7 +185,8 @@
       el.style.display = Network.feature(el.dataset.requires) ? '' : 'none';
     });
 
-    if (allowed.length < 2) return;
+    // Only administrators and system admins have the switcher; the others follow the season (network.js)
+    if (allowed.length < 2 || !event.detail.canSwitch) return;
 
     // Desktop: one button showing the current activity; a click goes to the next one
     const button = document.getElementById('network-switch');

@@ -12,7 +12,8 @@
  *   1. the user's own choice (header switcher), if it is one of their
  *      activities AND was made during the current season. A choice made last
  *      season is ignored, so nobody opens the ski app in July because of
- *      what they picked last winter;
+ *      what they picked last winter. Only administrators and system admins
+ *      have the switcher; everybody else follows the season;
  *   2. the season's activity (APP_CONFIG.networks[id].season), if allowed;
  *   3. the first activity the user has.
  * A user's activities are inspectors/{uid}.networks (a system_admin has all).
@@ -24,6 +25,7 @@ const Network = (function () {
   const ids = Object.keys(APP_CONFIG.networks);
   let allowed = [];
   let currentId = null;
+  let switchable = false;
 
   // ---- Season -----------------------------------------------------------------
   // A season is { from: {month, day}, to: {month, day} } (config.js); it may run over New Year.
@@ -59,9 +61,13 @@ const Network = (function () {
 
   // ---- Public API -----------------------------------------------------------------
 
+  // Only administrators and system admins may switch activity by hand (ski <-> bike); the others follow the season
+  const canSwitchFor = userData => !!userData && (userData.role === 'admin' || userData.role === 'system_admin');
+
   /** Called by auth.js once the user is known. Returns the current network id (or null). */
   function setUser(userData) {
     allowed = allowedFor(userData);
+    switchable = canSwitchFor(userData);
     // A page for a feature only some activities have (<body data-feature="weather">: the Météo app is for the ski season) offers only those
     // activities: no switch to the others, and nobody lands on a bike season that has no such page. A user who has none of them keeps their
     // own list, so the page can say that the feature is not used in their activity.
@@ -73,12 +79,13 @@ const Network = (function () {
     const season = ofSeason();
     const choice = readChoice();
 
-    if (choice && choice.season === season && allowed.includes(choice.id)) currentId = choice.id;
+    // (a choice stored by this browser is ignored for a user who cannot switch: it may date from when they could)
+    if (switchable && choice && choice.season === season && allowed.includes(choice.id)) currentId = choice.id;
     else if (allowed.includes(season)) currentId = season;
     else currentId = allowed[0] || null;
 
     if (currentId) document.body.dataset.network = currentId;
-    document.dispatchEvent(new CustomEvent('networkReady', { detail: { current: currentId, allowed: allowed.slice() } }));
+    document.dispatchEvent(new CustomEvent('networkReady', { detail: { current: currentId, allowed: allowed.slice(), canSwitch: switchable && allowed.length > 1 } }));
     return currentId;
   }
 
@@ -93,7 +100,7 @@ const Network = (function () {
 
   /** Switches activity (header switcher) and reloads so every page reloads its data. */
   function set(id) {
-    if (!allowed.includes(id) || id === currentId) return;
+    if (!switchable || !allowed.includes(id) || id === currentId) return;
     saveChoice(id);
     api.reload();
   }
