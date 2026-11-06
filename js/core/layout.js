@@ -175,9 +175,11 @@
 
   // ---- Activity (network) switcher ---------------------------------------------------
   // Filled once the user is known (network.js fires "networkReady" from auth.js). Only
-  // administrators and system admins with more than one activity see it. Switching reloads the page.
+  // administrators and system admins with more than one activity can use it. Switching reloads the page.
+  // Everybody else follows the season (network.js): they still SEE the button with their current activity,
+  // but greyed and not usable (aria-disabled rather than disabled, so the explanation tooltip still shows).
   document.addEventListener('networkReady', event => {
-    const { current, allowed } = event.detail;
+    const { current, allowed, canSwitch, followsSeason } = event.detail;
     const networks = APP_CONFIG.networks;
 
     // Links that need a network feature
@@ -185,11 +187,37 @@
       el.style.display = Network.feature(el.dataset.requires) ? '' : 'none';
     });
 
-    // Only administrators and system admins have the switcher; the others follow the season (network.js)
-    if (allowed.length < 2 || !event.detail.canSwitch) return;
+    const locked = !canSwitch && followsSeason && !!current && allowed.length >= 1;
+    if (!canSwitch && !locked) return;   // an administrator with a single activity has nothing to switch
+
+    const button = document.getElementById('network-switch');
+    const section = document.getElementById('mobile-network');
+
+    if (locked) {
+      // Desktop: the current activity, greyed, a click does nothing
+      const why = `L’activité suit la saison : seuls les administrateurs peuvent la changer.`;
+      button.innerHTML = `<span>${networks[current].icon}</span><span>${networks[current].name}</span>`;
+      button.title = `Activité : ${networks[current].name}. ${why}`;
+      button.setAttribute('aria-label', button.title);
+      button.setAttribute('aria-disabled', 'true');
+      button.classList.add('network-switch--locked');
+      button.onclick = e => { e.preventDefault(); };
+      button.hidden = false;
+
+      // Mobile: the activities listed, the current one highlighted, none can be tapped
+      allowed.forEach(id => {
+        const line = document.createElement('span');
+        line.className = `mobile-nav__link mobile-nav__link--locked${id === current ? ' mobile-nav__link--active' : ''}`;
+        line.setAttribute('aria-disabled', 'true');
+        line.title = why;
+        line.innerHTML = `<span class="mobile-nav__link-icon">${networks[id].icon}</span><span>${networks[id].name}</span>`;
+        section.appendChild(line);
+      });
+      section.hidden = false;
+      return;
+    }
 
     // Desktop: one button showing the current activity; a click goes to the next one
-    const button = document.getElementById('network-switch');
     const next = allowed[(allowed.indexOf(current) + 1) % allowed.length];
     button.innerHTML = `<span>${networks[current].icon}</span><span>${networks[current].name}</span>`;
     button.title = `Activité : ${networks[current].name}. Passer à ${networks[next].name}`;
@@ -198,7 +226,6 @@
     button.hidden = false;
 
     // Mobile: one link per activity
-    const section = document.getElementById('mobile-network');
     allowed.forEach(id => {
       const link = document.createElement('a');
       link.href = '#';

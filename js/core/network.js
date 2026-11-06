@@ -85,7 +85,7 @@ const Network = (function () {
     else currentId = allowed[0] || null;
 
     if (currentId) document.body.dataset.network = currentId;
-    document.dispatchEvent(new CustomEvent('networkReady', { detail: { current: currentId, allowed: allowed.slice(), canSwitch: switchable && allowed.length > 1 } }));
+    document.dispatchEvent(new CustomEvent('networkReady', { detail: { current: currentId, allowed: allowed.slice(), canSwitch: switchable && allowed.length > 1, followsSeason: !switchable } }));
     return currentId;
   }
 
