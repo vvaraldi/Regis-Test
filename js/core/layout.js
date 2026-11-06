@@ -160,6 +160,25 @@
 
   body.insertAdjacentHTML('afterbegin', html);
 
+  // ---- Home-screen install ---------------------------------------------------------------------------
+  // Name, icon and full-screen mode when the app is added to a phone's home screen (assets/manifest.json; the icons are made by
+  // tools/make-app-icons.ps1). The portal and the login page carry the same tags in their own HTML (the page open at the moment of
+  // "Add to Home Screen" gives the icon on iPhone); every other working page gets them here.
+  try {
+    const add = (tag, attrs) => {
+      const key = tag === 'link' ? `link[rel="${attrs.rel}"]` : `meta[name="${attrs.name}"]`;
+      if (document.head.querySelector(key)) return;
+      const el = document.createElement(tag);
+      Object.keys(attrs).forEach(k => el.setAttribute(k, attrs[k]));
+      document.head.appendChild(el);
+    };
+    add('link', { rel: 'manifest', href: url('assets/manifest.json') });
+    add('link', { rel: 'apple-touch-icon', href: url('assets/icons/apple-touch-icon.png') });
+    add('meta', { name: 'mobile-web-app-capable', content: 'yes' });
+    add('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' });
+    add('meta', { name: 'apple-mobile-web-app-title', content: 'Regis' });
+  } catch (e) { /* the install tags are a convenience: never block the page */ }
+
   // ---- Occasion themes (Noël, Nouvel An...) ------------------------------------------------------
   // Working pages only: the public pages do not use this file. js/core/occasions.js draws the
   // festive header colours and the greeting banner on the days listed in it.

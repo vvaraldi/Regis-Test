@@ -164,6 +164,7 @@
   <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
   <script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.min.js"></script>
   <script src="../js/core/utils.js"></script>
+  <script src="../js/core/form-draft.js"></script>
   <script src="../js/core/datetime-field.js"></script>
   <script src="../js/core/theme.js"></script>
   <script src="../js/core/ui.js"></script>
@@ -176,6 +177,7 @@
   <script>
     let selectedFiles = [], storage = null;
     let photoPicker = null;
+    let draft = null;   // FormDraft: the unsent report kept on the phone (js/core/form-draft.js)
     const form = document.getElementById('shelter-inspection-form');
     const shelterSelect = document.getElementById('shelter-select');
     const inspectorName = document.getElementById('inspector-name');
@@ -228,6 +230,8 @@
             return;
           }
           await loadShelters();
+          draft = FormDraft.attach(form, { uid: currentUser.uid, page: 'inspection-shelter-report', network: Network.current() });
+          draft.offer();   // an unsent inspection from last time (no signal, a reload): offered back, never forced
         }
       });
     }
@@ -308,7 +312,8 @@
       if (!form.querySelector('input[name="condition"]:checked')) { showError('Veuillez sélectionner l\'état général'); return; }
       if (!form.querySelector('input[name="cleanliness"]:checked')) { showError('Veuillez sélectionner la propreté'); return; }
       if (!form.querySelector('input[name="accessibility"]:checked')) { showError('Veuillez sélectionner l\'accessibilité'); return; }
-      
+      if (draft && draft.offlineBlock()) return;   // no signal: keep the draft instead of a save that would hang
+
       setFormLoading(true, 'Enregistrement...');
       try {
         // Collect issues
@@ -365,6 +370,7 @@
         
         const shelterName = shelterSelect.options[shelterSelect.selectedIndex].text;
         showSuccess(`Inspection de l'abri "${shelterName}" enregistrée avec succès!`);
+        if (draft) draft.clear();
         
         // Save inspector info before reset
         const savedInspectorName = inspectorName.value;
@@ -382,7 +388,7 @@
           hideMessages(); 
         }, 2000);
         
-      } catch (e) { console.error('Error:', e); showError('Erreur: ' + e.message); }
+      } catch (e) { console.error('Error:', e); showError('Erreur: ' + e.message); if (draft) draft.kept(); }   // the report stays filled, and is kept on the phone if the page is closed
       finally { setFormLoading(false); }
     }
 

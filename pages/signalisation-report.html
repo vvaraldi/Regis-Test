@@ -156,6 +156,7 @@
 
   <!-- Scripts -->
   <script src="../js/core/utils.js"></script>
+  <script src="../js/core/form-draft.js"></script>
   <script src="../js/core/datetime-field.js"></script>
   <script src="../js/core/theme.js"></script>
   <script src="../js/core/ui.js"></script>
@@ -184,6 +185,7 @@
     // On modify, whatever the inspector removed is deleted from Storage.
     let loadedFileUrls = [];
     let isNewReport = true;
+    let draft = null;   // FormDraft: the unsent report kept on the phone (js/core/form-draft.js)
     let photoPicker = null;
 
     // Elements
@@ -209,6 +211,8 @@
           }
           setDefaultValues();
           await loadSectors();
+          draft = FormDraft.attach(document.getElementById('signalisation-form'), { uid: currentUser.uid, page: 'signalisation-report', network: Network.current(), active: () => isNewReport });
+          draft.offer();   // an unsent report from last time (no signal, a reload): offered back, never forced
           loadUserReports();
         }
       });
@@ -359,6 +363,7 @@
     }
 
     function resetForm() {
+      if (draft) draft.clear();   // starting again (Réinitialiser, "Nouveau rapport", after a save): forget the unsent draft
       currentReportId = null;
       isNewReport = true;
       loadedFileUrls = [];
@@ -422,7 +427,8 @@
       e.preventDefault();
       if (!isNewReport) return;
       if (!validateForm()) return;
-      
+      if (draft && draft.offlineBlock()) return;   // no signal: keep the draft instead of a save that would hang
+
       saveBtn.disabled = true;
       saveBtn.textContent = 'Enregistrement...';
       
@@ -462,12 +468,14 @@
         await db.collection('signalisations').add(reportData);
         
         showToast('Rapport enregistré avec succès', 'success');
+        if (draft) draft.clear();
         resetForm();
         loadUserReports();
         
       } catch (e) {
         console.error('Error saving report:', e);
         showToast('Erreur lors de l\'enregistrement: ' + e.message, 'error');
+        if (draft) draft.kept();   // the report stays filled, and is kept on the phone if the page is closed
       } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = 'Enregistrer';
