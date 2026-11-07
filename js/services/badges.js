@@ -39,10 +39,13 @@ const Badges = (function () {
   /** The next level to reach (null once the last one is reached). */
   function nextFor(count) { return LEVELS.find(l => l.at > count) || null; }
 
-  /** The number of inspections of a list of documents, one per trail (or shelter) and day, inside the season. */
-  function countDocs(docs, range) {
+  /** The number of inspections of a list of documents, one per trail (or shelter) and day, inside the season, of this activity. */
+  function countDocs(docs, range, networkId) {
     const seen = new Set();
     docs.forEach(d => {
+      // The query reads all of the person's inspections since the start of the season, whatever the activity: keep this activity's only
+      // (a ski inspection made in July must not count in the bike season)
+      if (networkId && d.network !== networkId) return;
       const when = toDate(d.date);
       if (!when || isNaN(when) || when < range.start || when > range.end) return;
       const place = d.trail_id || d.shelter_id;
@@ -76,7 +79,7 @@ const Badges = (function () {
         const net = APP_CONFIG.networks[networkId];
         const lists = [await ownInspections(db, 'trail_inspections', uid, range)];
         if (net && net.features && net.features.shelters) lists.push(await ownInspections(db, 'shelter_inspections', uid, range));
-        count = countDocs([].concat(...lists), range);
+        count = countDocs([].concat(...lists), range, networkId);
         tryDo(() => sessionStorage.setItem(key, JSON.stringify({ count, at: Date.now() })));
       } catch (e) {
         console.warn('Badges: the inspections could not be counted (is the index "inspector_id + date" created? see BADGES_SETUP.md).', e);
