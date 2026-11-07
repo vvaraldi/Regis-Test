@@ -163,6 +163,7 @@ const APP_CONFIG = {
       trailKinds: ['uphill', 'downhill', 'lift'],
       reportMaps: ['ski-downhill-geo', 'ski-geo'],
       inspectionKinds: ['uphill', 'downhill'],
+      staleKinds: ['uphill'],   // the "À inspecter" list (dashboard) is on for these kinds; add 'downhill' to turn it on there (js/services/inspection-gaps.js)
       features: { shelters: true, snowCondition: true, weather: true },
       publicTitle: 'État des sentiers de randonnée alpine',
       infractions: {
@@ -186,6 +187,7 @@ const APP_CONFIG = {
       trailKinds: ['bike'],
       reportMaps: ['bike-geo'],
       inspectionKinds: ['bike'],
+      staleKinds: ['bike'],
       features: { shelters: false, snowCondition: false, weather: false },   // weather: the Météo app, its public panel and the weather in reports are for the ski season only, for now (true brings them back)
       publicTitle: 'État des sentiers de vélo de montagne',
       infractions: {

@@ -63,6 +63,7 @@
   <script src="js/core/ui.js"></script>
   <script src="js/core/firebase-loader.js"></script>
   <script src="js/core/auth.js"></script>
+  <script src="js/services/badges.js"></script>
 
   <!-- Page JS -->
   <script>
@@ -239,6 +240,32 @@
         appGrid.appendChild(card);
       });
       addRegisBadge(userData);
+      addInspectionMedal(userData);
+    }
+
+    /**
+     * On the Inspections tile: the medal of the season (js/services/badges.js). The inspector's own inspections of the season are counted
+     * (kept 10 minutes in the session), the level is 5 / 10 / 20 / 50 / 100 and it starts again with each season. Before the first level
+     * the tile shows the progress ("3/5"), so the goal is visible. If the count fails (index not created yet) nothing is shown.
+     */
+    async function addInspectionMedal(userData) {
+      const card = document.querySelector('.app-card--inspection');
+      if (!card || userData.allowInspection !== true || typeof Badges === 'undefined') return;
+      const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+      const summary = await Badges.summary(db, user && user.uid, Network.current());
+      const current = document.querySelector('.app-card--inspection');   // the cards may have been drawn again meanwhile
+      if (!current) return;
+      const old = current.querySelector('.app-card__medal');
+      if (old) old.remove();
+      if (!summary) return;
+      const medal = document.createElement('span');
+      medal.className = 'app-card__medal' + (summary.level ? ' app-card__medal--' + summary.level.id : ' app-card__medal--none');
+      medal.title = Badges.describe(summary);
+      medal.setAttribute('aria-label', medal.title);
+      // The medal and the number reached; before the first level a star and the goal ("/5"), which the phone layout drops to keep the tile small
+      const goal = summary.level ? '' : `<span class="app-card__medal-goal">/${summary.next.at}</span>`;
+      medal.innerHTML = `<span>${summary.level ? summary.level.icon : '☆'}</span><span>${summary.count}</span>${goal}`;
+      current.querySelector('.app-card__header').appendChild(medal);
     }
 
     /**

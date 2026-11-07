@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Bilan de la saison">
+  <meta name="theme-color" content="#1b4b72">
+  <title>Bilan de saison</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .season-nav { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .season-nav__btn { min-width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--theme-border); border-radius: var(--radius-md); background: var(--theme-surface); color: var(--theme-text); cursor: pointer; font-size: 1rem; }
+    .season-nav__btn:hover:not(:disabled) { border-color: var(--theme-accent); color: var(--theme-accent); }
+    .season-nav__btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .season-nav__label { font-weight: 600; font-size: 0.95rem; text-align: center; min-width: 260px; }
+    .summary-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+
+    .summary-section { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.5rem; break-inside: avoid; }
+    .summary-section__title { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.25rem; }
+    .summary-section__note { font-size: 0.8125rem; color: var(--theme-text-secondary); margin-bottom: 1rem; }
+    .figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+    .figure { background: var(--theme-surface-alt); border-radius: var(--radius-md); padding: 0.75rem; text-align: center; }
+    .figure__value { font-size: 1.5rem; font-weight: 700; color: var(--theme-accent); }
+    .figure__label { font-size: 0.75rem; color: var(--theme-text-secondary); }
+    .two-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+    .summary-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .summary-table th, .summary-table td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--theme-border); }
+    .summary-table th { background: var(--theme-surface-alt); color: var(--theme-text-secondary); font-weight: 600; }
+    .summary-table td.num, .summary-table th.num { text-align: right; white-space: nowrap; }
+    .delta--good { color: var(--color-success); font-weight: 600; }
+    .delta--bad { color: var(--color-danger); font-weight: 600; }
+    .summary-empty { color: var(--theme-text-secondary); font-size: 0.875rem; }
+    .summary-error { color: var(--color-danger); font-size: 0.875rem; }
+    .summary-footnote { font-size: 0.75rem; color: var(--theme-text-secondary); margin-top: 1rem; }
+    .print-title { display: none; }
+
+    @media (max-width: 768px) {
+      .season-nav__label { min-width: 0; }
+      .summary-table { font-size: 0.8125rem; }
+      .summary-table th, .summary-table td { padding: 0.4rem 0.5rem; }
+      .summary-section { padding: 1rem; }
+    }
+    @media print {
+      header, nav, footer, .no-print, .mobile-nav, #occasion-banner, .occasion-banner, .occasion-fx { display: none !important; }
+      .print-title { display: block; margin-bottom: 1rem; }
+      body { background: #fff !important; color: #000 !important; }
+      .summary-section { border: 1px solid #bbb; box-shadow: none; }
+    }
+  </style>
+</head>
+<body data-theme="light" data-module="inspection-rando" data-nav="inspection" data-page="inspection-admin">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/kind.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Calcul du bilan...</p></div>
+
+  <main id="main-content" class="main" style="display: none;">
+    <div class="page-header no-print"><div class="page-header__content"><h1 class="page-title">Bilan de saison</h1><p class="page-subtitle" id="summary-subtitle">Les chiffres de la saison, avec la saison précédente à côté</p></div></div>
+    <h1 class="print-title" id="print-title"></h1>
+
+    <div class="season-nav no-print" id="season-nav">
+      <button type="button" class="season-nav__btn" id="season-prev" aria-label="Saison précédente" title="Saison précédente">◀</button>
+      <span class="season-nav__label" id="season-label">-</span>
+      <button type="button" class="season-nav__btn" id="season-next" aria-label="Saison suivante" title="Saison suivante" disabled>▶</button>
+    </div>
+    <div class="summary-actions no-print">
+      <a class="btn btn-secondary btn-sm" href="user-management.html">← Retour</a>
+      <button type="button" class="btn btn-primary btn-sm" id="btn-compute">📊 Calculer le bilan</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-print" disabled>🖨️ Imprimer / enregistrer en PDF</button>
+    </div>
+
+    <div id="summary-body"><div class="summary-empty" id="summary-intro">Choisissez la saison, puis appuyez sur « Calculer le bilan ». Rien n’est lu dans la base de données avant.</div></div>
+    <p class="summary-footnote">Les jours sont des jours civils. Une saison en cours est comptée jusqu’à aujourd’hui.</p>
+  </main>
+
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/season-summary.js"></script>
+
+  <script>
+    // Bilan de saison: the figures of one season of the current activity (inspections, how well the trails were visited, closures, weather,
+    // maintenance in days), next to the season before. Calculated only when an administrator presses the button. The calculation is js/services/season-summary.js; this page reads and draws.
+    let seasonOffset = 0;
+    let trailList = [];
+    let busy = false;
+    let computed = false;   // true once the button was pressed: a change of season then calculates the new one
+
+    const esc = s => (typeof escapeHtml === 'function' ? escapeHtml(String(s == null ? '' : s)) : String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+    const fmtNum = n => (n === null || n === undefined ? '–' : String(n).replace('.', ','));
+    const earliest = () => new Date(APP_CONFIG.earliestSeasonStart.year, APP_CONFIG.earliestSeasonStart.month - 1, APP_CONFIG.earliestSeasonStart.day);
+    const canGoBack = offset => SeasonSummary.bounds(offset).start >= earliest();
+
+    function seasonText(b) {
+      const fmt = d => d.toLocaleDateString('fr-CA', { day: 'numeric', month: 'short', year: 'numeric' });
+      if (b.isCurrent) return Network.seasonLabel(b);
+      return `Saison ${shortSeason(b)} (${fmt(b.start)} – ${fmt(b.end)})`;
+    }
+    // "2026-2027" (ski) or "2026" (bike): from the season's own first and last day, also for a running season (counted only up to today)
+    const shortSeason = b => (b.start.getFullYear() === b.seasonEnd.getFullYear() ? String(b.start.getFullYear()) : `${b.start.getFullYear()}-${b.seasonEnd.getFullYear()}`);
+
+    /** Reads what one season needs. A collection that cannot be read gives null (its section says so) instead of stopping the page. */
+    async function loadSeason(b) {
+      const ts = d => firebase.firestore.Timestamp.fromDate(d);
+      const between = (name, field) => db.collection(name).where(field, '>=', ts(b.start)).where(field, '<=', ts(b.end)).get()
+        .then(snap => snap.docs.map(d => Object.assign({ id: d.id }, d.data())))
+        .catch(e => { console.warn('Bilan: could not read ' + name, e); return null; });
+      const ids = new Set(trailList.map(t => t.id));
+      const shelterIds = new Set((await shelterList()).map(s => s.id));
+      const [trailInsp, shelterInsp, log, weather, maintenance] = await Promise.all([
+        between('trail_inspections', 'date'),
+        Network.feature('shelters') ? between('shelter_inspections', 'date') : Promise.resolve([]),
+        between('status_log', 'at'),
+        Network.feature('weather') ? between('weather_records', 'recordedAt') : Promise.resolve(null),
+        Network.current() === 'bike' ? between('maintenance_logs', 'date') : Promise.resolve(null)
+      ]);
+      const mine = list => (list ? list.filter(x => Network.matches(x)) : null);
+      return SeasonSummary.compute({
+        range: { start: b.start, end: b.end }, now: new Date(),
+        trails: trailList,
+        trailInspections: trailInsp ? trailInsp.filter(i => ids.has(i.trail_id)) : [],
+        shelterInspections: shelterInsp ? shelterInsp.filter(i => shelterIds.has(i.shelter_id)) : [],
+        statusLog: mine(log), weather,
+        maintenance: mine(maintenance)
+      });
+    }
+
+    let _shelters = null;
+    async function shelterList() {
+      if (_shelters) return _shelters;
+      _shelters = [];
+      if (Network.feature('shelters')) {
+        const snap = await db.collection('shelters').get();
+        snap.forEach(d => { const s = Object.assign({ id: d.id }, d.data()); if (Network.matches(s) && !TrailService.isArchived(s)) _shelters.push(s); });
+      }
+      return _shelters;
+    }
+
+    // ----- drawing -----
+    const section = (title, note, body) => `<section class="summary-section"><h2 class="summary-section__title">${title}</h2>${note ? `<div class="summary-section__note">${note}</div>` : ''}${body}</section>`;
+    const figures = list => `<div class="figures">${list.map(f => `<div class="figure"><div class="figure__value">${fmtNum(f.value)}${f.unit || ''}</div><div class="figure__label">${esc(f.label)}</div></div>`).join('')}</div>`;
+    const table = (head, rows, numFrom) => rows.length
+      ? `<div style="overflow-x:auto"><table class="summary-table"><thead><tr>${head.map((h, i) => `<th class="${i >= numFrom ? 'num' : ''}">${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((c, i) => `<td class="${i >= numFrom ? 'num' : ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+      : '<div class="summary-empty">Rien à afficher pour cette saison.</div>';
+    const unavailable = what => `<div class="summary-error">${esc(what)} n’a pas pu être lu pour le moment.</div>`;
+
+    function deltaCell(row, prevRow) {
+      if (!prevRow || row.value === null || prevRow.value === null || typeof row.value !== 'number' || typeof prevRow.value !== 'number') return '–';
+      const diff = Math.round((row.value - prevRow.value) * 10) / 10;
+      if (diff === 0) return '=';
+      const text = (diff > 0 ? '+' : '−') + fmtNum(Math.abs(diff)) + (row.unit || '');
+      const good = row.higherIsBetter === undefined ? null : (diff > 0) === row.higherIsBetter;
+      return good === null ? text : `<span class="delta--${good ? 'good' : 'bad'}">${text}</span>`;
+    }
+
+    function render(cur, prev, b, pb) {
+      const parts = [];
+      const keyRows = SeasonSummary.highlights(cur);
+      const prevRows = prev ? SeasonSummary.highlights(prev) : null;
+      parts.push(section('Chiffres clés', pb ? `Cette saison (${esc(shortSeason(b))}) et la saison précédente (${esc(shortSeason(pb))}).` : 'Pas de saison précédente à comparer.',
+        table(['', shortSeason(b)].concat(pb ? [shortSeason(pb), 'Écart'] : []),
+          keyRows.map(r => { const p = prevRows && prevRows.find(x => x.id === r.id); return [esc(r.label), `${fmtNum(r.value)}${r.value === null ? '' : r.unit}`].concat(pb ? [p ? `${fmtNum(p.value)}${p.value === null ? '' : p.unit}` : '–', deltaCell(r, p)] : []); }), 1)));
+
+      const I = cur.inspections;
+      parts.push(section('Inspections', '', figures([
+        { label: 'Inspections', value: I.total }, { label: 'Sentiers', value: I.trail },
+        Network.feature('shelters') ? { label: 'Abris', value: I.shelter } : null,
+        { label: 'Photos', value: I.photos }, { label: 'Avec problèmes', value: I.withIssuesPct, unit: ' %' }, { label: 'Inspecteurs actifs', value: I.inspectors }
+      ].filter(Boolean)) + `<div class="two-cols"><div><h3 style="font-size:.95rem;margin-bottom:.5rem">Par mois</h3>${table(['Mois', 'Inspections'], I.byMonth.map(m => [esc(m.label), m.count]), 1)}</div>
+        <div><h3 style="font-size:.95rem;margin-bottom:.5rem">Problèmes les plus fréquents</h3>${table(['Problème', 'Fois'], I.topIssues.map(x => [esc(x.label), x.count]), 1)}
+        <h3 style="font-size:.95rem;margin:1rem 0 .5rem">Inspecteurs les plus actifs</h3>${table(['Inspecteur', 'Inspections'], I.topInspectors.map(x => [esc(x.label), x.count]), 1)}</div></div>`));
+
+      const C = cur.coverage;
+      parts.push(section('Couverture des sentiers', 'Combien de sentiers ont été visités, et à quel rythme.', figures([
+        { label: 'Sentiers', value: C.trails }, { label: 'Inspectés au moins une fois', value: C.pct, unit: ' %' },
+        { label: 'Jours entre deux inspections (moyenne)', value: C.avgGapDays, unit: ' j' }
+      ]) + `<div class="two-cols"><div><h3 style="font-size:.95rem;margin-bottom:.5rem">Jamais inspectés cette saison</h3>${C.never.length ? `<div>${C.never.map(esc).join(', ')}</div>` : '<div class="summary-empty">Tous les sentiers ont été inspectés au moins une fois. 👍</div>'}</div>
+        <div><h3 style="font-size:.95rem;margin-bottom:.5rem">Plus longue période sans inspection</h3>${C.longestGap ? `<div><strong>${esc(C.longestGap.name)}</strong> : ${C.longestGap.days} jour${C.longestGap.days > 1 ? 's' : ''}</div>` : '<div class="summary-empty">–</div>'}</div></div>`));
+
+      const L = cur.closures;
+      parts.push(section('Fermetures et statuts', 'D’après le journal de Régis gère.', !L ? unavailable('Le journal des statuts') : figures([
+        { label: 'Changements de statut', value: L.changes }, { label: 'Fermetures', value: L.closures }, { label: 'Ouvertures', value: L.openings },
+        { label: 'Jours de fermeture (total)', value: L.closedDays, unit: ' j' }
+      ]) + '<h3 style="font-size:.95rem;margin-bottom:.5rem">Recommandations de l’inspection</h3>' + figures([
+        { label: 'Acceptées', value: L.accepted }, { label: 'Refusées', value: L.ignored }, { label: 'Part acceptée', value: L.acceptedPct, unit: ' %' }
+      ]) + `<h3 style="font-size:.95rem;margin-bottom:.5rem">Sentiers les plus longtemps fermés</h3>${table(['Sentier', 'Fermetures', 'Jours fermé'], L.topClosed.map(x => [esc(x.name), x.closures, fmtNum(x.closedDays)]), 1)}`));
+
+      if (Network.feature('weather')) {
+        const W = cur.weather;
+        parts.push(section('Météo', 'À partir des relevés saisis dans l’application Météo.', !W ? unavailable('Les relevés météo') : figures([
+          { label: 'Relevés', value: W.readings }, { label: 'Jours avec relevé', value: W.days },
+          { label: 'Température la plus basse', value: W.minTemp, unit: ' °C' }, { label: 'Température la plus haute', value: W.maxTemp, unit: ' °C' },
+          { label: 'Neige fraîche cumulée', value: W.newSnowCm, unit: ' cm' }, { label: 'Neige au sol maximale', value: W.maxDepthCm, unit: ' cm' }
+        ]) + '<div class="summary-section__note">La neige fraîche cumulée additionne, pour chaque jour, le relevé le plus élevé de la journée.</div>'));
+      }
+
+      const M = cur.maintenance;
+      if (M) parts.push(section('Entretien', 'Compté en jours (il n’y a pas de pointage des heures).', figures([
+        { label: 'Jours d’entretien', value: M.days }, { label: 'Rapports d’entretien', value: M.reports },
+        { label: 'Personnes différentes', value: M.people }, { label: 'Jours de travail (total des personnes)', value: M.personDays }
+      ])));
+
+      document.getElementById('summary-body').innerHTML = parts.join('');
+    }
+
+    // The season shown in the navigator (label and print title), without reading anything
+    function showLabel() {
+      const b = SeasonSummary.bounds(seasonOffset);
+      document.getElementById('season-label').textContent = seasonText(b);
+      document.getElementById('print-title').textContent = `Bilan de saison - ${Network.config().name} - ${seasonText(b)}`;
+      document.getElementById('season-prev').disabled = busy || !canGoBack(seasonOffset + 1);
+      document.getElementById('season-next').disabled = busy || seasonOffset === 0;
+      return b;
+    }
+
+    /** Reads and calculates: only when the button is pressed (or when the season is changed after a first calculation). */
+    async function show() {
+      if (busy) return;
+      busy = true;
+      computed = true;
+      const computeBtn = document.getElementById('btn-compute'), printBtn = document.getElementById('btn-print');
+      computeBtn.disabled = printBtn.disabled = true;
+      const b = showLabel();
+      document.getElementById('summary-body').innerHTML = '<div class="summary-empty">Calcul en cours…</div>';
+      try {
+        if (!trailList.length) {
+          const snap = await db.collection('trails').get();
+          snap.forEach(d => { const t = Object.assign({ id: d.id }, d.data()); if (Network.matches(t) && TrailService.isActive(t)) trailList.push(t); });
+        }
+        const pb = canGoBack(seasonOffset + 1) ? SeasonSummary.bounds(seasonOffset + 1) : null;
+        const [cur, prev] = await Promise.all([loadSeason(b), pb ? loadSeason(pb) : Promise.resolve(null)]);
+        render(cur, prev, b, pb);
+        printBtn.disabled = false;
+      } catch (e) {
+        console.error('Bilan:', e);
+        document.getElementById('summary-body').innerHTML = '<div class="summary-error">Le bilan n’a pas pu être calculé. Réessayez dans un moment.</div>';
+      } finally {
+        busy = false;
+        computeBtn.disabled = false;
+        computeBtn.textContent = '📊 Calculer à nouveau';
+        showLabel();
+      }
+    }
+
+    function initSummary() {
+      const change = delta => { if (busy) return; seasonOffset += delta; computed ? show() : showLabel(); };
+      document.getElementById('season-prev').addEventListener('click', () => { if (canGoBack(seasonOffset + 1)) change(1); });
+      document.getElementById('season-next').addEventListener('click', () => { if (seasonOffset > 0) change(-1); });
+      document.getElementById('btn-compute').addEventListener('click', show);
+      document.getElementById('btn-print').addEventListener('click', () => window.print());
+      checkAuthStatus({
+        requireAuth: true,
+        requiredRoles: ['admin', 'system_admin'],
+        onAuthenticated: () => { showLabel(); },
+        onAccessDenied: () => { window.location.href = 'inspection-dashboard.html'; }
+      });
+    }
+    onFirebaseReady(initSummary);
+  </script>
+</body>
+</html>

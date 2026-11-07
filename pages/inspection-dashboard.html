@@ -77,6 +77,26 @@
     .inspection-row__type { font-size: 0.75rem; color: var(--theme-text-secondary); }
     .inspection-row__date { font-size: 0.875rem; color: var(--theme-text-secondary); }
 
+    /* À inspecter: trails not inspected for a while */
+    .gaps-section { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); overflow: hidden; margin-top: 1.5rem; }
+    .gaps-section[hidden] { display: none; }
+    .gaps-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 1rem; border-bottom: 1px solid var(--theme-border); }
+    .gaps-header__title { font-size: 1.125rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .gaps-header__sub { font-size: 0.8125rem; color: var(--theme-text-secondary); margin-top: 0.25rem; }
+    .gaps-limit { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: var(--theme-text-secondary); flex-wrap: wrap; }
+    .gaps-limit input { width: 4.5rem; padding: 0.25rem 0.5rem; border: 1px solid var(--theme-border); border-radius: var(--radius-sm); background: var(--theme-surface); color: var(--theme-text); }
+    .gaps-limit[hidden] { display: none; }
+    .gap-row { display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--theme-border); align-items: center; cursor: pointer; text-decoration: none; color: inherit; }
+    .gap-row:hover { background: var(--theme-surface-alt); }
+    .gap-row:last-child { border-bottom: none; }
+    .gap-row__name { font-weight: 500; }
+    .gap-row__last { font-size: 0.8125rem; color: var(--theme-text-secondary); }
+    .gap-days { display: inline-flex; padding: 0.25rem 0.625rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+    .gap-days--late { background: rgba(245,158,11,0.15); color: #92400e; }
+    .gap-days--very-late { background: rgba(239,68,68,0.15); color: #991b1b; }
+    .gap-days--never { background: rgba(107,114,128,0.15); color: #374151; }
+    .gaps-empty { padding: 1.5rem; text-align: center; color: var(--theme-text-secondary); }
+
     /* Status badges */
     .status-badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.5rem; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 500; }
     .status-badge--good { background: rgba(16,185,129,0.15); color: #065f46; }
@@ -124,6 +144,8 @@
       .map-header { flex-direction: column; align-items: stretch; }
       .map-controls { justify-content: center; }
       .inspection-row { grid-template-columns: 1fr; gap: 0.5rem; }
+      .gap-row { grid-template-columns: 1fr auto; }
+      .gap-row__last { grid-column: 1 / -1; }
     }
   </style>
 </head>
@@ -187,6 +209,23 @@
         <div style="padding: 2rem; text-align: center; color: var(--theme-text-secondary);">Chargement...</div>
       </div>
     </section>
+
+    <!-- À inspecter: the trails not inspected for a while (only for the kinds set in config.js staleKinds, and only while the season runs) -->
+    <section class="gaps-section" id="gaps-section" hidden>
+      <div class="gaps-header">
+        <div>
+          <h2 class="gaps-header__title">⏱️ À inspecter</h2>
+          <div class="gaps-header__sub" id="gaps-sub"></div>
+        </div>
+        <div class="gaps-limit" id="gaps-limit" hidden>
+          <label for="gaps-days">Limite (jours)</label>
+          <input type="number" id="gaps-days" min="1" max="60" step="1" inputmode="numeric">
+          <button type="button" class="btn btn-secondary btn-sm" id="gaps-save">Enregistrer</button>
+          <span id="gaps-msg" role="status"></span>
+        </div>
+      </div>
+      <div id="gaps-list"></div>
+    </section>
   </main>
 
   <!-- Modal -->
@@ -214,6 +253,7 @@
   <script src="../js/services/weather-context.js"></script>
   <script src="../js/services/map-service.js"></script>
   <script src="../js/services/photo-map-modal.js"></script>
+  <script src="../js/services/inspection-gaps.js"></script>
 
   <script>
     // State
@@ -307,10 +347,61 @@
         renderMapMarkers();
         updateLegend();
         loadRecentInspections();
+        await renderGaps();
       } catch (e) {
         console.error('Error loading data:', e);
       }
     }
+
+    // ===== À inspecter: the trails not inspected for a while =====
+    // Uses what the dashboard already read (the latest inspection of every trail of the season): no extra reading, except the one settings
+    // document. Only for the kinds in config.js staleKinds (uphill for now) and only while the season runs (out of season everything is "late").
+    let gapDays = null;
+    async function renderGaps() {
+      const section = document.getElementById('gaps-section');
+      const on = InspectionGaps.enabledFor(Network.current(), currentKind) && Network.seasonRange().active;
+      section.hidden = !on;
+      if (!on) return;
+      if (gapDays === null) gapDays = await InspectionGaps.loadDays(db, Network.current());
+      const result = InspectionGaps.build(visibleTrails(), trailInspections, { days: gapDays });
+      const word = n => `${n} jour${n > 1 ? 's' : ''}`;
+      document.getElementById('gaps-sub').textContent = result.late.length
+        ? `${result.late.length} sur ${result.total} à inspecter : ${word(gapDays)} ou plus sans inspection.`
+        : `Tout est à jour : chaque sentier a été inspecté depuis moins de ${word(gapDays)}.`;
+      const list = document.getElementById('gaps-list');
+      if (!result.late.length) { list.innerHTML = '<div class="gaps-empty">Aucun sentier en retard. 👍</div>'; }
+      else {
+        list.innerHTML = result.late.map(g => {
+          const never = g.days === null;
+          const cls = never ? 'gap-days--never' : (g.days >= gapDays * 2 ? 'gap-days--very-late' : 'gap-days--late');
+          const label = never ? 'Pas encore cette saison' : `Il y a ${word(g.days)}`;
+          const last = never ? '' : `Dernière inspection : ${g.last.toLocaleDateString('fr-CA', { day: 'numeric', month: 'long' })}`;
+          const status = g.trail.status ? `<span class="status-badge status-badge--${g.trail.status}">${TrailService.statusText(g.trail.status)}</span>` : '';
+          return `<a class="gap-row" href="${reportUrlForTrail(g.trail)}" title="Faire le rapport de ce sentier">
+            <div class="gap-row__name">${Network.config().icon} ${escapeHtml(g.trail.name || g.trail.id)} ${status}</div>
+            <div class="gap-row__last">${last}</div>
+            <span class="gap-days ${cls}">${label}</span>
+          </a>`;
+        }).join('');
+      }
+      // an administrator sets the limit of the activity
+      document.getElementById('gaps-limit').hidden = !isAdmin;
+      document.getElementById('gaps-days').value = gapDays;
+    }
+
+    async function saveGapDays() {
+      const msg = document.getElementById('gaps-msg');
+      const btn = document.getElementById('gaps-save');
+      btn.disabled = true; msg.textContent = '';
+      try {
+        gapDays = await InspectionGaps.saveDays(db, Network.current(), document.getElementById('gaps-days').value, currentUser);
+        msg.textContent = 'Enregistré.';
+        await renderGaps();
+      } catch (e) {
+        msg.textContent = /entre/.test(e.message) ? e.message : 'Impossible d’enregistrer pour le moment.';
+      } finally { btn.disabled = false; }
+    }
+    document.getElementById('gaps-save').addEventListener('click', saveGapDays);
 
     function updateStatistics() {
       const trails = visibleTrails();

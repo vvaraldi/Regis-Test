@@ -119,6 +119,34 @@
   justify-content: center;
 }
 
+/* The medal of the season on the Inspections tile (js/services/badges.js): the level reached, or the progress before the first one */
+.app-card--inspection .app-card__header { position: relative; }
+.app-card__medal {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  min-height: 1.9rem;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1b4b72;
+  font-weight: 700;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.app-card__medal--none { background: rgba(255, 255, 255, 0.28); color: #fff; font-size: 0.8rem; box-shadow: none; }
+.app-card__medal-goal { margin-left: -0.2rem; }
+@media (max-width: 768px) {
+  /* phone: the medal and the number only (the goal and the details are on the profile page) */
+  .app-card__medal { top: 0.35rem; right: 0.35rem; min-height: 1.4rem; padding: 0 0.4rem; font-size: 0.8rem; gap: 0.15rem; }
+  .app-card__medal--none { font-size: 0.75rem; }
+  .app-card__medal-goal { display: none; }
+}
+
 .app-card--regis .app-card__header {
   background: linear-gradient(135deg, var(--color-regis) 0%, var(--color-regis-dark) 100%);
 }

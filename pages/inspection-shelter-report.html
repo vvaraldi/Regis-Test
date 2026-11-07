@@ -165,6 +165,7 @@
   <script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.min.js"></script>
   <script src="../js/core/utils.js"></script>
   <script src="../js/core/form-draft.js"></script>
+  <script src="../js/services/badges.js"></script>
   <script src="../js/core/datetime-field.js"></script>
   <script src="../js/core/theme.js"></script>
   <script src="../js/core/ui.js"></script>
@@ -371,6 +372,7 @@
         const shelterName = shelterSelect.options[shelterSelect.selectedIndex].text;
         showSuccess(`Inspection de l'abri "${shelterName}" enregistrée avec succès!`);
         if (draft) draft.clear();
+        Badges.forget();   // the medal on the portal counts this report at its next opening
         
         // Save inspector info before reset
         const savedInspectorName = inspectorName.value;
