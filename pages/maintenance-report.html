@@ -110,11 +110,7 @@
       <div class="section-card">
         <div class="section-card__header"><h2 class="section-card__title">🛠️ Tâches ouvertes</h2></div>
         <div class="section-card__body">
-          <p class="form-hint" style="margin-bottom:0.75rem;">Choisissez un secteur et un sentier pour voir les tâches ouvertes à cet endroit. « Ajouter ce travail » crée le travail correspondant plus bas, avec la description de la tâche.</p>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label" for="jobs-sector">Secteur</label><select class="form-select" id="jobs-sector"><option value="">-- Tous les secteurs --</option></select></div>
-            <div class="form-group"><label class="form-label" for="jobs-trail">Piste / Sentier</label><select class="form-select" id="jobs-trail"><option value="">-- Tous les sentiers --</option></select></div>
-          </div>
+          <p class="form-hint" style="margin-bottom:0.75rem;">Toutes les tâches ouvertes, les plus prioritaires d’abord. « Ajouter ce travail » crée le travail correspondant plus bas, avec la description de la tâche.</p>
           <div id="jobs-list"></div>
         </div>
       </div>
@@ -580,6 +576,7 @@
         locationEditing: true // the builder can place / correct a photo on the map (saved with the log)
       });
 
+      const previous = entries[entries.length - 1] || null;   // a new travail starts in the place of the one before it
       const entry = { rowId, el, sectorSelect, trailSelect, jobTextEl, picker, job: null,
         jobBox: el.querySelector('.entry-job'), jobSelect: el.querySelector('.entry-job-select'), jobState: el.querySelector('.entry-job-state'), jobStateBox: el.querySelector('.entry-job-state-box') };
       entries.push(entry);
@@ -604,6 +601,11 @@
           entry.job = { id: entryData.jobId, title: entryData.jobTitle || '' };
           entry.jobState.value = entryData.jobStatus === 'done' ? 'done' : 'doing';
         }
+      } else if (previous && previous.sectorSelect.value) {
+        // same sector and trail as the previous travail (the builder changes them if the work moved)
+        sectorSelect.value = previous.sectorSelect.value;
+        SectorService.fillTrails(trailSelect, SectorService.find(sectors, sectorSelect.value), '-- Sélectionner une piste --');
+        if (previous.trailSelect.value) trailSelect.value = previous.trailSelect.value;
       }
 
       refreshEntryJobs(entry);
@@ -629,13 +631,6 @@
     }
 
     function initJobsPanel() {
-      const sectorSelect = document.getElementById('jobs-sector'), trailSelect = document.getElementById('jobs-trail');
-      SectorService.fillSectors(sectorSelect, sectors, '-- Tous les secteurs --');
-      sectorSelect.addEventListener('change', () => {
-        SectorService.fillTrails(trailSelect, SectorService.find(sectors, sectorSelect.value), '-- Tous les sentiers --');
-        renderJobsPanel();
-      });
-      trailSelect.addEventListener('change', renderJobsPanel);
       document.getElementById('jobs-list').addEventListener('click', e => {
         const btn = e.target.closest('[data-add-job]');
         if (btn) addTaskAsEntry(openJobs.find(j => j.id === btn.dataset.addJob));
@@ -648,45 +643,42 @@
       if (!panel) return;
       panel.hidden = !jobsOn() || openJobs.length === 0;
       if (panel.hidden) return;
-      const trail = SectorService.readTrail(document.getElementById('jobs-trail'));
-      const list = Jobs.sort(Jobs.forPlace(openJobs, document.getElementById('jobs-sector').value, trail.id), 'priority');
+      const list = Jobs.sort(openJobs, 'priority');   // every open task, the most urgent first
       const taken = new Set(entries.filter(e => e.job).map(e => e.job.id));
       document.getElementById('jobs-list').innerHTML = list.length ? list.map(j => {
         const s = Jobs.status(j.status);
         return `<div class="jobs-panel__item" data-job="${escapeHtml(j.id)}">
-          <div><span class="jobs-panel__title">${Jobs.priority(j.priority).icon} ${escapeHtml(j.title)}</span><span class="jobs-panel__pill" style="background:${s.color}">${escapeHtml(s.label)}</span>
+          <div><span class="jobs-panel__title">${Jobs.priority(j.priority).icon} ${escapeHtml(Jobs.labelOf(j))}</span><span class="jobs-panel__pill" style="background:${s.color}">${escapeHtml(s.label)}</span>
             <span class="jobs-panel__sub">${escapeHtml(jobPlace(j) || 'Sans lieu précis')}</span>
             ${j.description ? `<span class="jobs-panel__sub">${escapeHtml(j.description)}</span>` : ''}</div>
           <button type="button" class="btn btn-secondary btn-sm" data-add-job="${escapeHtml(j.id)}"${taken.has(j.id) ? ' disabled' : ''}>${taken.has(j.id) ? 'Déjà ajoutée' : '➕ Ajouter ce travail'}</button>
         </div>`;
-      }).join('') : '<p class="form-hint">Aucune tâche ouverte à cet endroit.</p>';
+      }).join('') : '<p class="form-hint">Aucune tâche ouverte.</p>';
     }
 
-    // The dropdown of a travail: the open tasks of its place (the linked one is always there), and the state choice once one is linked
+    // The dropdown of a travail: the open tasks of its place first, then the others (a task can be linked from another place); the linked one is always there
     function refreshEntryJobs(entry) {
       entry.jobBox.hidden = !jobsOn() || (openJobs.length === 0 && !entry.job);
       if (entry.jobBox.hidden) return;
       const trail = SectorService.readTrail(entry.trailSelect);
-      const list = Jobs.sort(Jobs.forPlace(openJobs, entry.sectorSelect.value, trail.id), 'priority');
-      if (entry.job && !list.some(j => j.id === entry.job.id)) list.unshift(openJobs.find(j => j.id === entry.job.id) || { id: entry.job.id, title: entry.job.title || 'Tâche', priority: 'medium' });
-      entry.jobSelect.replaceChildren(new Option('-- Aucune tâche --', ''), ...list.map(j => new Option(`${Jobs.priority(j.priority).icon} ${j.title}${jobPlace(j) ? ' (' + jobPlace(j) + ')' : ''}`, j.id)));
+      const here = Jobs.sort(Jobs.forPlace(openJobs, entry.sectorSelect.value, trail.id), 'priority');
+      const hereIds = new Set(here.map(j => j.id));
+      const others = Jobs.sort(openJobs.filter(j => !hereIds.has(j.id)), 'priority');
+      if (entry.job && !hereIds.has(entry.job.id) && !others.some(j => j.id === entry.job.id)) here.unshift({ id: entry.job.id, title: entry.job.title || 'Tâche', priority: 'medium' });   // closed since: kept
+      const option = j => new Option(`${Jobs.priority(j.priority).icon} ${Jobs.labelOf(j)}${jobPlace(j) ? ' (' + jobPlace(j) + ')' : ''}`, j.id);
+      const group = (label, list) => { const g = document.createElement('optgroup'); g.label = label; list.forEach(j => g.appendChild(option(j))); return g; };
+      const nodes = [new Option('-- Aucune tâche --', '')];
+      if (here.length && others.length) { nodes.push(group('Tâches de cet endroit', here), group('Autres tâches', others)); }
+      else here.concat(others).forEach(j => nodes.push(option(j)));
+      entry.jobSelect.replaceChildren(...nodes);
       entry.jobSelect.value = entry.job ? entry.job.id : '';
       entry.jobStateBox.hidden = !entry.job;
     }
 
-    function placeChanged(entry) {
-      refreshEntryJobs(entry);
-      // the panel at the top follows the place the builder is working on
-      const panelSector = document.getElementById('jobs-sector'), panelTrail = document.getElementById('jobs-trail');
-      if (!panelSector) return;
-      panelSector.value = entry.sectorSelect.value;
-      SectorService.fillTrails(panelTrail, SectorService.find(sectors, panelSector.value), '-- Tous les sentiers --');
-      const trail = SectorService.readTrail(entry.trailSelect);
-      if (trail.id) panelTrail.value = trail.id;
-      renderJobsPanel();
-    }
+    function placeChanged(entry) { refreshEntryJobs(entry); }
 
-    const isBlankEntry = e => !e.sectorSelect.value && !e.trailSelect.value && !e.jobTextEl.value.trim() && !e.job && !e.picker.hasPhotos();
+    // A travail with nothing typed, no task and no photo is "blank" whatever its place (a new travail already holds the previous place)
+    const isBlankEntry = e => !e.jobTextEl.value.trim() && !e.job && !e.picker.hasPhotos();
 
     // Touching a task in the panel: the travail below is created for it (the first blank one is used), with the task's description
     function addTaskAsEntry(job) {
@@ -712,11 +704,11 @@
       if (!jobsOn()) return [];
       const byJob = new Map();
       (previousEntries || []).forEach(e => { if (e.jobId && !byJob.has(e.jobId)) byJob.set(e.jobId, []); });
-      newEntries.forEach(e => {
+      newEntries.forEach((e, i) => {
         if (!e.jobId) return;
         if (!byJob.has(e.jobId)) byJob.set(e.jobId, []);
         byJob.get(e.jobId).push({ logId, date: firebase.firestore.Timestamp.fromDate(logDateValue), builderId: currentUser.uid, builderName: builderName.value,
-          sector: e.sector || null, trail: e.trailName || null, status: e.jobStatus === 'done' ? 'done' : 'doing', text: e.jobText });
+          entryIndex: i, sector: e.sector || null, trail: e.trailName || null, status: e.jobStatus === 'done' ? 'done' : 'doing', text: e.jobText });
       });
       const failed = [];
       for (const [jobId, links] of byJob) {
@@ -750,6 +742,7 @@
       entries[index].el.remove();
       entries.splice(index, 1);
       renumberEntries();
+      renderJobsPanel();   // its task is free again in the list at the top
     }
 
     function renumberEntries() {

@@ -34,7 +34,12 @@ const JobFromReport = (function () {
     .jfr-modal .form-group { margin-bottom: 0.75rem; }
     .jfr-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.75rem; }
     .jfr-chip { border: 1px solid var(--theme-border); background: var(--theme-surface-alt); border-radius: 999px; padding: 0.15rem 0.7rem; font-size: 0.8rem; cursor: pointer; color: var(--theme-text); }
-    .jfr-chip:hover { border-color: var(--theme-accent); }`;
+    .jfr-chip:hover { border-color: var(--theme-accent); }
+    .jfr-tick { display: flex; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+    .jfr-tick__label { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; cursor: pointer; flex: 0 0 auto; padding-top: 0.4rem; }
+    .jfr-tick__label input { width: 20px; height: 20px; }
+    .jfr-tick__text { flex: 1 1 260px; }
+    .jfr-tick__text textarea { width: 100%; }`;
 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let sectorsPromise = null;
@@ -47,12 +52,17 @@ const JobFromReport = (function () {
     return userData.role === 'admin' || userData.role === 'system_admin' || userData.allowJobs === true;
   }
 
-  function ensureModal() {
-    if (document.getElementById('jfr-modal')) return;
+  function ensureStyle() {
+    if (document.getElementById('jfr-style')) return;
     const st = document.createElement('style');
     st.id = 'jfr-style';
     st.textContent = STYLE;
     document.head.appendChild(st);
+  }
+
+  function ensureModal() {
+    if (document.getElementById('jfr-modal')) return;
+    ensureStyle();
     const m = document.createElement('div');
     m.className = 'jfr-modal';
     m.id = 'jfr-modal';
@@ -156,6 +166,48 @@ const JobFromReport = (function () {
     await refresh();
   }
 
-  return { enabled, mount };
+  /**
+   * The tick box "Créer une tâche" of the inspection forms (trail and shelter), with a description box beside it that is required once it is ticked.
+   *   const tick = JobFromReport.mountTick(document.getElementById('job-tick-box'), userData);   // null when the switch / the permission say no
+   *   if (tick && tick.error()) { ...show it... }                                                // the description is missing
+   *   if (tick && tick.wanted()) batch.set(db.collection('jobs').doc(), tick.build({ place, sector, sectorName, trailId, name, date, sourceId: inspectionRef.id }));
+   * The task: title "<place> - <name of the person> - dd/mm" (the day of the inspection), the description typed, the place of the inspection, medium priority,
+   * origin = that inspection. The box and the text have ids (create-job, job-description), so an unsent-report draft keeps them.
+   */
+  function mountTick(box, userData) {
+    if (!box || !enabled(userData, 'inspections')) return null;
+    ensureStyle();
+    box.innerHTML = `
+      <div class="form-section">
+        <div class="form-section-header"><h2 class="form-section-title">🛠️ Tâche à faire</h2></div>
+        <div class="form-section-body">
+          <div class="jfr-tick">
+            <label class="jfr-tick__label" for="create-job"><input type="checkbox" id="create-job" data-not-issue> Créer une tâche</label>
+            <div class="jfr-tick__text form-group" id="job-description-group" hidden>
+              <label class="form-label form-label--required" for="job-description">Description de la tâche</label>
+              <textarea class="form-textarea" id="job-description" rows="3" placeholder="Que faut-il faire, et où exactement ?"></textarea>
+            </div>
+          </div>
+          <p class="form-hint" style="margin-top:0.4rem;">Crée une tâche (application Tâches) liée à cette inspection, à l’endroit inspecté.</p>
+        </div>
+      </div>`;
+    const cb = box.querySelector('#create-job'), ta = box.querySelector('#job-description'), group = box.querySelector('#job-description-group');
+    const sync = () => { group.hidden = !cb.checked; };
+    cb.addEventListener('change', sync);
+    if (cb.form) cb.form.addEventListener('reset', () => setTimeout(sync, 0));
+    return {
+      wanted: () => cb.checked,
+      error: () => (cb.checked && !ta.value.trim() ? 'Décrivez la tâche à créer, ou décochez « Créer une tâche ».' : ''),
+      build(info) {
+        const title = [info.place, info.name, Jobs.shortDate(info.date)].filter(Boolean).join(' - ');
+        const uid = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.uid : null;
+        return Jobs.newJob({ title, description: ta.value, sector: info.sector || null, sectorName: info.sectorName || null, trail: info.place, trailId: info.trailId || null,
+          priority: Jobs.DEFAULT_PRIORITY, sourceApp: 'inspections', sourceId: info.sourceId },
+          { network: Network.current(), uid, name: info.name, now: firebase.firestore.FieldValue.serverTimestamp() });
+      }
+    };
+  }
+
+  return { enabled, mount, mountTick };
 })();
 if (typeof window !== 'undefined') window.JobFromReport = JobFromReport;

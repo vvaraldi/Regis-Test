@@ -976,6 +976,13 @@
             </div>
           </label>
           <label class="export-option">
+            <input type="checkbox" id="export-jobs" checked>
+            <div class="export-option-label">
+              <span class="export-option-name">🛠️ Tâches</span>
+              <span class="export-option-desc">jobs (CSV : une ligne par tâche; créées depuis la date de début, plus toutes les tâches encore ouvertes)</span>
+            </div>
+          </label>
+          <label class="export-option">
             <input type="checkbox" id="export-meteo" checked>
             <div class="export-option-label">
               <span class="export-option-name">🌦️ Météo</span>
@@ -1278,6 +1285,7 @@
   <script src="../js/admin/map-calibration.js"></script>
   <script src="../js/services/trail-service.js"></script>
   <script src="../js/admin/trail-admin.js"></script>
+  <script src="../js/services/jobs.js"></script>
   <script src="../js/services/season-summary.js"></script>
   <script src="../js/admin/season-summary-view.js"></script>
   <script src="../js/services/status-snapshot.js"></script>
@@ -2121,6 +2129,20 @@
       });
     }
 
+    // CSV of the tasks (Tâches): one row per task; the travail of the Entretien reports that worked on it are summed up in one cell. JSON keeps the tasks as stored.
+    function jobsCsvRows(jobs) {
+      return jobs.map(j => ({
+        id: j.id, network: j.network || '', title: j.title || '', description: j.description || '',
+        sector: j.sectorName || j.sector || '', trail: j.trail || '',
+        priority: Jobs.priority(j.priority).label, status: Jobs.status(j.status).label,
+        createdAt: j.createdAt || '', createdByName: j.createdByName || '', updatedAt: j.updatedAt || '',
+        origin: Jobs.SOURCES[j.sourceApp] || '', originId: j.sourceId || '',
+        linkedWorkCount: (j.workLinks || []).length,
+        linkedWork: (j.workLinks || []).map(l => [l.date, l.builderName, Jobs.status(l.status).label, l.trail].filter(Boolean).join(' - ')).join(' | '),
+        closingDescription: j.closingDescription || '', closedAt: j.closedAt || ''
+      }));
+    }
+
     // CSV of the weather readings: one row per reading; for each measure the typed value (<mesure>) and the one read
     // from Environment Canada (<mesure>_web); who entered it and when. JSON keeps the readings as stored.
     function weatherCsvRows(readings) {
@@ -2149,10 +2171,11 @@
         infraction: document.getElementById('export-infractions').checked,
         signalisation: document.getElementById('export-signalisations').checked,
         maintenance: document.getElementById('export-maintenance').checked,
-        meteo: document.getElementById('export-meteo').checked
+        meteo: document.getElementById('export-meteo').checked,
+        jobs: document.getElementById('export-jobs').checked
       };
 
-      if (!opts.trail && !opts.shelter && !opts.infraction && !opts.signalisation && !opts.maintenance && !opts.meteo) {
+      if (!opts.trail && !opts.shelter && !opts.infraction && !opts.signalisation && !opts.maintenance && !opts.meteo && !opts.jobs) {
         showExportStatus('Sélectionnez au moins un type de données.', 'error');
         return;
       }
@@ -2247,6 +2270,23 @@
           } catch(e) { exportResult.maintenanceLogs = []; exportResult.summary.maintenanceLogsCount = 0; }
         }
 
+        if (opts.jobs) {
+          showExportStatus('Chargement tâches...', 'info');
+          try {
+            // The tasks of the chosen activity created since the start date, plus every task still open whatever its date (none is left out)
+            const snap = await db.collection('jobs').get();
+            const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(inNetwork).filter(j => Jobs.isOpen(j) || (j.createdAt && j.createdAt.toDate && j.createdAt.toDate() >= startDate))
+              .map(j => {
+                const out = formatDocumentDates(j);
+                out.workLinks = (j.workLinks || []).map(l => ({ ...l, date: formatExportDate(l.date) }));
+                return out;
+              });
+            data.forEach(d => { if (d.closedBy && !d.closedByName) d.closedByName = inspectorsMap.get(d.closedBy) || d.closedBy; if (d.createdBy && !d.createdByName) d.createdByName = inspectorsMap.get(d.createdBy) || d.createdBy; });
+            exportResult.jobs = data;
+            exportResult.summary.jobsCount = data.length;
+          } catch(e) { exportResult.jobs = []; exportResult.summary.jobsCount = 0; }
+        }
+
         if (opts.meteo) {
           showExportStatus('Chargement météo...', 'info');
           try {
@@ -2275,6 +2315,7 @@
             { key: 'infractions', label: 'Infractions' },
             { key: 'signalisations', label: 'Signalisations' },
             { key: 'maintenanceLogs', label: 'Entretien', rows: maintenanceCsvRows },
+            { key: 'jobs', label: 'Taches', rows: jobsCsvRows },
             { key: 'weatherRecords', label: 'Meteo', rows: weatherCsvRows }
           ];
           types.forEach((t, i) => {
@@ -2290,7 +2331,7 @@
 
         const total = (exportResult.summary.trailInspectionsCount || 0) + (exportResult.summary.shelterInspectionsCount || 0) + 
                       (exportResult.summary.infractionsCount || 0) + (exportResult.summary.signalisationsCount || 0) +
-                      (exportResult.summary.maintenanceLogsCount || 0) + (exportResult.summary.weatherRecordsCount || 0);
+                      (exportResult.summary.maintenanceLogsCount || 0) + (exportResult.summary.weatherRecordsCount || 0) + (exportResult.summary.jobsCount || 0);
         showExportStatus(`✓ Export réussi! ${total} enregistrements.`, 'success');
 
       } catch (error) {

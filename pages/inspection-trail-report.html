@@ -132,6 +132,7 @@
         <div class="form-section-header"><h2 class="form-section-title">📝 Notes et commentaires</h2></div>
         <div class="form-section-body"><div class="form-group"><label class="form-label" for="comments">Notes additionnelles</label><textarea class="form-textarea" id="comments" rows="4" placeholder="Ajoutez toute information pertinente concernant l'inspection..."></textarea></div></div>
       </div>
+      <div id="job-tick-box"></div>
       <div class="form-actions">
         <button type="button" class="btn btn-secondary" id="cancel-action">Annuler</button>
         <button type="submit" class="btn btn-primary" id="submit-btn">Enregistrer l'inspection</button>
@@ -153,8 +154,11 @@
   <script src="../js/services/trail-service.js"></script>
 <script src="../js/services/status-service.js"></script>
   <script src="../js/services/sector-service.js"></script>
+  <script src="../js/services/jobs.js"></script>
+  <script src="../js/services/job-from-report.js"></script>
 
   <script>
+    let jobTick = null;   // the tick "Créer une tâche" (js/services/job-from-report.js), null when it is not offered to this person
     let selectedFiles = [], currentTrailStatus = null, storage = null;
     let photoPicker = null;
     let draft = null;   // FormDraft: the unsent report kept on the phone (js/core/form-draft.js)
@@ -199,6 +203,7 @@
           // Snow conditions only exist for activities that have them (ski)
           document.getElementById('snow-condition-group').style.display = Network.feature('snowCondition') ? '' : 'none';
           await loadSectors();
+          jobTick = JobFromReport.mountTick(document.getElementById('job-tick-box'), userData);   // before the draft: its fields can be restored
           draft = FormDraft.attach(form, { uid: currentUser.uid, page: 'inspection-trail-report', network: Network.current() });
           draft.offer();   // an unsent inspection from last time (no signal, a reload): offered back, never forced
         }
@@ -389,11 +394,12 @@
       if (!trailSelect.value) { showError('Veuillez sélectionner un sentier'); return; }
       if (!form.querySelector('input[name="trail-status"]:checked')) { showError('Veuillez choisir la recommandation de statut du sentier'); return; }
       if (!form.querySelector('input[name="condition"]:checked')) { showError('Veuillez sélectionner l\'état général'); return; }
+      if (jobTick && jobTick.error()) { showError(jobTick.error()); return; }
       if (draft && draft.offlineBlock()) return;   // no signal: keep the draft instead of a save that would hang
       setFormLoading(true, 'Enregistrement...');
       try {
         const issues = [];
-        form.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => { if (cb.value) issues.push(cb.value); });
+        form.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => { if (cb.value && !cb.hasAttribute('data-not-issue')) issues.push(cb.value); });
         if (otherIssues.value.trim()) issues.push(otherIssues.value.trim());
         const dateTime = DateTimeField.read(inspectionAt);
         const formData = {
@@ -441,11 +447,18 @@
         // status) that the mountain manager accepts or ignores in "Régis gère". `trail_status` of the record = the status recommended.
         const recommendation = StatusService.recommendationFrom(currentTrailStatus, formData.trail_status, { inspectionId: inspRef.id, condition: formData.condition, issueCount: issues.length }, firebase);
         batch.update(db.collection('trails').doc(formData.trail_id), { recommendation, lastInspectionId: inspRef.id });
-        await batch.commit();
         const trailName = trailSelect.options[trailSelect.selectedIndex].dataset.name;
-        showSuccess(recommendation
+        // The ticked "Créer une tâche": the task is written in the SAME save as the inspection (both or none), with this inspection as its origin
+        const makeTask = !!(jobTick && jobTick.wanted());
+        if (makeTask) {
+          const trailRecord = allTrails.find(t => t.id === formData.trail_id) || {};
+          batch.set(db.collection('jobs').doc(), jobTick.build({ place: trailName, sector: trailRecord.sector || null, sectorName: trailRecord.sector ? SectorService.nameOf(sectors, trailRecord.sector, null) : null,
+            trailId: formData.trail_id, name: inspectorName.value, date: dateTime, sourceId: inspRef.id }));
+        }
+        await batch.commit();
+        showSuccess((recommendation
           ? `Inspection enregistrée! Recommandation envoyée au gestionnaire : ${formData.trail_status === 'open' ? 'ouvrir' : 'fermer'} ${trailName}.`
-          : `Inspection enregistrée! ${trailName} : aucun changement de statut recommandé.`);
+          : `Inspection enregistrée! ${trailName} : aucun changement de statut recommandé.`) + (makeTask ? ' Tâche créée.' : ''));
         if (draft) draft.clear();
         Badges.forget();   // the medal on the portal counts this report at its next opening
         // Save inspector info before reset

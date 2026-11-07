@@ -35,6 +35,18 @@ const Jobs = (function () {
   const toDate = v => (v ? (v.toDate ? v.toDate() : new Date(v)) : null);
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
+  const two = n => String(n).padStart(2, '0');
+  /** "07/11": the day and the month only (short, but enough to tell two tasks apart in a list). '' when there is no valid date. */
+  function shortDate(v) {
+    const d = toDate(v);
+    return d && !isNaN(d) ? `${two(d.getDate())}/${two(d.getMonth() + 1)}` : '';
+  }
+  /** A task's title with its creation day: "Drainage · 07/11" (nothing added when the title already holds that day). */
+  function labelOf(job) {
+    const day = shortDate(job.createdAt);
+    return day && !String(job.title || '').includes(day) ? `${job.title} · ${day}` : String(job.title || '');
+  }
+
   /** The next priority when the icon is clicked: high -> medium -> low -> high. */
   function nextPriority(id) {
     const i = PRIORITIES.findIndex(p => p.id === id);
@@ -122,6 +134,7 @@ const Jobs = (function () {
     if (newStatus === 'done' || newStatus === 'cancelled') {
       patch.closedAt = ctx.now;
       patch.closedBy = ctx.uid;
+      if (ctx.name) patch.closedByName = ctx.name;   // shown in the window of the closing (the uid alone says nothing)
       if (closingDescription) patch.closingDescription = String(closingDescription).trim();
     }
     return patch;
@@ -183,6 +196,6 @@ const Jobs = (function () {
     return patch;
   }
 
-  return { STATUSES, PRIORITIES, SOURCES, OPEN, DEFAULT_PRIORITY, status, priority, nextPriority, isOpen, filter, sort, validate, newJob, statusPatch, counts, forPlace, lastLink, linkOutcome };
+  return { STATUSES, PRIORITIES, SOURCES, OPEN, DEFAULT_PRIORITY, status, priority, nextPriority, isOpen, filter, sort, validate, newJob, statusPatch, counts, forPlace, lastLink, linkOutcome, shortDate, labelOf };
 })();
 if (typeof window !== 'undefined') window.Jobs = Jobs;

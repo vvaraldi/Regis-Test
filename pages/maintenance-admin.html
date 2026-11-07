@@ -98,6 +98,13 @@
               </div>
             </div>
             <div class="form-group">
+              <label class="form-label" for="view-mode">Affichage</label>
+              <select class="form-select" id="view-mode" title="Un rapport par ligne, ou un travail par ligne (avec son propre secteur et sentier)">
+                <option value="report">Par rapport</option>
+                <option value="work">Par travail</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label class="form-label" for="sort-by">Trier par</label>
               <select class="form-select" id="sort-by">
                 <option value="date">Date</option>
@@ -190,6 +197,7 @@
     let logsData = [];
     let showArchived = false;
     let sortBy = 'date';
+    let viewMode = 'report';   // 'report' = one line per report; 'work' = one line per travail, with its own sector and trail
     let currentLogId = null;
     let sectors = []; // every sector (names), from Firestore (SectorService)
     // Filters: options are built from what actually appears in logsData, not the full
@@ -229,6 +237,10 @@
     }
 
     function bindEvents() {
+      document.getElementById('view-mode').addEventListener('change', (e) => {
+        viewMode = e.target.value === 'work' ? 'work' : 'report';
+        renderLogs();
+      });
       document.getElementById('sort-by').addEventListener('change', (e) => {
         sortBy = e.target.value;
         renderLogs();
@@ -361,14 +373,51 @@
     }
     function openPrintSheet() { window.open(printSheetUrl(), '_blank'); }
 
+    const REPORT_HEAD = ['Date', 'Responsable', 'Support', 'Bénévoles', 'Travaux', 'Statut'];
+    const WORK_HEAD = ['Date', 'Responsable', 'Secteur', 'Sentier', 'Travail', 'Photos', 'Tâche liée'];
+    const setHead = cols => { document.querySelector('#logs-table thead').innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>'; };
+
+    // "Par travail": one line per travail of the reports that pass the filters; the sector and trail filters judge the travail's OWN place
+    function renderWorks(logs) {
+      const tbody = document.getElementById('logs-tbody');
+      setHead(WORK_HEAD);
+      let rows = logs.flatMap(log => (log.entries || []).map((entry, i) => ({ log, entry, i })))
+        .filter(r => (!filterSector || r.entry.sector === filterSector) && (!filterTrail || entryTrailKey(r.entry) === filterTrail));
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${WORK_HEAD.length}" style="text-align:center;">Aucun travail trouvé</td></tr>`;
+        return;
+      }
+      const time = r => (logDate(r.log) || new Date(0)).getTime();
+      rows = sortBy === 'builder'
+        ? rows.sort((a, b) => (a.log.builderName || '').localeCompare(b.log.builderName || '', 'fr') || time(b) - time(a) || a.i - b.i)
+        : rows.sort((a, b) => time(b) - time(a) || a.i - b.i);
+      tbody.innerHTML = rows.map(({ log, entry, i }) => {
+        const date = logDate(log);
+        const text = String(entry.jobText || '');
+        const task = entry.jobId ? `${escapeHtml(entry.jobTitle || 'Tâche')}${entry.jobStatus ? ` (${entry.jobStatus === 'done' ? 'Fait' : 'En cours'})` : ''}` : '-';
+        return `
+          <tr data-id="${log.id}" data-entry="${i}">
+            <td>${date ? date.toLocaleDateString('fr-CA') : '-'}</td>
+            <td>${escapeHtml(log.builderName || '-')}</td>
+            <td>${escapeHtml(sectorNameOf(entry.sector, '') || '-')}</td>
+            <td>${escapeHtml(entry.trailName || '-')}</td>
+            <td>${escapeHtml(text.length > 120 ? text.slice(0, 117) + '…' : text) || '-'}</td>
+            <td>${(entry.photos || []).length}</td>
+            <td>${task}</td>
+          </tr>`;
+      }).join('');
+      tbody.querySelectorAll('tr[data-id]').forEach(row => row.addEventListener('click', () => openDetail(row.dataset.id)));
+    }
+
     function renderLogs() {
       const tbody = document.getElementById('logs-tbody');
 
       let filtered = logsData;
-      if (filterSector) {
+      // "Par rapport": a report stays when ANY of its travail matches the sector / trail ("Par travail" judges each travail on its own, below)
+      if (viewMode === 'report' && filterSector) {
         filtered = filtered.filter(log => (log.entries || []).some(e => e.sector === filterSector));
       }
-      if (filterTrail) {
+      if (viewMode === 'report' && filterTrail) {
         filtered = filtered.filter(log => (log.entries || []).some(e => entryTrailKey(e) === filterTrail));
       }
       if (filterBuilder) {
@@ -378,6 +427,8 @@
       const period = periodFilter ? periodFilter.state() : { value: 'all' };
       filtered = filtered.filter(log => PeriodFilter.matches(logDate(log), period));
 
+      if (viewMode === 'work') { renderWorks(filtered); return; }
+      setHead(REPORT_HEAD);
       if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Aucun rapport trouvé</td></tr>';
         return;

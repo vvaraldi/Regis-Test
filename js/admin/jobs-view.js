@@ -172,6 +172,22 @@ const JobsView = (function () {
 
     // ----- the detail window -----
     const field = (label, html) => `<div class="jb-field"><div class="jb-field__label">${esc(label)}</div><div>${html}</div></div>`;
+    // The origin of a task: a word, and for an inspection / a signalisation a link that opens the report in a small window (js/services/report-peek.js)
+    function originHtml(j) {
+      const label = Jobs.SOURCES[j.sourceApp] || '–';
+      if (!j.sourceId || (j.sourceApp !== 'inspections' && j.sourceApp !== 'signalisations') || typeof ReportPeek === 'undefined') return esc(label);
+      return `${esc(label)} - <button type="button" class="jb-link" data-peek="origin">${j.sourceApp === 'inspections' ? 'voir l’inspection' : 'voir la signalisation'}</button>`;
+    }
+    // How a task was closed: through the last travail marked "Fait" (a link to that travail), or from the Tâches app (a window with who, when and what was written)
+    function closingHtml(j, links) {
+      const last = Jobs.lastLink(links);
+      const byWork = j.status === 'done' && last && last.status === 'done';
+      const who = byWork ? (last.builderName ? ` par ${esc(last.builderName)}` : '') : (j.closedByName ? ` par ${esc(j.closedByName)}` : '');
+      const btn = typeof ReportPeek === 'undefined' ? '' : (byWork
+        ? ' <button type="button" class="jb-link" data-peek="last-work">voir le travail qui l’a fermée</button>'
+        : ' <button type="button" class="jb-link" data-peek="closing">voir les détails</button>');
+      return `${esc(fmtDateTime(j.closedAt))}${who}${btn}${j.closingDescription ? `<div class="jb-desc">${esc(j.closingDescription)}</div>` : ''}`;
+    }
     function openDetail(id) {
       const j = jobs.find(x => x.id === id);
       if (!j) return;
@@ -185,9 +201,9 @@ const JobsView = (function () {
         field('Description', j.description ? `<div class="jb-desc">${esc(j.description)}</div>` : '<span class="jb-empty">Aucune description.</span>') +
         field('Créée', `${esc(fmtDateTime(j.createdAt))}${j.createdByName ? ` par ${esc(j.createdByName)}` : ''}`) +
         field('Dernière modification', esc(fmtDateTime(j.updatedAt))) +
-        field('Origine', esc(Jobs.SOURCES[j.sourceApp] || '–')) +
-        field('Travaux d’entretien liés', links.length ? `<ul style="margin:0;padding-left:1.1rem">${links.map(l => `<li>${esc(fmtDate(l.date))}${l.builderName ? ` - ${esc(l.builderName)}` : ''}${l.status ? ` (${esc(Jobs.status(l.status).label)})` : ''}${l.text ? `<span class="jb-sub jb-desc">${esc(l.text)}</span>` : ''}</li>`).join('')}</ul>` : '<span class="jb-empty">Aucun travail lié pour l’instant.</span>') +
-        (j.status === 'done' || j.status === 'cancelled' ? field(j.status === 'done' ? 'Fermée' : 'Annulée', `${esc(fmtDateTime(j.closedAt))}${j.closingDescription ? `<div class="jb-desc">${esc(j.closingDescription)}</div>` : ''}`) : '');
+        field('Origine', originHtml(j)) +
+        field('Travaux d’entretien liés', links.length ? `<ul style="margin:0;padding-left:1.1rem">${links.map((l, i) => `<li><button type="button" class="jb-link" data-peek-work="${i}" title="Voir ce travail">${esc(fmtDate(l.date))}${l.builderName ? ` - ${esc(l.builderName)}` : ''}</button>${l.status ? ` (${esc(Jobs.status(l.status).label)})` : ''}${l.text ? `<span class="jb-sub jb-desc">${esc(l.text)}</span>` : ''}</li>`).join('')}</ul>` : '<span class="jb-empty">Aucun travail lié pour l’instant.</span>') +
+        (j.status === 'done' || j.status === 'cancelled' ? field(j.status === 'done' ? 'Fermée' : 'Annulée', closingHtml(j, links)) : '');
       const buttons = [];
       if (admin) {
         if (j.status === 'todo') buttons.push(['doing', '▶️ Mettre en cours', 'btn-secondary']);
@@ -212,7 +228,7 @@ const JobsView = (function () {
       saving = true;
       try {
         const patch = Jobs.statusPatch(newStatus, ctx(), closing);
-        if (newStatus === 'todo' || newStatus === 'doing') { patch.closedAt = firebase.firestore.FieldValue.delete(); patch.closedBy = firebase.firestore.FieldValue.delete(); patch.closingDescription = firebase.firestore.FieldValue.delete(); }
+        if (newStatus === 'todo' || newStatus === 'doing') { patch.closedAt = firebase.firestore.FieldValue.delete(); patch.closedBy = firebase.firestore.FieldValue.delete(); patch.closingDescription = firebase.firestore.FieldValue.delete(); patch.closedByName = firebase.firestore.FieldValue.delete(); }
         await db.collection('jobs').doc(job.id).update(patch);
         closeDetail();
         await load();
@@ -280,6 +296,16 @@ const JobsView = (function () {
     $('jb-detail-close').addEventListener('click', closeDetail);
     $('jb-detail').addEventListener('click', e => { if (e.target === $('jb-detail')) closeDetail(); });
     $('jb-create').addEventListener('click', e => { if (e.target === $('jb-create')) closeCreate(); });
+    $('jb-detail-body').addEventListener('click', e => {
+      if (!current || typeof ReportPeek === 'undefined') return;
+      const links = Array.isArray(current.workLinks) ? current.workLinks : [];
+      const peek = e.target.closest('[data-peek]'), work = e.target.closest('[data-peek-work]');
+      if (work && links[+work.dataset.peekWork]) return ReportPeek.work(current, links[+work.dataset.peekWork]);
+      if (!peek) return;
+      if (peek.dataset.peek === 'origin') ReportPeek.origin(current);
+      else if (peek.dataset.peek === 'last-work') ReportPeek.work(current, Jobs.lastLink(links));
+      else if (peek.dataset.peek === 'closing') ReportPeek.closing(current);
+    });
     $('jb-detail-footer').addEventListener('click', e => {
       if (e.target.id === 'jb-detail-ok') return closeDetail();
       const set = e.target.closest('[data-set]');
