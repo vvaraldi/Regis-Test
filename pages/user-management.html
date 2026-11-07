@@ -377,6 +377,9 @@
       <button class="admin-tabs__btn" data-tab="station" id="station-tab-btn" onclick="switchTab('station')" style="display: none;">
         🌦️ Station météo
       </button>
+      <button class="admin-tabs__btn" data-tab="summary" id="summary-tab-btn" onclick="switchTab('summary')">
+        📄 Bilan de saison
+      </button>
       <button class="admin-tabs__btn" data-tab="links" onclick="switchTab('links')">
         💡 Liens et astuces
       </button>
@@ -1098,6 +1101,10 @@
         <p class="data-export-section__description" id="station-tab-placeholder">Contenu à venir plus tard.</p>
       </div>
     </div>
+    <!-- TAB: SEASON SUMMARY (js/admin/season-summary-view.js; administrators and system administrators) -->
+    <div class="admin-tab-content" id="summary-tab">
+      <div id="summary-root"></div>
+    </div>
     <!-- TAB: LINKS AND TIPS -->
     <div class="admin-tab-content" id="links-tab">
       <div class="data-export-section links-card">
@@ -1118,18 +1125,6 @@
           <a class="links-url" id="link-public-status" target="_blank" rel="noopener"></a>
           <button class="btn btn-secondary btn-sm" type="button" data-copy="link-public-status">📋 Copier</button>
         </div>
-      </div>
-
-      <div class="data-export-section links-card" id="links-summary-card">
-        <div class="data-export-section__header">
-          <span>📄</span>
-          <h3>Bilan de saison</h3>
-        </div>
-        <p class="data-export-section__description">
-          Les chiffres de la saison de l'activité choisie (inspections, couverture des sentiers, fermetures, recommandations, entretien), à côté de la saison précédente.
-          Rien n'est calculé avant que vous appuyiez sur « Calculer le bilan » dans la page.
-        </p>
-        <a class="btn btn-secondary btn-sm" id="link-summary" href="inspection-summary.html">📄 Ouvrir le bilan de saison</a>
       </div>
 
       <div class="data-export-section links-card" id="links-volunteer-card">
@@ -1273,6 +1268,8 @@
   <script src="../js/admin/map-calibration.js"></script>
   <script src="../js/services/trail-service.js"></script>
   <script src="../js/admin/trail-admin.js"></script>
+  <script src="../js/services/season-summary.js"></script>
+  <script src="../js/admin/season-summary-view.js"></script>
   <script src="../js/services/status-snapshot.js"></script>
   <script src="../js/admin/public-status-admin.js"></script>
   <!-- QR code drawing for the "Liens et astuces" tab (qrcode-generator 1.4.4, MIT, bundled) -->
@@ -2615,6 +2612,7 @@ Marie Tremblay,marie.tremblay@example.com,MotDePasse456,admin,,true,true,true,fa
             loadVolunteersTab();
           }
           setupLinksTab(bikeAdmin);
+          SeasonSummaryView.mount(document.getElementById('summary-root'));   // reads nothing until "Calculer le bilan" is pressed
           document.getElementById('volunteers-select-all').addEventListener('change', (e) => toggleAllVolunteers(e.target.checked));
           document.getElementById('delete-selected-volunteers-btn').addEventListener('click', deleteSelectedVolunteers);
           document.getElementById('delete-all-volunteers-btn').addEventListener('click', deleteAllVolunteers);

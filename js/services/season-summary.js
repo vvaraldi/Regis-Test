@@ -1,5 +1,5 @@
 /**
- * season-summary.js - the figures of the season summary ("Bilan de saison", pages/inspection-summary.html)
+ * season-summary.js - the figures of the season summary ("Bilan de saison", tab of the Administration page, js/admin/season-summary-view.js)
  * =========================================================================================================
  * Pure calculation: the page reads the season's documents and hands them over; nothing here reads the database, so it is
  * tested with plain arrays (tests/specs/season-summary.html).
