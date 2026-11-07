@@ -1,5 +1,5 @@
 /**
- * jobs.js - the logic of the Tâches (Jobs) app: statuses, priorities, filters, sorting and the document to save
+ * jobs.js - the logic of the Jobs app: statuses, priorities, filters, sorting and the document to save
  * =============================================================================================================
  * Pure functions (tested with arrays in tests/specs/jobs.html); the pages (pages/jobs.html, pages/jobs-admin.html, drawn by js/admin/jobs-view.js) read and write. A job is one thing to do on the trails:
  *
@@ -18,14 +18,14 @@ const Jobs = (function () {
     { id: 'todo', label: 'À faire', color: '#b45309' },
     { id: 'doing', label: 'En cours', color: '#1d4ed8' },
     { id: 'done', label: 'Fait', color: '#15803d' },
-    { id: 'cancelled', label: 'Annulée', color: '#6b7280' }
+    { id: 'cancelled', label: 'Annulé', color: '#6b7280' }
   ];
   const PRIORITIES = [
     { id: 'high', label: 'Haute', icon: '🔴', rank: 0 },
     { id: 'medium', label: 'Moyenne', icon: '🟠', rank: 1 },
     { id: 'low', label: 'Basse', icon: '🟢', rank: 2 }
   ];
-  const SOURCES = { jobs: 'Tâches', inspections: 'Inspections', signalisations: 'Signalisations' };
+  const SOURCES = { jobs: 'Jobs', inspections: 'Inspections', signalisations: 'Signalisations' };
   const DEFAULT_PRIORITY = 'medium';
   const OPEN = ['todo', 'doing'];
 

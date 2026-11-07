@@ -78,7 +78,7 @@
     .inspection-row__date { font-size: 0.875rem; color: var(--theme-text-secondary); }
 
     /* À inspecter: trails not inspected for a while */
-    .gaps-section { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); overflow: hidden; margin-top: 1.5rem; }
+    .gaps-section { scroll-margin-top: 4.5rem; background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); overflow: hidden; margin-top: 1.5rem; }
     .gaps-section[hidden] { display: none; }
     .gaps-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 1rem; border-bottom: 1px solid var(--theme-border); }
     .gaps-header__title { font-size: 1.125rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
@@ -348,9 +348,23 @@
         updateLegend();
         loadRecentInspections();
         await renderGaps();
+        landOnGaps();
       } catch (e) {
         console.error('Error loading data:', e);
       }
+    }
+
+    // Opened from the portal tile on a phone (?go=a-inspecter): straight to the "À inspecter" list, ready to open a trail's report. Only once: the marker is
+    // taken out of the address, so Back and a reload do not scroll again. Nothing happens on a computer, when the list is not shown (downhill, out of season,
+    // switched off) or when no trail is late: the dashboard then opens at its top as usual.
+    function landOnGaps() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('go') !== 'a-inspecter') return;
+      params.delete('go');
+      try { history.replaceState(null, '', window.location.pathname + (params.toString() ? '?' + params : '') + window.location.hash); } catch (e) { /* the address stays */ }
+      const section = document.getElementById('gaps-section');
+      if (!window.matchMedia('(max-width: 768px)').matches || section.hidden || !section.querySelector('.gap-row')) return;
+      section.scrollIntoView({ block: 'start' });
     }
 
     // ===== À inspecter: the trails not inspected for a while =====

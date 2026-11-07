@@ -446,7 +446,7 @@
               <option value="allowMaintenance">🪏 Entretien</option>
               <option value="allowMeteo">🌦️ Météo</option>
                     <option value="allowRegis">🏔️ Régis gère</option>
-                    <option value="allowJobs">🛠️ Tâches</option>
+                    <option value="allowJobs">🛠️ Jobs</option>
             </select>
             <div class="page-size-select">
               <label for="users-page-size">Afficher:</label>
@@ -978,8 +978,8 @@
           <label class="export-option">
             <input type="checkbox" id="export-jobs" checked>
             <div class="export-option-label">
-              <span class="export-option-name">🛠️ Tâches</span>
-              <span class="export-option-desc">jobs (CSV : une ligne par tâche; créées depuis la date de début, plus toutes les tâches encore ouvertes)</span>
+              <span class="export-option-name">🛠️ Jobs</span>
+              <span class="export-option-desc">jobs (CSV : une ligne par job; créés depuis la date de début, plus tous les jobs encore ouverts)</span>
             </div>
           </label>
           <label class="export-option">
@@ -1242,7 +1242,7 @@
             </div>
             <div class="form-check">
               <input type="checkbox" class="form-check-input" id="access-jobs">
-              <label class="form-check-label" for="access-jobs">🛠️ Tâches</label>
+              <label class="form-check-label" for="access-jobs">🛠️ Jobs</label>
             </div>
           </div>
 
@@ -1687,7 +1687,7 @@
               ${appBadge(user, manageable, 'allowMaintenance', 'maintenance', '🪏', 'Entretien')}
               ${appBadge(user, manageable, 'allowMeteo', 'meteo', '🌦️', 'Météo')}
           ${appBadge(user, manageable, 'allowRegis', 'regis', '🏔️', 'Régis gère')}
-              ${appBadge(user, manageable, 'allowJobs', 'jobs', '🛠️', 'Tâches')}
+              ${appBadge(user, manageable, 'allowJobs', 'jobs', '🛠️', 'Jobs')}
             </div>
           </td>
           <td data-label="Statut">
@@ -1814,7 +1814,7 @@
         filterAndRenderUsers(true);
         
         const user = users.find(u => u.id === userId);
-        const fieldNames = { allowInspection: 'Inspection', allowInfraction: 'Infraction', allowSignalisation: 'Signalisation', allowMaintenance: 'Entretien', allowMeteo: 'Météo', allowRegis: 'Régis gère', allowJobs: 'Tâches' };
+        const fieldNames = { allowInspection: 'Inspection', allowInfraction: 'Infraction', allowSignalisation: 'Signalisation', allowMaintenance: 'Entretien', allowMeteo: 'Météo', allowRegis: 'Régis gère', allowJobs: 'Jobs' };
         showMessage(`${fieldNames[field]} ${newValue ? 'activé' : 'désactivé'} pour ${user?.name || 'utilisateur'}.`, 'success');
       } catch (error) {
         console.error('Error toggling access:', error);
@@ -2054,7 +2054,7 @@
           Entretien: u.allowMaintenance === true ? 'Oui' : 'Non',
           Météo: u.allowMeteo === true ? 'Oui' : 'Non',
           'Régis gère': u.allowRegis === true ? 'Oui' : 'Non',
-          Tâches: u.allowJobs === true ? 'Oui' : 'Non'
+          Jobs: u.allowJobs === true ? 'Oui' : 'Non'
         };
       });
 
@@ -2129,7 +2129,7 @@
       });
     }
 
-    // CSV of the tasks (Tâches): one row per task; the travail of the Entretien reports that worked on it are summed up in one cell. JSON keeps the tasks as stored.
+    // CSV of the jobs: one row per job; the travail of the Entretien reports that worked on it are summed up in one cell. JSON keeps the tasks as stored.
     function jobsCsvRows(jobs) {
       return jobs.map(j => ({
         id: j.id, network: j.network || '', title: j.title || '', description: j.description || '',
@@ -2271,7 +2271,7 @@
         }
 
         if (opts.jobs) {
-          showExportStatus('Chargement tâches...', 'info');
+          showExportStatus('Chargement jobs...', 'info');
           try {
             // The tasks of the chosen activity created since the start date, plus every task still open whatever its date (none is left out)
             const snap = await db.collection('jobs').get();
@@ -2315,7 +2315,7 @@
             { key: 'infractions', label: 'Infractions' },
             { key: 'signalisations', label: 'Signalisations' },
             { key: 'maintenanceLogs', label: 'Entretien', rows: maintenanceCsvRows },
-            { key: 'jobs', label: 'Taches', rows: jobsCsvRows },
+            { key: 'jobs', label: 'Jobs', rows: jobsCsvRows },
             { key: 'weatherRecords', label: 'Meteo', rows: weatherCsvRows }
           ];
           types.forEach((t, i) => {

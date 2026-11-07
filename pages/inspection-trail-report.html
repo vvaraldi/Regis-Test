@@ -158,7 +158,7 @@
   <script src="../js/services/job-from-report.js"></script>
 
   <script>
-    let jobTick = null;   // the tick "Créer une tâche" (js/services/job-from-report.js), null when it is not offered to this person
+    let jobTick = null;   // the tick "Créer un job" (js/services/job-from-report.js), null when it is not offered to this person
     let selectedFiles = [], currentTrailStatus = null, storage = null;
     let photoPicker = null;
     let draft = null;   // FormDraft: the unsent report kept on the phone (js/core/form-draft.js)
@@ -448,7 +448,7 @@
         const recommendation = StatusService.recommendationFrom(currentTrailStatus, formData.trail_status, { inspectionId: inspRef.id, condition: formData.condition, issueCount: issues.length }, firebase);
         batch.update(db.collection('trails').doc(formData.trail_id), { recommendation, lastInspectionId: inspRef.id });
         const trailName = trailSelect.options[trailSelect.selectedIndex].dataset.name;
-        // The ticked "Créer une tâche": the task is written in the SAME save as the inspection (both or none), with this inspection as its origin
+        // The ticked "Créer un job": the job is written in the SAME save as the inspection (both or none), with this inspection as its origin
         const makeTask = !!(jobTick && jobTick.wanted());
         if (makeTask) {
           const trailRecord = allTrails.find(t => t.id === formData.trail_id) || {};
@@ -458,7 +458,7 @@
         await batch.commit();
         showSuccess((recommendation
           ? `Inspection enregistrée! Recommandation envoyée au gestionnaire : ${formData.trail_status === 'open' ? 'ouvrir' : 'fermer'} ${trailName}.`
-          : `Inspection enregistrée! ${trailName} : aucun changement de statut recommandé.`) + (makeTask ? ' Tâche créée.' : ''));
+          : `Inspection enregistrée! ${trailName} : aucun changement de statut recommandé.`) + (makeTask ? ' Job créé.' : ''));
         if (draft) draft.clear();
         Badges.forget();   // the medal on the portal counts this report at its next opening
         // Save inspector info before reset

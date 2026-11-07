@@ -203,8 +203,8 @@ const APP_CONFIG = {
   defaultNetworks: ['ski'],
 
   // ===== TÂCHES (JOBS) =====
-  // "Créer une tâche" in the details of a report (js/services/job-from-report.js). One switch per kind of report: false hides the button AND the
-  // list of the tasks created from it, for everybody. Even when true, only an administrator or a user with the Tâches permission sees it.
+  // "Créer un job" in the details of a report (js/services/job-from-report.js). One switch per kind of report: false hides the button AND the
+  // list of the tasks created from it, for everybody. Even when true, only an administrator or a user with the Jobs permission sees it.
   jobs: {
     createFrom: { inspections: true, signalisations: true },
     // In the Entretien report: the open tasks of the place and the link of a travail to a task (false = none of it, the report works as before)
@@ -343,9 +343,9 @@ const APP_CONFIG = {
       ]
     },
     jobs: {
-      title: 'Tâches',
+      title: 'Jobs',
       items: [
-        { id: 'jobs', label: 'Tâches', icon: '🛠️', href: 'pages/jobs.html' },
+        { id: 'jobs', label: 'Liste', icon: '🛠️', href: 'pages/jobs.html' },
         { id: 'jobs-admin', label: 'Admin', icon: '⚙️', href: 'pages/jobs-admin.html', admin: true }
       ]
     },

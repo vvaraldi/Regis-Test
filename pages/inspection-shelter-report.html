@@ -180,7 +180,7 @@
   <script src="../js/services/job-from-report.js"></script>
 
   <script>
-    let jobTick = null;   // the tick "Créer une tâche" (js/services/job-from-report.js), null when it is not offered to this person
+    let jobTick = null;   // the tick "Créer un job" (js/services/job-from-report.js), null when it is not offered to this person
     let selectedFiles = [], storage = null;
     let photoPicker = null;
     let draft = null;   // FormDraft: the unsent report kept on the phone (js/core/form-draft.js)
@@ -377,7 +377,7 @@
         const shelterName = shelterSelect.options[shelterSelect.selectedIndex].text;
         const makeTask = !!(jobTick && jobTick.wanted());
         if (makeTask) {
-          // The ticked "Créer une tâche": written in the SAME save as the inspection (both or none), with this inspection as its origin
+          // The ticked "Créer un job": written in the SAME save as the inspection (both or none), with this inspection as its origin
           const batch = db.batch();
           batch.set(inspRef, formData);
           batch.set(db.collection('jobs').doc(), jobTick.build({ place: shelterName, name: inspectorName.value, date: dateTime, sourceId: inspRef.id }));
@@ -385,7 +385,7 @@
         } else {
           await inspRef.set(formData);
         }
-        showSuccess(`Inspection de l'abri "${shelterName}" enregistrée avec succès!` + (makeTask ? ' Tâche créée.' : ''));
+        showSuccess(`Inspection de l'abri "${shelterName}" enregistrée avec succès!` + (makeTask ? ' Job créé.' : ''));
         if (draft) draft.clear();
         Badges.forget();   // the medal on the portal counts this report at its next opening
         

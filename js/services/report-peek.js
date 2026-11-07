@@ -1,11 +1,11 @@
 /**
- * report-peek.js - a small READ-ONLY window on a record, opened from a task (Tâches app)
+ * report-peek.js - a small READ-ONLY window on a record, opened from a job (Jobs app)
  * ======================================================================================
  * Shows the essentials of three kinds of record, always in the same layout: date, person, place, description, photos with their position:
  *
  *   ReportPeek.origin(job)      the inspection (trail or shelter) or the signalisation the task was created from (job.sourceApp / job.sourceId)
  *   ReportPeek.work(job, link)  a travail of an Entretien report that worked on the task (link = one item of job.workLinks: logId, entryIndex, ...)
- *   ReportPeek.closing(job)     how a task was closed or cancelled from the Tâches app (who, when, the closing description)
+ *   ReportPeek.closing(job)     how a task was closed or cancelled from the Jobs app (who, when, the closing description)
  *
  * Nothing can be changed here (the photo links are only "📍 Carte" and Google Maps). A record that can no longer be read says so and shows what the task
  * itself kept. Needs: Jobs, PhotoMapModal (position links), the global `db`; SectorService is used for a sector name when it is there.
@@ -79,7 +79,7 @@ const ReportPeek = (function () {
       const snap = await db.collection(collection).doc(id).get();
       return snap.exists ? snap.data() : null;
     } catch (e) {
-      console.warn('Tâches: could not read', collection, id, e);
+      console.warn('Jobs: could not read', collection, id, e);
       return null;
     }
   }
@@ -128,19 +128,19 @@ const ReportPeek = (function () {
     show('Travail d’entretien',
       row('Date', esc(day(log ? log.date : link.date))) +
       row('Personne', esc((log && log.builderName) || link.builderName || '–') + (people.length > 1 ? `<span class="rp-note" style="display:block;margin:0">Avec : ${esc(people.slice(1).join(', '))}</span>` : '')) +
-      row('Lieu', esc(place || '–')) + row('État de la tâche', esc(state || '–')) +
+      row('Lieu', esc(place || '–')) + row('État du job', esc(state || '–')) +
       row('Description', text((entry && entry.jobText) || link.text)) + row('Photos', photosHtml(entry && entry.photos)) +
       (log ? '' : unavailable('Le rapport d’entretien')));
   }
 
-  /** A task closed (or cancelled) from the Tâches app: who, when and the closing description. */
+  /** A job closed (or cancelled) from the Jobs app: who, when and the closing description. */
   function closing(job) {
     const cancelled = job.status === 'cancelled';
-    show(cancelled ? 'Tâche annulée' : 'Tâche fermée',
-      row('Tâche', esc(job.title)) + row('Statut', esc(Jobs.status(job.status).label)) +
-      row(cancelled ? 'Annulée par' : 'Fermée par', esc(job.closedByName || '–')) + row('Le', esc(when(job.closedAt))) +
+    show(cancelled ? 'Job annulé' : 'Job fermé',
+      row('Job', esc(job.title)) + row('Statut', esc(Jobs.status(job.status).label)) +
+      row(cancelled ? 'Annulé par' : 'Fermé par', esc(job.closedByName || '–')) + row('Le', esc(when(job.closedAt))) +
       row('Description', text(job.closingDescription)) +
-      row('Lieu', esc([job.trail, job.sectorName].filter(Boolean).join(' - ') || '–')) + row('Description de la tâche', text(job.description)));
+      row('Lieu', esc([job.trail, job.sectorName].filter(Boolean).join(' - ') || '–')) + row('Description du job', text(job.description)));
   }
 
   return { origin, work, closing };

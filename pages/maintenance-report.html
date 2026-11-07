@@ -70,7 +70,7 @@
     .picker-results li { padding: 0.6rem 0.75rem; border-radius: var(--radius-sm); cursor: pointer; }
     .picker-results li[aria-selected="true"], .picker-results li:hover { background: var(--theme-surface-alt); }
     .picker-results li.picker-results__note { cursor: default; color: var(--theme-text-secondary); font-size: 0.8rem; background: transparent; }
-    /* Tâches (jobs): the open tasks of a place at the top, and the link of a travail to a task */
+    /* Jobs: the open jobs at the top, and the link of a travail to a job */
     .jobs-panel__item { display: flex; gap: 0.75rem; align-items: flex-start; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid var(--theme-border); }
     .jobs-panel__item:last-child { border-bottom: none; }
     .jobs-panel__title { font-weight: 600; }
@@ -105,12 +105,12 @@
       </div>
     </section>
 
-    <!-- Open tasks (Tâches) of a place: touch one to add the matching travail below (hidden when there is none, or when APP_CONFIG.jobs.entretien is off) -->
+    <!-- Open jobs: touch one to add the matching travail below (hidden when there is none, or when APP_CONFIG.jobs.entretien is off) -->
     <section class="content-section" id="jobs-panel" hidden>
       <div class="section-card">
-        <div class="section-card__header"><h2 class="section-card__title">🛠️ Tâches ouvertes</h2></div>
+        <div class="section-card__header"><h2 class="section-card__title">🛠️ Jobs ouverts</h2></div>
         <div class="section-card__body">
-          <p class="form-hint" style="margin-bottom:0.75rem;">Toutes les tâches ouvertes, les plus prioritaires d’abord. « Ajouter ce travail » crée le travail correspondant plus bas, avec la description de la tâche.</p>
+          <p class="form-hint" style="margin-bottom:0.75rem;">Tous les jobs ouverts, les plus prioritaires d’abord. « Ajouter ce travail » crée le travail correspondant plus bas, avec la description du job.</p>
           <div id="jobs-list"></div>
         </div>
       </div>
@@ -534,13 +534,13 @@
           <textarea class="form-input entry-job-text" rows="2" placeholder="Description des travaux..."></textarea>
         </div>
         <div class="form-group entry-job" hidden>
-          <label class="form-label">Tâche liée <span class="form-hint">(optionnel : lie ce travail à une tâche ouverte)</span></label>
-          <select class="form-select entry-job-select"><option value="">-- Aucune tâche --</option></select>
+          <label class="form-label">Job lié <span class="form-hint">(optionnel : lie ce travail à un job ouvert)</span></label>
+          <select class="form-select entry-job-select"><option value="">-- Aucun job --</option></select>
           <div class="entry-job-state-box" hidden style="margin-top:0.5rem;">
-            <label class="form-label">État de la tâche après ce travail</label>
+            <label class="form-label">État du job après ce travail</label>
             <select class="form-select entry-job-state">
               <option value="doing">En cours (le travail continue)</option>
-              <option value="done">Fait (la tâche est terminée)</option>
+              <option value="done">Fait (le job est terminé)</option>
             </select>
           </div>
         </div>
@@ -584,7 +584,7 @@
       el.querySelector('.entry-remove-btn').addEventListener('click', () => removeEntryRow(rowId));
       entry.jobSelect.addEventListener('change', () => {
         const picked = openJobs.find(j => j.id === entry.jobSelect.value);
-        entry.job = picked ? { id: picked.id, title: picked.title } : null;   // choosing "Aucune tâche" unlinks
+        entry.job = picked ? { id: picked.id, title: picked.title } : null;   // choosing "Aucun job" unlinks
         entry.jobState.value = 'doing';
         refreshEntryJobs(entry);
         renderJobsPanel();
@@ -613,7 +613,7 @@
       return entry;
     }
 
-    // ─── Tâches (jobs): the open tasks of a place, and the link of a travail to a task ─────────────
+    // ─── Jobs: the open jobs, and the link of a travail to a job ─────────────
 
     const jobsOn = () => typeof Jobs !== 'undefined' && !!(APP_CONFIG.jobs && APP_CONFIG.jobs.entretien === true);
     const jobPlace = j => [j.trail, j.sectorName].filter(Boolean).join(' - ');
@@ -626,7 +626,7 @@
         const snap = await db.collection('jobs').where('network', '==', Network.current()).get();
         snap.forEach(d => { const j = { id: d.id, ...d.data() }; if (Network.matches(j) && Jobs.isOpen(j)) openJobs.push(j); });
       } catch (e) {
-        console.warn('Tâches: could not read the open tasks', e);
+        console.warn('Jobs: could not read the open jobs', e);
       }
     }
 
@@ -651,9 +651,9 @@
           <div><span class="jobs-panel__title">${Jobs.priority(j.priority).icon} ${escapeHtml(Jobs.labelOf(j))}</span><span class="jobs-panel__pill" style="background:${s.color}">${escapeHtml(s.label)}</span>
             <span class="jobs-panel__sub">${escapeHtml(jobPlace(j) || 'Sans lieu précis')}</span>
             ${j.description ? `<span class="jobs-panel__sub">${escapeHtml(j.description)}</span>` : ''}</div>
-          <button type="button" class="btn btn-secondary btn-sm" data-add-job="${escapeHtml(j.id)}"${taken.has(j.id) ? ' disabled' : ''}>${taken.has(j.id) ? 'Déjà ajoutée' : '➕ Ajouter ce travail'}</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-add-job="${escapeHtml(j.id)}"${taken.has(j.id) ? ' disabled' : ''}>${taken.has(j.id) ? 'Déjà ajouté' : '➕ Ajouter ce travail'}</button>
         </div>`;
-      }).join('') : '<p class="form-hint">Aucune tâche ouverte.</p>';
+      }).join('') : '<p class="form-hint">Aucun job ouvert.</p>';
     }
 
     // The dropdown of a travail: the open tasks of its place first, then the others (a task can be linked from another place); the linked one is always there
@@ -664,11 +664,11 @@
       const here = Jobs.sort(Jobs.forPlace(openJobs, entry.sectorSelect.value, trail.id), 'priority');
       const hereIds = new Set(here.map(j => j.id));
       const others = Jobs.sort(openJobs.filter(j => !hereIds.has(j.id)), 'priority');
-      if (entry.job && !hereIds.has(entry.job.id) && !others.some(j => j.id === entry.job.id)) here.unshift({ id: entry.job.id, title: entry.job.title || 'Tâche', priority: 'medium' });   // closed since: kept
+      if (entry.job && !hereIds.has(entry.job.id) && !others.some(j => j.id === entry.job.id)) here.unshift({ id: entry.job.id, title: entry.job.title || 'Job', priority: 'medium' });   // closed since: kept
       const option = j => new Option(`${Jobs.priority(j.priority).icon} ${Jobs.labelOf(j)}${jobPlace(j) ? ' (' + jobPlace(j) + ')' : ''}`, j.id);
       const group = (label, list) => { const g = document.createElement('optgroup'); g.label = label; list.forEach(j => g.appendChild(option(j))); return g; };
-      const nodes = [new Option('-- Aucune tâche --', '')];
-      if (here.length && others.length) { nodes.push(group('Tâches de cet endroit', here), group('Autres tâches', others)); }
+      const nodes = [new Option('-- Aucun job --', '')];
+      if (here.length && others.length) { nodes.push(group('Jobs de cet endroit', here), group('Autres jobs', others)); }
       else here.concat(others).forEach(j => nodes.push(option(j)));
       entry.jobSelect.replaceChildren(...nodes);
       entry.jobSelect.value = entry.job ? entry.job.id : '';
@@ -721,7 +721,7 @@
           if (!patch) { failed.push(job.title || jobId); continue; }
           await ref.update(patch);
         } catch (e) {
-          console.error('Tâches: could not update the task', jobId, e);
+          console.error('Jobs: could not update the job', jobId, e);
           failed.push(jobId);
         }
       }
@@ -729,7 +729,7 @@
     }
 
     async function afterJobsSync(failed) {
-      if (failed.length) showToast('Le rapport est enregistré, mais ' + (failed.length > 1 ? failed.length + ' tâches n’ont' : 'une tâche n’a') + ' pas pu être mise' + (failed.length > 1 ? 's' : '') + ' à jour (annulée ou hors connexion). Appuyez sur « Modifier » pour réessayer.', 'warning');
+      if (failed.length) showToast('Le rapport est enregistré, mais ' + (failed.length > 1 ? failed.length + ' jobs n’ont' : 'un job n’a') + ' pas pu être mis à jour (annulé' + (failed.length > 1 ? 's' : '') + ' ou hors connexion). Appuyez sur « Modifier » pour réessayer.', 'warning');
       await loadOpenJobs();
       entries.forEach(refreshEntryJobs);
       renderJobsPanel();
@@ -917,7 +917,7 @@
           jobText: entry.jobTextEl.value.trim(),
           photos: PhotoService.toFirestore(photos)
         };
-        // the task this travail works on (Tâches) and the state it leaves it in: only written when a task is linked
+        // the job this travail works on and the state it leaves it in: only written when a task is linked
         if (jobsOn() && entry.job) { row.jobId = entry.job.id; row.jobTitle = entry.job.title || ''; row.jobStatus = entry.jobState.value === 'done' ? 'done' : 'doing'; }
         payload.push(row);
       }

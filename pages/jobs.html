@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Tâches : les travaux à faire sur les sentiers">
+  <meta name="description" content="Jobs : les travaux à faire sur les sentiers">
   <meta name="theme-color" content="#7c3aed">
-  <title>Tâches</title>
+  <title>Jobs</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
   <link rel="stylesheet" href="../css/main.css">
 </head>
@@ -18,7 +18,7 @@
   <main id="main-content" class="main" style="display: none;">
     <section class="content-section">
       <div class="section-card">
-        <div class="section-card__header"><h2 class="section-card__title">🛠️ Tâches</h2></div>
+        <div class="section-card__header"><h2 class="section-card__title">🛠️ Jobs</h2></div>
         <div class="section-card__body"><div id="jobs-root"></div></div>
       </div>
     </section>
@@ -41,8 +41,8 @@
   <script src="../js/services/report-peek.js"></script>
   <script src="../js/admin/jobs-view.js"></script>
   <script>
-    // Tâches: the work to be done on the trails. Everybody who has the permission (and every administrator) sees the list, opens the details and
-    // creates a task. Priority, cancelling and closing are the administrators' (Tâches > Admin).
+    // Jobs: the work to be done on the trails. Everybody who has the permission (and every administrator) sees the list, opens the details and
+    // creates a task. Priority, cancelling and closing are the administrators' (Jobs > Admin).
     function initJobs() {
       checkAuthStatus({
         requireAuth: true,
@@ -50,7 +50,7 @@
         permissionDefault: false,
         adminsAlways: true,
         onAuthenticated: (data) => JobsView.mount(document.getElementById('jobs-root'), { admin: false, uid: currentUser.uid, name: data.name })
-          .catch(e => { console.error('Tâches:', e); showMessage('Les tâches n\'ont pas pu être lues.', 'error', 5000); })
+          .catch(e => { console.error('Jobs:', e); showMessage('Les jobs n\'ont pas pu être lus.', 'error', 5000); })
       });
     }
     onFirebaseReady(initJobs);

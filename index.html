@@ -81,9 +81,9 @@
       },
       {
         id: 'jobs',
-        title: 'Tâches',
+        title: 'Jobs',
         icon: '🛠️',
-        description: 'Les travaux à faire sur les sentiers : créer une tâche, suivre son état et sa priorité.',
+        description: 'Les travaux à faire sur les sentiers : créer un job, suivre son état et sa priorité.',
         url: 'pages/jobs.html',
         permission: 'allowJobs',
         permissionDefault: false,
@@ -96,6 +96,7 @@
         icon: '🔍',
         description: 'Gestion des inspections et status des pistes, sentiers et abris.',
         url: 'pages/inspection-dashboard.html',
+        mobileUrl: 'pages/inspection-dashboard.html?go=a-inspecter',   // on a phone: straight to the "À inspecter" list (the report of a trail is one tap away)
         permission: 'allowInspection',
         permissionDefault: false,
         actionText: 'Accéder à l\'application'
@@ -183,8 +184,9 @@
      * responsive CSS (max-width: 768px).
      */
     function landingUrl(app, isAdmin) {
-      if (!app.desktopUrl) return app.url;
       const isMobile = window.matchMedia('(max-width: 768px)').matches;
+      if (isMobile && app.mobileUrl) return app.mobileUrl;   // e.g. Inspections: the dashboard already scrolled to "À inspecter"
+      if (!app.desktopUrl) return app.url;
       if (isMobile) return app.url;
       if (app.desktopUrlRequiresAdmin && !isAdmin) return app.url;
       return app.desktopUrl;

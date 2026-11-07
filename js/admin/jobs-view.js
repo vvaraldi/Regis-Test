@@ -1,8 +1,8 @@
 /**
- * jobs-view.js - the list of tasks (Tâches app): filters, table, detail window, creation, and the administrator's actions
+ * jobs-view.js - the list of jobs (Jobs app): filters, table, detail window, creation, and the administrator's actions
  * ======================================================================================================================
  * One component for the two pages: pages/jobs.html (everybody allowed: list, create, details) and pages/jobs-admin.html (administrators:
- * the same, plus the priority icon that cycles high / medium / low, "Marquer comme faite", "Annuler la tâche", "Rouvrir", and the cancelled
+ * the same, plus the priority icon that cycles high / medium / low, "Marquer comme fait", "Annuler le job", "Rouvrir", and the cancelled
  * tasks in the list). The logic of the filters and of the documents is js/services/jobs.js (tested with arrays).
  *
  *   JobsView.mount(root, { admin: false, uid, name });
@@ -58,12 +58,12 @@ const JobsView = (function () {
       st.textContent = STYLE;
       document.head.appendChild(st);
     }
-    const statusOptions = [['open', 'Ouvertes (à faire + en cours)'], ['todo', 'À faire'], ['doing', 'En cours'], ['done', 'Faites']]
-      .concat(admin ? [['cancelled', 'Annulées']] : []).concat([['all', admin ? 'Toutes' : 'Toutes (avec les faites)']]);
+    const statusOptions = [['open', 'Ouverts (à faire + en cours)'], ['todo', 'À faire'], ['doing', 'En cours'], ['done', 'Faits']]
+      .concat(admin ? [['cancelled', 'Annulés']] : []).concat([['all', admin ? 'Tous' : 'Tous (avec les faits)']]);
     root.innerHTML = `
       <div class="jb-counters" id="jb-counters"></div>
       <div class="jb-toolbar">
-        <button type="button" class="btn btn-primary btn-sm" id="jb-new">➕ Nouvelle tâche</button>
+        <button type="button" class="btn btn-primary btn-sm" id="jb-new">➕ Nouveau job</button>
         <span class="jb-sub" id="jb-count"></span>
       </div>
       <div class="jb-filters">
@@ -72,8 +72,8 @@ const JobsView = (function () {
         <select class="form-select" id="jb-f-sector" aria-label="Secteur"><option value="">Tous les secteurs</option></select>
         <select class="form-select" id="jb-f-trail" aria-label="Sentier"><option value="">Tous les sentiers</option></select>
         <select class="form-select" id="jb-f-source" aria-label="Origine"><option value="">Toutes les origines</option>${Object.keys(Jobs.SOURCES).map(k => `<option value="${k}">${esc(Jobs.SOURCES[k])}</option>`).join('')}</select>
-        <label class="jb-sub" for="jb-f-from" style="display:inline">Créée du</label><input type="date" class="form-input" id="jb-f-from" aria-label="Créée à partir du">
-        <label class="jb-sub" for="jb-f-to" style="display:inline">au</label><input type="date" class="form-input" id="jb-f-to" aria-label="Créée jusqu’au">
+        <label class="jb-sub" for="jb-f-from" style="display:inline">Créé du</label><input type="date" class="form-input" id="jb-f-from" aria-label="Créé à partir du">
+        <label class="jb-sub" for="jb-f-to" style="display:inline">au</label><input type="date" class="form-input" id="jb-f-to" aria-label="Créé jusqu’au">
         <input type="search" class="form-input" id="jb-f-text" placeholder="Rechercher" aria-label="Recherche">
         <select class="form-select" id="jb-sort" aria-label="Tri">
           <option value="priority">Tri : priorité</option><option value="created">Tri : plus récentes</option><option value="trail">Tri : sentier</option><option value="status">Tri : statut</option><option value="title">Tri : titre</option>
@@ -81,15 +81,15 @@ const JobsView = (function () {
       </div>
       <div class="data-table__body">
         <table class="table table--hover table--responsive" id="jb-table">
-          <thead><tr><th title="Priorité">!</th><th>Tâche</th><th>Sentier</th><th>Statut</th><th>Créée</th><th>Modifiée</th><th>Origine</th></tr></thead>
+          <thead><tr><th title="Priorité">!</th><th>Job</th><th>Sentier</th><th>Statut</th><th>Créé</th><th>Modifié</th><th>Origine</th></tr></thead>
           <tbody id="jb-tbody"></tbody>
         </table>
       </div>
-      <p class="jb-empty" id="jb-empty" style="display:none">Aucune tâche pour ces filtres.</p>
+      <p class="jb-empty" id="jb-empty" style="display:none">Aucun job pour ces filtres.</p>
 
       <div class="jb-modal" id="jb-detail" role="dialog" aria-modal="true" aria-labelledby="jb-detail-title">
         <div class="jb-modal__content">
-          <div class="jb-modal__header"><h3 class="jb-modal__title" id="jb-detail-title">Tâche</h3><button type="button" class="jb-modal__close" id="jb-detail-close" aria-label="Fermer">×</button></div>
+          <div class="jb-modal__header"><h3 class="jb-modal__title" id="jb-detail-title">Job</h3><button type="button" class="jb-modal__close" id="jb-detail-close" aria-label="Fermer">×</button></div>
           <div class="jb-modal__body" id="jb-detail-body"></div>
           <div class="jb-modal__footer" id="jb-detail-footer"></div>
         </div>
@@ -97,7 +97,7 @@ const JobsView = (function () {
 
       <div class="jb-modal" id="jb-create" role="dialog" aria-modal="true" aria-labelledby="jb-create-title">
         <div class="jb-modal__content">
-          <div class="jb-modal__header"><h3 class="jb-modal__title" id="jb-create-title">Nouvelle tâche</h3><button type="button" class="jb-modal__close" id="jb-create-close" aria-label="Fermer">×</button></div>
+          <div class="jb-modal__header"><h3 class="jb-modal__title" id="jb-create-title">Nouveau job</h3><button type="button" class="jb-modal__close" id="jb-create-close" aria-label="Fermer">×</button></div>
           <form class="jb-modal__body jb-form" id="jb-form" novalidate>
             <div class="form-group"><label class="form-label form-label--required" for="jb-title">Titre</label><input type="text" class="form-input" id="jb-title" maxlength="200" required></div>
             <div class="form-group"><label class="form-label" for="jb-description">Description</label><textarea class="form-textarea" id="jb-description" rows="4" placeholder="Ce qu’il y a à faire, où exactement…"></textarea></div>
@@ -106,7 +106,7 @@ const JobsView = (function () {
             <div class="form-group"><label class="form-label" for="jb-priority">Priorité</label><select class="form-select" id="jb-priority">${Jobs.PRIORITIES.map(p => `<option value="${p.id}"${p.id === Jobs.DEFAULT_PRIORITY ? ' selected' : ''}>${p.icon} ${p.label}</option>`).join('')}</select></div>
             <p class="jb-sub" id="jb-form-error" style="color:var(--color-danger);display:none" role="alert"></p>
           </form>
-          <div class="jb-modal__footer"><button type="button" class="btn btn-secondary" id="jb-create-cancel">Annuler</button><button type="button" class="btn btn-primary" id="jb-create-save">Créer la tâche</button></div>
+          <div class="jb-modal__footer"><button type="button" class="btn btn-secondary" id="jb-create-cancel">Annuler</button><button type="button" class="btn btn-primary" id="jb-create-save">Créer le job</button></div>
         </div>
       </div>`;
 
@@ -139,7 +139,13 @@ const JobsView = (function () {
       const base = admin ? jobs : jobs.filter(j => j.status !== 'cancelled');
       const c = Jobs.counts(base);
       const item = (v, l) => `<div class="jb-counter"><div class="jb-counter__value">${v}</div><div class="jb-counter__label">${l}</div></div>`;
-      $('jb-counters').innerHTML = item(c.todo, 'À faire') + item(c.doing, 'En cours') + item(c.highOpen, '🔴 Haute priorité ouvertes') + item(c.done, 'Faites') + (admin ? item(c.cancelled, 'Annulées') : '');
+      $('jb-counters').innerHTML = item(c.todo, 'À faire') + item(c.doing, 'En cours') + item(c.highOpen, '🔴 Haute priorité ouverts') + item(c.done, 'Faits') + (admin ? item(c.cancelled, 'Annulés') : '');
+    }
+    // The origin column: a task made from an inspection or a signalisation is a link that opens that report in the small window (js/services/report-peek.js)
+    function rowOrigin(j) {
+      const label = Jobs.SOURCES[j.sourceApp] || '–';
+      if (!j.sourceId || (j.sourceApp !== 'inspections' && j.sourceApp !== 'signalisations') || typeof ReportPeek === 'undefined') return esc(label);
+      return `<button type="button" class="jb-link" data-origin="${esc(j.id)}" title="${j.sourceApp === 'inspections' ? 'Voir l’inspection d’origine' : 'Voir la signalisation d’origine'}">${esc(label)}</button>`;
     }
     function row(j) {
       const p = Jobs.priority(j.priority);
@@ -149,12 +155,12 @@ const JobsView = (function () {
         : `<span class="jb-prio" title="${esc(p.label)}" role="img" aria-label="Priorité ${esc(p.label)}">${p.icon}</span>`;
       return `<tr data-id="${esc(j.id)}">
         <td data-label="Priorité">${prio}</td>
-        <td data-label="Tâche"><button type="button" class="jb-link" data-open="${esc(j.id)}">${esc(j.title)}</button></td>
+        <td data-label="Job"><button type="button" class="jb-link" data-open="${esc(j.id)}">${esc(j.title)}</button></td>
         <td data-label="Sentier">${place.length ? `<strong>${esc(place[0])}</strong>${place[1] ? `<span class="jb-sub">${esc(place[1])}</span>` : ''}` : '–'}</td>
         <td data-label="Statut">${pill(j.status)}</td>
-        <td data-label="Créée">${esc(fmtDate(j.createdAt))}</td>
-        <td data-label="Modifiée">${esc(fmtDate(j.updatedAt))}</td>
-        <td data-label="Origine">${esc(Jobs.SOURCES[j.sourceApp] || '–')}</td>
+        <td data-label="Créé">${esc(fmtDate(j.createdAt))}</td>
+        <td data-label="Modifié">${esc(fmtDate(j.updatedAt))}</td>
+        <td data-label="Origine">${rowOrigin(j)}</td>
       </tr>`;
     }
     function render() {
@@ -162,7 +168,7 @@ const JobsView = (function () {
       const list = visible();
       $('jb-tbody').innerHTML = list.map(row).join('');
       $('jb-empty').style.display = list.length ? 'none' : '';
-      $('jb-count').textContent = `${list.length} tâche${list.length > 1 ? 's' : ''}`;
+      $('jb-count').textContent = `${list.length} job${list.length > 1 ? 's' : ''}`;
     }
     async function load() {
       const snap = await db.collection('jobs').where('network', '==', Network.current()).get();
@@ -178,13 +184,13 @@ const JobsView = (function () {
       if (!j.sourceId || (j.sourceApp !== 'inspections' && j.sourceApp !== 'signalisations') || typeof ReportPeek === 'undefined') return esc(label);
       return `${esc(label)} - <button type="button" class="jb-link" data-peek="origin">${j.sourceApp === 'inspections' ? 'voir l’inspection' : 'voir la signalisation'}</button>`;
     }
-    // How a task was closed: through the last travail marked "Fait" (a link to that travail), or from the Tâches app (a window with who, when and what was written)
+    // How a task was closed: through the last travail marked "Fait" (a link to that travail), or from the Jobs app (a window with who, when and what was written)
     function closingHtml(j, links) {
       const last = Jobs.lastLink(links);
       const byWork = j.status === 'done' && last && last.status === 'done';
       const who = byWork ? (last.builderName ? ` par ${esc(last.builderName)}` : '') : (j.closedByName ? ` par ${esc(j.closedByName)}` : '');
       const btn = typeof ReportPeek === 'undefined' ? '' : (byWork
-        ? ' <button type="button" class="jb-link" data-peek="last-work">voir le travail qui l’a fermée</button>'
+        ? ' <button type="button" class="jb-link" data-peek="last-work">voir le travail qui l’a fermé</button>'
         : ' <button type="button" class="jb-link" data-peek="closing">voir les détails</button>');
       return `${esc(fmtDateTime(j.closedAt))}${who}${btn}${j.closingDescription ? `<div class="jb-desc">${esc(j.closingDescription)}</div>` : ''}`;
     }
@@ -199,15 +205,15 @@ const JobsView = (function () {
         field('Statut', pill(j.status)) + field('Priorité', `${p.icon} ${esc(p.label)}`) +
         field('Secteur', esc(j.sectorName || '–')) + field('Sentier', esc(j.trail || '–')) +
         field('Description', j.description ? `<div class="jb-desc">${esc(j.description)}</div>` : '<span class="jb-empty">Aucune description.</span>') +
-        field('Créée', `${esc(fmtDateTime(j.createdAt))}${j.createdByName ? ` par ${esc(j.createdByName)}` : ''}`) +
+        field('Créé', `${esc(fmtDateTime(j.createdAt))}${j.createdByName ? ` par ${esc(j.createdByName)}` : ''}`) +
         field('Dernière modification', esc(fmtDateTime(j.updatedAt))) +
         field('Origine', originHtml(j)) +
         field('Travaux d’entretien liés', links.length ? `<ul style="margin:0;padding-left:1.1rem">${links.map((l, i) => `<li><button type="button" class="jb-link" data-peek-work="${i}" title="Voir ce travail">${esc(fmtDate(l.date))}${l.builderName ? ` - ${esc(l.builderName)}` : ''}</button>${l.status ? ` (${esc(Jobs.status(l.status).label)})` : ''}${l.text ? `<span class="jb-sub jb-desc">${esc(l.text)}</span>` : ''}</li>`).join('')}</ul>` : '<span class="jb-empty">Aucun travail lié pour l’instant.</span>') +
-        (j.status === 'done' || j.status === 'cancelled' ? field(j.status === 'done' ? 'Fermée' : 'Annulée', closingHtml(j, links)) : '');
+        (j.status === 'done' || j.status === 'cancelled' ? field(j.status === 'done' ? 'Fermé' : 'Annulé', closingHtml(j, links)) : '');
       const buttons = [];
       if (admin) {
         if (j.status === 'todo') buttons.push(['doing', '▶️ Mettre en cours', 'btn-secondary']);
-        if (j.status === 'todo' || j.status === 'doing') { buttons.push(['done', '✅ Marquer comme faite', 'btn-primary']); buttons.push(['cancelled', '🚫 Annuler la tâche', 'btn-secondary']); }
+        if (j.status === 'todo' || j.status === 'doing') { buttons.push(['done', '✅ Marquer comme fait', 'btn-primary']); buttons.push(['cancelled', '🚫 Annuler le job', 'btn-secondary']); }
         if (j.status === 'done' || j.status === 'cancelled') buttons.push(['todo', '↩️ Rouvrir', 'btn-secondary']);
       }
       $('jb-detail-footer').innerHTML = buttons.map(b => `<button type="button" class="btn ${b[2]}" data-set="${b[0]}">${b[1]}</button>`).join('') + '<button type="button" class="btn btn-secondary" id="jb-detail-ok">Fermer</button>';
@@ -221,7 +227,7 @@ const JobsView = (function () {
       if (saving) return;
       let closing = '';
       if (newStatus === 'done' || newStatus === 'cancelled') {
-        const ask = newStatus === 'done' ? 'Marquer cette tâche comme faite ? Vous pouvez ajouter une description de fermeture (facultatif).' : 'Annuler cette tâche (elle n’est plus nécessaire) ? Vous pouvez dire pourquoi (facultatif).';
+        const ask = newStatus === 'done' ? 'Marquer ce job comme fait ? Vous pouvez ajouter une description de fermeture (facultatif).' : 'Annuler ce job (il n’est plus nécessaire) ? Vous pouvez dire pourquoi (facultatif).';
         closing = window.prompt(ask, '');
         if (closing === null) return;   // the person changed their mind
       }
@@ -232,10 +238,10 @@ const JobsView = (function () {
         await db.collection('jobs').doc(job.id).update(patch);
         closeDetail();
         await load();
-        showMessage(newStatus === 'done' ? 'Tâche marquée comme faite.' : newStatus === 'cancelled' ? 'Tâche annulée.' : 'Tâche mise à jour.', 'success', 3000);
+        showMessage(newStatus === 'done' ? 'Job marqué comme fait.' : newStatus === 'cancelled' ? 'Job annulé.' : 'Job mis à jour.', 'success', 3000);
       } catch (e) {
-        console.error('Tâches:', e);
-        showMessage('La tâche n’a pas pu être modifiée.', 'error', 5000);
+        console.error('Jobs:', e);
+        showMessage('Le job n’a pas pu être modifié.', 'error', 5000);
       } finally { saving = false; }
     }
     async function cyclePriority(id) {
@@ -246,7 +252,7 @@ const JobsView = (function () {
         await db.collection('jobs').doc(id).update({ priority: Jobs.nextPriority(j.priority), updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: opts.uid });
         await load();
       } catch (e) {
-        console.error('Tâches:', e);
+        console.error('Jobs:', e);
         showMessage('La priorité n’a pas pu être changée.', 'error', 5000);
       } finally { saving = false; }
     }
@@ -275,10 +281,10 @@ const JobsView = (function () {
         await db.collection('jobs').add(Jobs.newJob(input, Object.assign({ network: Network.current() }, ctx())));
         closeCreate();
         await load();
-        showMessage('Tâche créée.', 'success', 3000);
+        showMessage('Job créé.', 'success', 3000);
       } catch (e) {
-        console.error('Tâches:', e);
-        err.textContent = 'La tâche n’a pas pu être enregistrée. Réessayez dans un moment.';
+        console.error('Jobs:', e);
+        err.textContent = 'Le job n’a pas pu être enregistré. Réessayez dans un moment.';
         err.style.display = '';
       } finally { saving = false; $('jb-create-save').disabled = false; }
     }
@@ -314,12 +320,14 @@ const JobsView = (function () {
     $('jb-tbody').addEventListener('click', e => {
       const open = e.target.closest('[data-open]');
       if (open) return openDetail(open.dataset.open);
+      const origin = e.target.closest('[data-origin]');
+      if (origin) { const job = jobs.find(x => x.id === origin.dataset.origin); if (job) ReportPeek.origin(job); return; }
       const prio = e.target.closest('[data-prio]');
       if (prio && admin) cyclePriority(prio.dataset.prio);
     });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeDetail(); closeCreate(); } });
 
-    return Promise.all([SectorService.load().catch(e => { console.error('Tâches: secteurs', e); return []; }), load()]).then(([s]) => { sectors = s; fillSectors(); });
+    return Promise.all([SectorService.load().catch(e => { console.error('Jobs: secteurs', e); return []; }), load()]).then(([s]) => { sectors = s; fillSectors(); });
   }
 
   return { mount };

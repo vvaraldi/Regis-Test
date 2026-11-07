@@ -1,9 +1,9 @@
 /**
- * job-from-report.js - "Créer une tâche" in the details of an inspection or of a signalisation
+ * job-from-report.js - "Créer un job" in the details of an inspection or of a signalisation
  * =============================================================================================
- * Adds a "Tâches" block at the end of a report's details window: the tasks already created from this report (so nobody makes the same task
+ * Adds a "Jobs" block at the end of a report's details window: the tasks already created from this report (so nobody makes the same task
  * twice) and a button that opens a small form, pre-filled from the report (the place, the problems found, the notes). The task is saved in
- * the `jobs` collection with `sourceApp` ('inspections' | 'signalisations') and `sourceId` (the report), like a task made in the Tâches app.
+ * the `jobs` collection with `sourceApp` ('inspections' | 'signalisations') and `sourceId` (the report), like a job made in the Jobs app.
  *
  *   if (JobFromReport.enabled(userData, 'inspections')) JobFromReport.mount(modalBodyEl, userData, {
  *     sourceApp: 'inspections', sourceId: 'abc',
@@ -43,7 +43,7 @@ const JobFromReport = (function () {
 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   let sectorsPromise = null;
-  const loadSectors = () => (sectorsPromise = sectorsPromise || SectorService.load().catch(e => { console.error('Tâches: secteurs', e); return []; }));
+  const loadSectors = () => (sectorsPromise = sectorsPromise || SectorService.load().catch(e => { console.error('Jobs: secteurs', e); return []; }));
 
   /** Is the button offered to this person for this kind of report? (the config switch, then the permission) */
   function enabled(userData, sourceApp) {
@@ -71,7 +71,7 @@ const JobFromReport = (function () {
     m.setAttribute('aria-labelledby', 'jfr-title-h');
     m.innerHTML = `
       <div class="jfr-modal__content">
-        <div class="jfr-modal__header"><h3 class="jfr-modal__title" id="jfr-title-h">Créer une tâche</h3><button type="button" class="jfr-modal__close" id="jfr-close" aria-label="Fermer">×</button></div>
+        <div class="jfr-modal__header"><h3 class="jfr-modal__title" id="jfr-title-h">Créer un job</h3><button type="button" class="jfr-modal__close" id="jfr-close" aria-label="Fermer">×</button></div>
         <form class="jfr-modal__body" id="jfr-form" novalidate>
           <div id="jfr-chips-box" class="form-group" hidden><label class="form-label">Problèmes de ce rapport (cliquer pour reprendre dans le titre)</label><div class="jfr-chips" id="jfr-chips"></div></div>
           <div class="form-group"><label class="form-label form-label--required" for="jfr-title">Titre</label><input type="text" class="form-input" id="jfr-title" maxlength="200"></div>
@@ -81,7 +81,7 @@ const JobFromReport = (function () {
           <div class="form-group"><label class="form-label" for="jfr-priority">Priorité</label><select class="form-select" id="jfr-priority">${Jobs.PRIORITIES.map(p => `<option value="${p.id}"${p.id === Jobs.DEFAULT_PRIORITY ? ' selected' : ''}>${p.icon} ${p.label}</option>`).join('')}</select></div>
           <p id="jfr-error" role="alert" style="color:var(--color-danger);font-size:0.85rem;display:none"></p>
         </form>
-        <div class="jfr-modal__footer"><button type="button" class="btn btn-secondary" id="jfr-cancel">Annuler</button><button type="button" class="btn btn-primary" id="jfr-save">Créer la tâche</button></div>
+        <div class="jfr-modal__footer"><button type="button" class="btn btn-secondary" id="jfr-cancel">Annuler</button><button type="button" class="btn btn-primary" id="jfr-save">Créer le job</button></div>
       </div>`;
     document.body.appendChild(m);
     m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
@@ -95,14 +95,14 @@ const JobFromReport = (function () {
       const snap = await db.collection('jobs').where('sourceId', '==', sourceId).get();
       return snap.docs.map(d => Object.assign({ id: d.id }, d.data())).filter(j => j.sourceApp === sourceApp && j.sourceId === sourceId && Network.matches(j));
     } catch (e) {
-      console.warn('Tâches: could not read the tasks of this report', e);
+      console.warn('Jobs: could not read the jobs of this report', e);
       return null;
     }
   }
 
   const listHtml = jobs => !jobs ? '' : (jobs.length
     ? `<ul class="jfr-list">${jobs.map(j => { const s = Jobs.status(j.status); return `<li>${Jobs.priority(j.priority).icon} <strong>${esc(j.title)}</strong><span class="jfr-pill" style="background:${s.color}">${esc(s.label)}</span></li>`; }).join('')}</ul>`
-    : '<p class="jfr-empty">Aucune tâche créée à partir de ce rapport.</p>');
+    : '<p class="jfr-empty">Aucun job créé à partir de ce rapport.</p>');
 
   async function openForm(ctx, onCreated) {
     ensureModal();
@@ -138,11 +138,11 @@ const JobFromReport = (function () {
       try {
         await db.collection('jobs').add(Jobs.newJob(input, { network: Network.current(), uid: ctx.uid, name: ctx.name, now: firebase.firestore.FieldValue.serverTimestamp() }));
         $('jfr-modal').classList.remove('show');
-        if (typeof showMessage === 'function') showMessage('Tâche créée.', 'success', 3000);
+        if (typeof showMessage === 'function') showMessage('Job créé.', 'success', 3000);
         onCreated();
       } catch (e) {
-        console.error('Tâches:', e);
-        err.textContent = 'La tâche n’a pas pu être enregistrée. Réessayez dans un moment.';
+        console.error('Jobs:', e);
+        err.textContent = 'Le job n’a pas pu être enregistré. Réessayez dans un moment.';
         err.style.display = '';
         $('jfr-save').disabled = false;
       }
@@ -151,14 +151,14 @@ const JobFromReport = (function () {
     $('jfr-title').focus();
   }
 
-  /** Adds the "Tâches" block at the end of `container` (the details window's body). Does nothing when the switch / permission say no. */
+  /** Adds the "Jobs" block at the end of `container` (the details window's body). Does nothing when the switch / permission say no. */
   async function mount(container, userData, ctx) {
     if (!container || !enabled(userData, ctx.sourceApp)) return;
     const uid = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.uid : null;
     const full = Object.assign({ uid, name: userData.name }, ctx);
     const section = document.createElement('div');
     section.className = 'detail-section jfr-section';
-    section.innerHTML = '<h4>🛠️ Tâches</h4><div class="jfr-list-box"></div><button type="button" class="btn btn-secondary btn-sm jfr-new">➕ Créer une tâche</button>';
+    section.innerHTML = '<h4>🛠️ Jobs</h4><div class="jfr-list-box"></div><button type="button" class="btn btn-secondary btn-sm jfr-new">➕ Créer un job</button>';
     container.appendChild(section);
     const box = section.querySelector('.jfr-list-box');
     const refresh = async () => { box.innerHTML = listHtml(await linked(ctx.sourceApp, ctx.sourceId)); };
@@ -167,7 +167,7 @@ const JobFromReport = (function () {
   }
 
   /**
-   * The tick box "Créer une tâche" of the inspection forms (trail and shelter), with a description box beside it that is required once it is ticked.
+   * The tick box "Créer un job" of the inspection forms (trail and shelter), with a description box beside it that is required once it is ticked.
    *   const tick = JobFromReport.mountTick(document.getElementById('job-tick-box'), userData);   // null when the switch / the permission say no
    *   if (tick && tick.error()) { ...show it... }                                                // the description is missing
    *   if (tick && tick.wanted()) batch.set(db.collection('jobs').doc(), tick.build({ place, sector, sectorName, trailId, name, date, sourceId: inspectionRef.id }));
@@ -179,16 +179,16 @@ const JobFromReport = (function () {
     ensureStyle();
     box.innerHTML = `
       <div class="form-section">
-        <div class="form-section-header"><h2 class="form-section-title">🛠️ Tâche à faire</h2></div>
+        <div class="form-section-header"><h2 class="form-section-title">🛠️ Job à faire</h2></div>
         <div class="form-section-body">
           <div class="jfr-tick">
-            <label class="jfr-tick__label" for="create-job"><input type="checkbox" id="create-job" data-not-issue> Créer une tâche</label>
+            <label class="jfr-tick__label" for="create-job"><input type="checkbox" id="create-job" data-not-issue> Créer un job</label>
             <div class="jfr-tick__text form-group" id="job-description-group" hidden>
-              <label class="form-label form-label--required" for="job-description">Description de la tâche</label>
+              <label class="form-label form-label--required" for="job-description">Description du job</label>
               <textarea class="form-textarea" id="job-description" rows="3" placeholder="Que faut-il faire, et où exactement ?"></textarea>
             </div>
           </div>
-          <p class="form-hint" style="margin-top:0.4rem;">Crée une tâche (application Tâches) liée à cette inspection, à l’endroit inspecté.</p>
+          <p class="form-hint" style="margin-top:0.4rem;">Crée un job (application Jobs) lié à cette inspection, à l’endroit inspecté.</p>
         </div>
       </div>`;
     const cb = box.querySelector('#create-job'), ta = box.querySelector('#job-description'), group = box.querySelector('#job-description-group');
@@ -197,7 +197,7 @@ const JobFromReport = (function () {
     if (cb.form) cb.form.addEventListener('reset', () => setTimeout(sync, 0));
     return {
       wanted: () => cb.checked,
-      error: () => (cb.checked && !ta.value.trim() ? 'Décrivez la tâche à créer, ou décochez « Créer une tâche ».' : ''),
+      error: () => (cb.checked && !ta.value.trim() ? 'Décrivez le job à créer, ou décochez « Créer un job ».' : ''),
       build(info) {
         const title = [info.place, info.name, Jobs.shortDate(info.date)].filter(Boolean).join(' - ');
         const uid = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.uid : null;

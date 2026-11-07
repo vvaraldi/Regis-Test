@@ -766,11 +766,11 @@
       modalTitle.textContent = `Inspection - ${insp.location || 'Lieu inconnu'}`;
       modalBody.innerHTML = html;
       WeatherContext.attach(modalBody, insp.date);   // the weather nearest in time to this inspection (if the admin switch is on)
-      // "Créer une tâche" from a problem found (and the tasks already made from this inspection), if the config switch and the permission allow it
+      // "Créer un job" from a problem found (and the jobs already made from this inspection), if the config switch and the permission allow it
       const reportedTrail = insp.type === 'trail' ? trails.get(insp.locationId) : null;
       JobFromReport.mount(modalBody, currentUserData, { sourceApp: 'inspections', sourceId: insp.id,
         place: insp.type === 'trail' ? { sector: reportedTrail && reportedTrail.sector, trail: reportedTrail ? reportedTrail.name : insp.location, trailId: insp.locationId } : { trail: insp.location },
-        issues: insp.issues || [], notes: insp.notes || '' }).catch(e => console.warn('Tâches:', e));
+        issues: insp.issues || [], notes: insp.notes || '' }).catch(e => console.warn('Jobs:', e));
       detailModal.classList.add('show');
       document.body.style.overflow = 'hidden';
     }

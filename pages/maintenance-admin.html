@@ -374,7 +374,7 @@
     function openPrintSheet() { window.open(printSheetUrl(), '_blank'); }
 
     const REPORT_HEAD = ['Date', 'Responsable', 'Support', 'Bénévoles', 'Travaux', 'Statut'];
-    const WORK_HEAD = ['Date', 'Responsable', 'Secteur', 'Sentier', 'Travail', 'Photos', 'Tâche liée'];
+    const WORK_HEAD = ['Date', 'Responsable', 'Secteur', 'Sentier', 'Travail', 'Photos', 'Job lié'];
     const setHead = cols => { document.querySelector('#logs-table thead').innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>'; };
 
     // "Par travail": one line per travail of the reports that pass the filters; the sector and trail filters judge the travail's OWN place
@@ -394,7 +394,7 @@
       tbody.innerHTML = rows.map(({ log, entry, i }) => {
         const date = logDate(log);
         const text = String(entry.jobText || '');
-        const task = entry.jobId ? `${escapeHtml(entry.jobTitle || 'Tâche')}${entry.jobStatus ? ` (${entry.jobStatus === 'done' ? 'Fait' : 'En cours'})` : ''}` : '-';
+        const task = entry.jobId ? `${escapeHtml(entry.jobTitle || 'Job')}${entry.jobStatus ? ` (${entry.jobStatus === 'done' ? 'Fait' : 'En cours'})` : ''}` : '-';
         return `
           <tr data-id="${log.id}" data-entry="${i}">
             <td>${date ? date.toLocaleDateString('fr-CA') : '-'}</td>

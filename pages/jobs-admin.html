@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Tâches : gestion par les administrateurs">
+  <meta name="description" content="Jobs : gestion par les administrateurs">
   <meta name="theme-color" content="#7c3aed">
-  <title>Tâches - Admin</title>
+  <title>Jobs - Admin</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
   <link rel="stylesheet" href="../css/main.css">
 </head>
@@ -18,9 +18,9 @@
   <main id="main-content" class="main" style="display: none;">
     <section class="content-section">
       <div class="section-card">
-        <div class="section-card__header"><h2 class="section-card__title">⚙️ Gestion des tâches</h2></div>
+        <div class="section-card__header"><h2 class="section-card__title">⚙️ Jobs - gestion</h2></div>
         <div class="section-card__body">
-          <p class="form-hint" style="margin-bottom:0.75rem;">Cliquez sur l’icône de priorité pour la changer (haute, moyenne, basse). Ouvrez une tâche pour la marquer comme faite, l’annuler ou la rouvrir.</p>
+          <p class="form-hint" style="margin-bottom:0.75rem;">Cliquez sur l’icône de priorité pour la changer (haute, moyenne, basse). Ouvrez un job pour le marquer comme fait, l’annuler ou le rouvrir.</p>
           <div id="jobs-root"></div>
         </div>
       </div>
@@ -44,13 +44,13 @@
   <script src="../js/services/report-peek.js"></script>
   <script src="../js/admin/jobs-view.js"></script>
   <script>
-    // Tâches > Admin: the same list with the administrator's actions (priority, close, cancel, reopen).
+    // Jobs > Admin: the same list with the administrator's actions (priority, close, cancel, reopen).
     function initJobsAdmin() {
       checkAuthStatus({
         requireAuth: true,
         requiredRoles: ['admin', 'system_admin'],
         onAuthenticated: (data) => JobsView.mount(document.getElementById('jobs-root'), { admin: true, uid: currentUser.uid, name: data.name })
-          .catch(e => { console.error('Tâches:', e); showMessage('Les tâches n\'ont pas pu être lues.', 'error', 5000); }),
+          .catch(e => { console.error('Jobs:', e); showMessage('Les jobs n\'ont pas pu être lus.', 'error', 5000); }),
         onAccessDenied: () => { window.location.href = 'jobs.html'; }
       });
     }
