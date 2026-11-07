@@ -202,6 +202,13 @@ const APP_CONFIG = {
   },
   defaultNetworks: ['ski'],
 
+  // ===== TÂCHES (JOBS) =====
+  // "Créer une tâche" in the details of a report (js/services/job-from-report.js). One switch per kind of report: false hides the button AND the
+  // list of the tasks created from it, for everybody. Even when true, only an administrator or a user with the Tâches permission sees it.
+  jobs: {
+    createFrom: { inspections: true, signalisations: true }
+  },
+
   // The earliest season the admin Statistiques tab's season navigator can go back to, for every
   // activity (winter 2025-2026: when the app went live - nothing meaningful exists before it).
   // A season (see pages/inspection-admin.html and each network's season above) is

@@ -246,6 +246,9 @@
   <script src="../js/core/auth.js"></script>
   <script src="../js/services/photo-service.js"></script>
   <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/sector-service.js"></script>
+  <script src="../js/services/jobs.js"></script>
+  <script src="../js/services/job-from-report.js"></script>
   <script src="../js/services/status-service.js"></script>
   <script src="../js/services/weather-service.js"></script>
   <script src="../js/services/weather-context.js"></script>
@@ -763,6 +766,11 @@
       modalTitle.textContent = `Inspection - ${insp.location || 'Lieu inconnu'}`;
       modalBody.innerHTML = html;
       WeatherContext.attach(modalBody, insp.date);   // the weather nearest in time to this inspection (if the admin switch is on)
+      // "Créer une tâche" from a problem found (and the tasks already made from this inspection), if the config switch and the permission allow it
+      const reportedTrail = insp.type === 'trail' ? trails.get(insp.locationId) : null;
+      JobFromReport.mount(modalBody, currentUserData, { sourceApp: 'inspections', sourceId: insp.id,
+        place: insp.type === 'trail' ? { sector: reportedTrail && reportedTrail.sector, trail: reportedTrail ? reportedTrail.name : insp.location, trailId: insp.locationId } : { trail: insp.location },
+        issues: insp.issues || [], notes: insp.notes || '' }).catch(e => console.warn('Tâches:', e));
       detailModal.classList.add('show');
       document.body.style.overflow = 'hidden';
     }

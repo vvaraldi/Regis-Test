@@ -192,6 +192,8 @@
   <script src="../js/services/photo-map-modal.js"></script>
   <script src="../js/services/sector-service.js"></script>
   <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/jobs.js"></script>
+  <script src="../js/services/job-from-report.js"></script>
   <script src="../js/services/weather-service.js"></script>
   <script src="../js/services/weather-context.js"></script>
 
@@ -479,6 +481,9 @@
       `;
       
       WeatherContext.attach(document.getElementById('modal-body'), date);   // the weather nearest in time to the report (if the admin switch is on)
+      // "Créer une tâche" (and the tasks already made from this report), if the config switch and the permission allow it
+      JobFromReport.mount(document.getElementById('modal-body'), currentUserData, { sourceApp: 'signalisations', sourceId: r.id,
+        place: { sector: r.sector, trail: r.trail, trailId: r.trailId }, issues: [], notes: r.comments || '' }).catch(e => console.warn('Tâches:', e));
 
       document.getElementById('detail-modal').classList.add('show');
       document.body.style.overflow = 'hidden';
