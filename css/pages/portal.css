@@ -151,6 +151,10 @@
   background: linear-gradient(135deg, var(--color-regis) 0%, var(--color-regis-dark) 100%);
 }
 
+.app-card--jobs .app-card__header {
+  background: linear-gradient(135deg, var(--color-jobs) 0%, var(--color-jobs-dark) 100%);
+}
+
 .app-card__icon {
   display: flex;
   align-items: center;

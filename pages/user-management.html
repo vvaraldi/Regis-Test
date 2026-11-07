@@ -67,6 +67,11 @@
       border-color: #0f766e;
     }
 
+    .access-badge--clickable.is-active.access-badge--jobs {
+      background: rgba(124, 58, 237, 0.15);
+      border-color: #7c3aed;
+    }
+
     .access-badge--clickable.is-active.access-badge--meteo {
       background: rgba(202, 138, 4, 0.15);
       border-color: #ca8a04;
@@ -441,6 +446,7 @@
               <option value="allowMaintenance">🪏 Entretien</option>
               <option value="allowMeteo">🌦️ Météo</option>
                     <option value="allowRegis">🏔️ Régis gère</option>
+                    <option value="allowJobs">🛠️ Tâches</option>
             </select>
             <div class="page-size-select">
               <label for="users-page-size">Afficher:</label>
@@ -504,7 +510,7 @@
           <strong>role</strong> (<code>inspector</code> par défaut, ou <code>admin</code>),
           <strong>phone</strong>,
           <strong>allowInspection</strong> (vrai par défaut),
-          <strong>allowInfraction</strong>, <strong>allowSignalisation</strong>, <strong>allowMaintenance</strong>, <strong>allowMeteo</strong>, <strong>allowRegis</strong> (faux par défaut ; valeurs <code>true</code> ou <code>false</code>),
+          <strong>allowInfraction</strong>, <strong>allowSignalisation</strong>, <strong>allowMaintenance</strong>, <strong>allowMeteo</strong>, <strong>allowRegis</strong>, <strong>allowJobs</strong> (faux par défaut ; valeurs <code>true</code> ou <code>false</code>),
           <strong>networks</strong> : activités séparées par « | », par exemple <code>ski|bike</code> (sans cette colonne, l'utilisateur reçoit l'activité par défaut : ski).
           Les utilisateurs importés sont créés actifs.
         </p>
@@ -1227,6 +1233,10 @@
               <input type="checkbox" class="form-check-input" id="access-regis">
               <label class="form-check-label" for="access-regis">🏔️ Régis gère</label>
             </div>
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="access-jobs">
+              <label class="form-check-label" for="access-jobs">🛠️ Tâches</label>
+            </div>
           </div>
 
           <div class="form-group" id="password-group" style="display: none;">
@@ -1669,6 +1679,7 @@
               ${appBadge(user, manageable, 'allowMaintenance', 'maintenance', '🪏', 'Entretien')}
               ${appBadge(user, manageable, 'allowMeteo', 'meteo', '🌦️', 'Météo')}
           ${appBadge(user, manageable, 'allowRegis', 'regis', '🏔️', 'Régis gère')}
+              ${appBadge(user, manageable, 'allowJobs', 'jobs', '🛠️', 'Tâches')}
             </div>
           </td>
           <td data-label="Statut">
@@ -1795,7 +1806,7 @@
         filterAndRenderUsers(true);
         
         const user = users.find(u => u.id === userId);
-        const fieldNames = { allowInspection: 'Inspection', allowInfraction: 'Infraction', allowSignalisation: 'Signalisation', allowMaintenance: 'Entretien', allowMeteo: 'Météo', allowRegis: 'Régis gère' };
+        const fieldNames = { allowInspection: 'Inspection', allowInfraction: 'Infraction', allowSignalisation: 'Signalisation', allowMaintenance: 'Entretien', allowMeteo: 'Météo', allowRegis: 'Régis gère', allowJobs: 'Tâches' };
         showMessage(`${fieldNames[field]} ${newValue ? 'activé' : 'désactivé'} pour ${user?.name || 'utilisateur'}.`, 'success');
       } catch (error) {
         console.error('Error toggling access:', error);
@@ -1885,6 +1896,7 @@
       document.getElementById('access-maintenance').checked = user.allowMaintenance === true;
       document.getElementById('access-meteo').checked = user.allowMeteo === true;
       document.getElementById('access-regis').checked = user.allowRegis === true;
+      document.getElementById('access-jobs').checked = user.allowJobs === true;
       
       document.getElementById('password-group').style.display = 'none';
       document.getElementById('user-password').required = false;
@@ -1941,7 +1953,8 @@
         allowSignalisation: document.getElementById('access-signalisation').checked,
         allowMaintenance: document.getElementById('access-maintenance').checked,
         allowMeteo: document.getElementById('access-meteo').checked,
-        allowRegis: document.getElementById('access-regis').checked
+        allowRegis: document.getElementById('access-regis').checked,
+        allowJobs: document.getElementById('access-jobs').checked
       };
 
       if (userData.networks.length === 0) {
@@ -2032,7 +2045,8 @@
           Signalisation: u.allowSignalisation === true ? 'Oui' : 'Non',
           Entretien: u.allowMaintenance === true ? 'Oui' : 'Non',
           Météo: u.allowMeteo === true ? 'Oui' : 'Non',
-          'Régis gère': u.allowRegis === true ? 'Oui' : 'Non'
+          'Régis gère': u.allowRegis === true ? 'Oui' : 'Non',
+          Tâches: u.allowJobs === true ? 'Oui' : 'Non'
         };
       });
 
@@ -2359,7 +2373,8 @@
         user.allowSignalisation = user.allowsignalisation === 'true' || user.allowsignalisation === '1';
         user.allowMaintenance = user.allowmaintenance === 'true' || user.allowmaintenance === '1';
         user.allowMeteo = user.allowmeteo === 'true' || user.allowmeteo === '1';
-      user.allowRegis = user.allowregis === 'true' || user.allowregis === '1';
+        user.allowRegis = user.allowregis === 'true' || user.allowregis === '1';
+        user.allowJobs = user.allowjobs === 'true' || user.allowjobs === '1';
 
         // Activities: "ski|bike". A system admin gets all of them; anyone else only gets
         // activities the importing admin holds. Empty column = default activity.
@@ -2416,6 +2431,7 @@
             <span class="access-badge--clickable access-badge--maintenance ${user.allowMaintenance ? 'is-active' : ''}" style="width:24px;height:24px;font-size:0.875rem;">🪏</span>
             <span class="access-badge--clickable access-badge--meteo ${user.allowMeteo ? 'is-active' : ''}" style="width:24px;height:24px;font-size:0.875rem;">🌦️</span>
             <span class="access-badge--clickable access-badge--regis ${user.allowRegis ? 'is-active' : ''}" style="width:24px;height:24px;font-size:0.875rem;">🏔️</span>
+            <span class="access-badge--clickable access-badge--jobs ${user.allowJobs ? 'is-active' : ''}" style="width:24px;height:24px;font-size:0.875rem;">🛠️</span>
           </td>
         </tr>
       `}).join('');
@@ -2497,7 +2513,8 @@
             allowSignalisation: user.allowSignalisation,
             allowMaintenance: user.allowMaintenance,
             allowMeteo: user.allowMeteo,
-          allowRegis: user.allowRegis === true,
+            allowRegis: user.allowRegis === true,
+            allowJobs: user.allowJobs === true,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdBy: currentUser.uid,
             importedVia: 'bulk_import'
@@ -2566,10 +2583,10 @@
     }
 
     // One column per field of a user profile that an import can set (status is always "active")
-    const CSV_TEMPLATE = `name,email,password,role,phone,allowInspection,allowInfraction,allowSignalisation,allowMaintenance,allowMeteo,allowRegis,networks
-Jean Dupont,jean.dupont@example.com,MotDePasse123,inspector,514-555-1234,true,false,false,false,false,false,ski
-Sophie Gagnon,sophie.gagnon@example.com,MotDePasse789,inspector,,true,false,false,true,false,false,bike
-Marie Tremblay,marie.tremblay@example.com,MotDePasse456,admin,,true,true,true,false,true,true,ski|bike`;
+    const CSV_TEMPLATE = `name,email,password,role,phone,allowInspection,allowInfraction,allowSignalisation,allowMaintenance,allowMeteo,allowRegis,allowJobs,networks
+Jean Dupont,jean.dupont@example.com,MotDePasse123,inspector,514-555-1234,true,false,false,false,false,false,false,ski
+Sophie Gagnon,sophie.gagnon@example.com,MotDePasse789,inspector,,true,false,false,true,false,false,false,bike
+Marie Tremblay,marie.tremblay@example.com,MotDePasse456,admin,,true,true,true,false,true,true,true,ski|bike`;
 
     function downloadCsvTemplate() {
       downloadFile('\uFEFF' + CSV_TEMPLATE, 'modele_import_utilisateurs.csv', 'text/csv;charset=utf-8');

@@ -333,6 +333,13 @@ const APP_CONFIG = {
         { id: 'regis-log', label: 'Gestion', icon: '📋', href: 'pages/regis-log.html' }   // the status log, read only
       ]
     },
+    jobs: {
+      title: 'Tâches',
+      items: [
+        { id: 'jobs', label: 'Tâches', icon: '🛠️', href: 'pages/jobs.html' },
+        { id: 'jobs-admin', label: 'Admin', icon: '⚙️', href: 'pages/jobs-admin.html', admin: true }
+      ]
+    },
     support: {
       title: 'Support',
       items: []

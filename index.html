@@ -80,6 +80,17 @@
         actionText: 'Accéder à l\'application'
       },
       {
+        id: 'jobs',
+        title: 'Tâches',
+        icon: '🛠️',
+        description: 'Les travaux à faire sur les sentiers : créer une tâche, suivre son état et sa priorité.',
+        url: 'pages/jobs.html',
+        permission: 'allowJobs',
+        permissionDefault: false,
+        adminsAlways: true,   // every administrator manages the tasks, whatever their flags
+        actionText: 'Accéder à l\'application'
+      },
+      {
         id: 'inspection',
         title: 'Inspections',
         icon: '🔍',
@@ -207,6 +218,8 @@
             hasAccess = userData[app.permission] === true;
           }
         }
+
+        if (app.adminsAlways && isAdmin) hasAccess = true;
 
         // Some apps only apply to one network (e.g. Entretien is bike-only)
         if (app.network && Network.current() !== app.network) hasAccess = false;

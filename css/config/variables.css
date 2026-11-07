@@ -111,6 +111,12 @@
   --color-regis-dark: #115e59;
   --color-regis-rgb: 15, 118, 110;
 
+  /* Tâches (Jobs) */
+  --color-jobs: #7c3aed;
+  --color-jobs-light: #c4b5fd;
+  --color-jobs-dark: #5b21b6;
+  --color-jobs-rgb: 124, 58, 237;
+
   /* ===== TRAIL DIFFICULTY COLORS ===== */
   --color-difficulty-easy: #22c55e;
   --color-difficulty-medium: #3b82f6;

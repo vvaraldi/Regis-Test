@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Tâches : les travaux à faire sur les sentiers">
+  <meta name="theme-color" content="#7c3aed">
+  <title>Tâches</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body data-theme="light" data-module="jobs" data-nav="jobs" data-page="jobs">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <main id="main-content" class="main" style="display: none;">
+    <section class="content-section">
+      <div class="section-card">
+        <div class="section-card__header"><h2 class="section-card__title">🛠️ Tâches</h2></div>
+        <div class="section-card__body"><div id="jobs-root"></div></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer footer--simple"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+
+  <div id="status-messages"></div>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/sector-service.js"></script>
+  <script src="../js/services/jobs.js"></script>
+  <script src="../js/admin/jobs-view.js"></script>
+  <script>
+    // Tâches: the work to be done on the trails. Everybody who has the permission (and every administrator) sees the list, opens the details and
+    // creates a task. Priority, cancelling and closing are the administrators' (Tâches > Admin).
+    function initJobs() {
+      checkAuthStatus({
+        requireAuth: true,
+        requiredPermission: 'allowJobs',
+        permissionDefault: false,
+        adminsAlways: true,
+        onAuthenticated: (data) => JobsView.mount(document.getElementById('jobs-root'), { admin: false, uid: currentUser.uid, name: data.name })
+          .catch(e => { console.error('Tâches:', e); showMessage('Les tâches n\'ont pas pu être lues.', 'error', 5000); })
+      });
+    }
+    onFirebaseReady(initJobs);
+  </script>
+</body>
+</html>
