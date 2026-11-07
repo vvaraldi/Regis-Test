@@ -69,7 +69,16 @@
     .picker-results { position: absolute; z-index: 30; left: 0; right: 0; top: 100%; margin: 2px 0 0; padding: 0.25rem; list-style: none; max-height: 280px; overflow-y: auto; background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-md); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
     .picker-results li { padding: 0.6rem 0.75rem; border-radius: var(--radius-sm); cursor: pointer; }
     .picker-results li[aria-selected="true"], .picker-results li:hover { background: var(--theme-surface-alt); }
-    .picker-results li.picker-results__note { cursor: default; color: var(--theme-text-secondary); font-size: 0.8rem; background: transparent; }  </style>
+    .picker-results li.picker-results__note { cursor: default; color: var(--theme-text-secondary); font-size: 0.8rem; background: transparent; }
+    /* Tâches (jobs): the open tasks of a place at the top, and the link of a travail to a task */
+    .jobs-panel__item { display: flex; gap: 0.75rem; align-items: flex-start; justify-content: space-between; padding: 0.6rem 0; border-bottom: 1px solid var(--theme-border); }
+    .jobs-panel__item:last-child { border-bottom: none; }
+    .jobs-panel__title { font-weight: 600; }
+    .jobs-panel__sub { display: block; font-size: 0.8rem; color: var(--theme-text-secondary); white-space: pre-wrap; }
+    .jobs-panel__pill { display: inline-block; border-radius: 999px; padding: 0 0.5rem; color: #fff; font-weight: 700; font-size: 0.72rem; margin-left: 0.4rem; }
+    .entry-job { background: var(--theme-surface-alt); border-radius: var(--radius-md); padding: 0.6rem 0.75rem; }
+    @media (max-width: 640px) { .jobs-panel__item { flex-direction: column; } }
+  </style>
 </head>
 <body data-theme="light" data-module="maintenance" data-nav="maintenance" data-page="maintenance-report">
   <script src="../js/core/config.js"></script>
@@ -92,6 +101,21 @@
               <option value="new">+ Nouveau rapport</option>
             </select>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Open tasks (Tâches) of a place: touch one to add the matching travail below (hidden when there is none, or when APP_CONFIG.jobs.entretien is off) -->
+    <section class="content-section" id="jobs-panel" hidden>
+      <div class="section-card">
+        <div class="section-card__header"><h2 class="section-card__title">🛠️ Tâches ouvertes</h2></div>
+        <div class="section-card__body">
+          <p class="form-hint" style="margin-bottom:0.75rem;">Choisissez un secteur et un sentier pour voir les tâches ouvertes à cet endroit. « Ajouter ce travail » crée le travail correspondant plus bas, avec la description de la tâche.</p>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label" for="jobs-sector">Secteur</label><select class="form-select" id="jobs-sector"><option value="">-- Tous les secteurs --</option></select></div>
+            <div class="form-group"><label class="form-label" for="jobs-trail">Piste / Sentier</label><select class="form-select" id="jobs-trail"><option value="">-- Tous les sentiers --</option></select></div>
+          </div>
+          <div id="jobs-list"></div>
         </div>
       </div>
     </section>
@@ -169,6 +193,7 @@
   <script src="../js/services/map-service.js"></script>
   <script src="../js/services/photo-map-modal.js"></script>
   <script src="../js/services/sector-service.js"></script>
+  <script src="../js/services/jobs.js"></script>
 
   <script>
     // State
@@ -181,7 +206,8 @@
     let selectedSupport = new Set();      // ids of the chosen support builders (pills pressed)
     let resultIndex = -1;                 // the highlighted line of the volunteer search results
     let supportBuilders = []; // other allowMaintenance users of this network: { id, name, role }
-    let entries = [];       // [{ rowId, el, sectorSelect, trailSelect, jobTextEl, picker }]
+    let entries = [];       // [{ rowId, el, sectorSelect, trailSelect, jobTextEl, picker, job: {id, title} | null, jobSelect, jobState, jobBox }]
+    let openJobs = [];      // the open tasks (À faire, En cours) of this activity (jobs collection), for the panel and the link of a travail
     let entryCounter = 0;
     // Storage URLs the loaded log showed; used to clean up removed photos on modify.
     let loadedFileUrls = [];
@@ -210,8 +236,9 @@
             document.querySelectorAll('.nav__link--admin, .mobile-nav__link--admin').forEach(el => el.style.display = '');
           }
           setDefaultValues();
-          await Promise.all([loadSectors(), loadSupportBuilders(), loadVolunteers()]);
+          await Promise.all([loadSectors(), loadSupportBuilders(), loadVolunteers(), loadOpenJobs()]);
           await loadUserLogs();
+          initJobsPanel();
           resetForm();
         }
       });
@@ -510,6 +537,17 @@
           <label class="form-label">Travaux effectués <span class="form-required">*</span></label>
           <textarea class="form-input entry-job-text" rows="2" placeholder="Description des travaux..."></textarea>
         </div>
+        <div class="form-group entry-job" hidden>
+          <label class="form-label">Tâche liée <span class="form-hint">(optionnel : lie ce travail à une tâche ouverte)</span></label>
+          <select class="form-select entry-job-select"><option value="">-- Aucune tâche --</option></select>
+          <div class="entry-job-state-box" hidden style="margin-top:0.5rem;">
+            <label class="form-label">État de la tâche après ce travail</label>
+            <select class="form-select entry-job-state">
+              <option value="doing">En cours (le travail continue)</option>
+              <option value="done">Fait (la tâche est terminée)</option>
+            </select>
+          </div>
+        </div>
         <div class="form-group">
           <label class="form-label">Photos <span class="form-hint">(optionnel)</span></label>
           <div class="photo-upload-area entry-photo-upload" id="entry-photo-upload-${rowId}">
@@ -530,7 +568,9 @@
       sectorSelect.addEventListener('change', () => {
         const sector = SectorService.find(sectors, sectorSelect.value);
         SectorService.fillTrails(trailSelect, sector, '-- Sélectionner une piste --');
+        placeChanged(entry);
       });
+      trailSelect.addEventListener('change', () => placeChanged(entry));
 
       const picker = new PhotoPicker({
         dropZone: el.querySelector(`#entry-photo-upload-${rowId}`),
@@ -540,10 +580,18 @@
         locationEditing: true // the builder can place / correct a photo on the map (saved with the log)
       });
 
-      const entry = { rowId, el, sectorSelect, trailSelect, jobTextEl, picker };
+      const entry = { rowId, el, sectorSelect, trailSelect, jobTextEl, picker, job: null,
+        jobBox: el.querySelector('.entry-job'), jobSelect: el.querySelector('.entry-job-select'), jobState: el.querySelector('.entry-job-state'), jobStateBox: el.querySelector('.entry-job-state-box') };
       entries.push(entry);
 
       el.querySelector('.entry-remove-btn').addEventListener('click', () => removeEntryRow(rowId));
+      entry.jobSelect.addEventListener('change', () => {
+        const picked = openJobs.find(j => j.id === entry.jobSelect.value);
+        entry.job = picked ? { id: picked.id, title: picked.title } : null;   // choosing "Aucune tâche" unlinks
+        entry.jobState.value = 'doing';
+        refreshEntryJobs(entry);
+        renderJobsPanel();
+      });
 
       if (entryData) {
         SectorService.selectSector(sectorSelect, sectors, entryData.sector);
@@ -552,10 +600,147 @@
         SectorService.selectTrail(trailSelect, entryData.trailName, entryData.trailId);
         jobTextEl.value = entryData.jobText || '';
         if (entryData.photos && entryData.photos.length) picker.setPhotos(entryData.photos);
+        if (entryData.jobId) {   // the task this travail was linked to (kept even if it is not open any more)
+          entry.job = { id: entryData.jobId, title: entryData.jobTitle || '' };
+          entry.jobState.value = entryData.jobStatus === 'done' ? 'done' : 'doing';
+        }
       }
 
+      refreshEntryJobs(entry);
       renumberEntries();
       return entry;
+    }
+
+    // ─── Tâches (jobs): the open tasks of a place, and the link of a travail to a task ─────────────
+
+    const jobsOn = () => typeof Jobs !== 'undefined' && !!(APP_CONFIG.jobs && APP_CONFIG.jobs.entretien === true);
+    const jobPlace = j => [j.trail, j.sectorName].filter(Boolean).join(' - ');
+    const jobText = j => (j.title + (j.description ? '\n' + j.description : '')).trim();
+
+    async function loadOpenJobs() {
+      openJobs = [];
+      if (!jobsOn()) return;
+      try {
+        const snap = await db.collection('jobs').where('network', '==', Network.current()).get();
+        snap.forEach(d => { const j = { id: d.id, ...d.data() }; if (Network.matches(j) && Jobs.isOpen(j)) openJobs.push(j); });
+      } catch (e) {
+        console.warn('Tâches: could not read the open tasks', e);
+      }
+    }
+
+    function initJobsPanel() {
+      const sectorSelect = document.getElementById('jobs-sector'), trailSelect = document.getElementById('jobs-trail');
+      SectorService.fillSectors(sectorSelect, sectors, '-- Tous les secteurs --');
+      sectorSelect.addEventListener('change', () => {
+        SectorService.fillTrails(trailSelect, SectorService.find(sectors, sectorSelect.value), '-- Tous les sentiers --');
+        renderJobsPanel();
+      });
+      trailSelect.addEventListener('change', renderJobsPanel);
+      document.getElementById('jobs-list').addEventListener('click', e => {
+        const btn = e.target.closest('[data-add-job]');
+        if (btn) addTaskAsEntry(openJobs.find(j => j.id === btn.dataset.addJob));
+      });
+      renderJobsPanel();
+    }
+
+    function renderJobsPanel() {
+      const panel = document.getElementById('jobs-panel');
+      if (!panel) return;
+      panel.hidden = !jobsOn() || openJobs.length === 0;
+      if (panel.hidden) return;
+      const trail = SectorService.readTrail(document.getElementById('jobs-trail'));
+      const list = Jobs.sort(Jobs.forPlace(openJobs, document.getElementById('jobs-sector').value, trail.id), 'priority');
+      const taken = new Set(entries.filter(e => e.job).map(e => e.job.id));
+      document.getElementById('jobs-list').innerHTML = list.length ? list.map(j => {
+        const s = Jobs.status(j.status);
+        return `<div class="jobs-panel__item" data-job="${escapeHtml(j.id)}">
+          <div><span class="jobs-panel__title">${Jobs.priority(j.priority).icon} ${escapeHtml(j.title)}</span><span class="jobs-panel__pill" style="background:${s.color}">${escapeHtml(s.label)}</span>
+            <span class="jobs-panel__sub">${escapeHtml(jobPlace(j) || 'Sans lieu précis')}</span>
+            ${j.description ? `<span class="jobs-panel__sub">${escapeHtml(j.description)}</span>` : ''}</div>
+          <button type="button" class="btn btn-secondary btn-sm" data-add-job="${escapeHtml(j.id)}"${taken.has(j.id) ? ' disabled' : ''}>${taken.has(j.id) ? 'Déjà ajoutée' : '➕ Ajouter ce travail'}</button>
+        </div>`;
+      }).join('') : '<p class="form-hint">Aucune tâche ouverte à cet endroit.</p>';
+    }
+
+    // The dropdown of a travail: the open tasks of its place (the linked one is always there), and the state choice once one is linked
+    function refreshEntryJobs(entry) {
+      entry.jobBox.hidden = !jobsOn() || (openJobs.length === 0 && !entry.job);
+      if (entry.jobBox.hidden) return;
+      const trail = SectorService.readTrail(entry.trailSelect);
+      const list = Jobs.sort(Jobs.forPlace(openJobs, entry.sectorSelect.value, trail.id), 'priority');
+      if (entry.job && !list.some(j => j.id === entry.job.id)) list.unshift(openJobs.find(j => j.id === entry.job.id) || { id: entry.job.id, title: entry.job.title || 'Tâche', priority: 'medium' });
+      entry.jobSelect.replaceChildren(new Option('-- Aucune tâche --', ''), ...list.map(j => new Option(`${Jobs.priority(j.priority).icon} ${j.title}${jobPlace(j) ? ' (' + jobPlace(j) + ')' : ''}`, j.id)));
+      entry.jobSelect.value = entry.job ? entry.job.id : '';
+      entry.jobStateBox.hidden = !entry.job;
+    }
+
+    function placeChanged(entry) {
+      refreshEntryJobs(entry);
+      // the panel at the top follows the place the builder is working on
+      const panelSector = document.getElementById('jobs-sector'), panelTrail = document.getElementById('jobs-trail');
+      if (!panelSector) return;
+      panelSector.value = entry.sectorSelect.value;
+      SectorService.fillTrails(panelTrail, SectorService.find(sectors, panelSector.value), '-- Tous les sentiers --');
+      const trail = SectorService.readTrail(entry.trailSelect);
+      if (trail.id) panelTrail.value = trail.id;
+      renderJobsPanel();
+    }
+
+    const isBlankEntry = e => !e.sectorSelect.value && !e.trailSelect.value && !e.jobTextEl.value.trim() && !e.job && !e.picker.hasPhotos();
+
+    // Touching a task in the panel: the travail below is created for it (the first blank one is used), with the task's description
+    function addTaskAsEntry(job) {
+      if (!job || entries.some(e => e.job && e.job.id === job.id)) return;
+      const entry = entries.find(isBlankEntry) || addEntryRow();
+      SectorService.selectSector(entry.sectorSelect, sectors, job.sector);
+      SectorService.fillTrails(entry.trailSelect, SectorService.find(sectors, entry.sectorSelect.value), '-- Sélectionner une piste --');
+      if (job.trail || job.trailId) SectorService.selectTrail(entry.trailSelect, job.trail, job.trailId);
+      entry.jobTextEl.value = jobText(job);
+      entry.job = { id: job.id, title: job.title };
+      entry.jobState.value = 'doing';
+      refreshEntryJobs(entry);
+      renderJobsPanel();
+      entry.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    /**
+     * After the log is saved: each task linked from a travail of this log gets the link (and its new status, see Jobs.linkOutcome); a task that this
+     * log used to work on and does not any more loses the link. A task that cannot be updated (cancelled meanwhile, no connection) is reported,
+     * the log itself is saved anyway and pressing "Modifier" again tries once more.
+     */
+    async function syncJobs(logId, newEntries, previousEntries, logDateValue) {
+      if (!jobsOn()) return [];
+      const byJob = new Map();
+      (previousEntries || []).forEach(e => { if (e.jobId && !byJob.has(e.jobId)) byJob.set(e.jobId, []); });
+      newEntries.forEach(e => {
+        if (!e.jobId) return;
+        if (!byJob.has(e.jobId)) byJob.set(e.jobId, []);
+        byJob.get(e.jobId).push({ logId, date: firebase.firestore.Timestamp.fromDate(logDateValue), builderId: currentUser.uid, builderName: builderName.value,
+          sector: e.sector || null, trail: e.trailName || null, status: e.jobStatus === 'done' ? 'done' : 'doing', text: e.jobText });
+      });
+      const failed = [];
+      for (const [jobId, links] of byJob) {
+        try {
+          const ref = db.collection('jobs').doc(jobId);
+          const snap = await ref.get();
+          if (!snap.exists) { failed.push(jobId); continue; }
+          const job = { id: jobId, ...snap.data() };
+          const patch = Jobs.linkOutcome(job, logId, links, { uid: currentUser.uid, now: firebase.firestore.FieldValue.serverTimestamp(), del: firebase.firestore.FieldValue.delete() });
+          if (!patch) { failed.push(job.title || jobId); continue; }
+          await ref.update(patch);
+        } catch (e) {
+          console.error('Tâches: could not update the task', jobId, e);
+          failed.push(jobId);
+        }
+      }
+      return failed;
+    }
+
+    async function afterJobsSync(failed) {
+      if (failed.length) showToast('Le rapport est enregistré, mais ' + (failed.length > 1 ? failed.length + ' tâches n’ont' : 'une tâche n’a') + ' pas pu être mise' + (failed.length > 1 ? 's' : '') + ' à jour (annulée ou hors connexion). Appuyez sur « Modifier » pour réessayer.', 'warning');
+      await loadOpenJobs();
+      entries.forEach(refreshEntryJobs);
+      renderJobsPanel();
     }
 
     function removeEntryRow(rowId) {
@@ -645,6 +830,7 @@
       modifyBtn.style.display = '';
 
       clearValidation();
+      renderJobsPanel();
     }
 
     function resetForm() {
@@ -664,6 +850,7 @@
 
       saveBtn.style.display = '';
       modifyBtn.style.display = 'none';
+      renderJobsPanel();
     }
 
     function flattenPhotoUrls(entryList) {
@@ -730,13 +917,16 @@
           stamp: baseStamp + i
         });
         const trail = SectorService.readTrail(entry.trailSelect);
-        payload.push({
+        const row = {
           sector: entry.sectorSelect.value || null,
           trailId: trail.id,
           trailName: trail.name,
           jobText: entry.jobTextEl.value.trim(),
           photos: PhotoService.toFirestore(photos)
-        });
+        };
+        // the task this travail works on (Tâches) and the state it leaves it in: only written when a task is linked
+        if (jobsOn() && entry.job) { row.jobId = entry.job.id; row.jobTitle = entry.job.title || ''; row.jobStatus = entry.jobState.value === 'done' ? 'done' : 'doing'; }
+        payload.push(row);
       }
       return payload;
     }
@@ -774,6 +964,7 @@
         const docRef = await db.collection('maintenance_logs').add(logData);
 
         showToast('Rapport enregistré avec succès', 'success');
+        await afterJobsSync(await syncJobs(docRef.id, entriesPayload, [], logDateValue));
         // Stay on this report (switch to "Modifier" mode) instead of resetting to a blank
         // form, so entries can keep being added the same day without reselecting it.
         await loadUserLogs();
@@ -814,7 +1005,9 @@
           modifiedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
+        const previousEntries = ((userLogs.find(l => l.id === currentLogId) || {}).entries) || [];
         await db.collection('maintenance_logs').doc(currentLogId).update(updateData);
+        await afterJobsSync(await syncJobs(currentLogId, entriesPayload, previousEntries, logDateValue));
 
         const keptUrls = flattenPhotoUrls(entriesPayload);
         await cleanupRemovedPhotos(loadedFileUrls, keptUrls, currentLogId);

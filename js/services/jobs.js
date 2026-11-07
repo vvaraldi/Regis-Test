@@ -134,6 +134,55 @@ const Jobs = (function () {
     return c;
   }
 
-  return { STATUSES, PRIORITIES, SOURCES, OPEN, DEFAULT_PRIORITY, status, priority, nextPriority, isOpen, filter, sort, validate, newJob, statusPatch, counts };
+  /**
+   * The open jobs that concern a place, for the Entretien report: `sectorId` and/or `trailId` (both optional). A job of the sector without a
+   * trail concerns every trail of that sector. With no place at all, every open job is returned.
+   */
+  function forPlace(jobs, sectorId, trailId) {
+    return jobs.filter(j => {
+      if (!isOpen(j)) return false;
+      if (sectorId && j.sector !== sectorId) return false;
+      if (trailId && j.trailId && j.trailId !== trailId) return false;
+      return true;
+    });
+  }
+
+  /** The most recent link of a job's `workLinks` (by date; the last one of the list wins a tie), or null. */
+  function lastLink(links) {
+    let best = null, bestTime = -Infinity;
+    (links || []).forEach(l => {
+      const d = toDate(l.date);
+      const t = d && !isNaN(d) ? d.getTime() : -Infinity;
+      if (t >= bestTime) { best = l; bestTime = t; }
+    });
+    return best;
+  }
+
+  /**
+   * What an Entretien report does to a job when it is saved: `links` are the report's travail that work on the job (an empty list = the report
+   * no longer works on it: its old links are removed). The job's status follows the MOST RECENT travail linked to it, whichever report it is in:
+   * "En cours" keeps it under way, "Fait" closes it (with that travail's text as the closing description) - so only the last travail can complete
+   * a task that took several. Returns the fields to write, or null when nothing may change (a cancelled job).
+   *   ctx: { uid, now, del } - `now` the server timestamp, `del` the field deletion value (firebase.firestore.FieldValue.delete())
+   */
+  function linkOutcome(job, logId, links, ctx) {
+    if (!job || job.status === 'cancelled') return null;
+    const workLinks = (job.workLinks || []).filter(l => l.logId !== logId).concat(links || []);
+    const patch = { workLinks, updatedAt: ctx.now, updatedBy: ctx.uid };
+    const last = lastLink(workLinks);
+    if (!last) return patch;                       // no travail left on this job: the status stays as it is
+    if (last.status === 'done') {
+      patch.status = 'done';
+      patch.closedAt = ctx.now;
+      patch.closedBy = ctx.uid;
+      patch.closingDescription = String(last.text || '').trim();
+    } else {
+      patch.status = 'doing';
+      if (job.status === 'done') { patch.closedAt = ctx.del; patch.closedBy = ctx.del; patch.closingDescription = ctx.del; }   // reopened: the closing fields go
+    }
+    return patch;
+  }
+
+  return { STATUSES, PRIORITIES, SOURCES, OPEN, DEFAULT_PRIORITY, status, priority, nextPriority, isOpen, filter, sort, validate, newJob, statusPatch, counts, forPlace, lastLink, linkOutcome };
 })();
 if (typeof window !== 'undefined') window.Jobs = Jobs;

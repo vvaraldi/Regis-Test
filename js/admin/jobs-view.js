@@ -186,7 +186,7 @@ const JobsView = (function () {
         field('Créée', `${esc(fmtDateTime(j.createdAt))}${j.createdByName ? ` par ${esc(j.createdByName)}` : ''}`) +
         field('Dernière modification', esc(fmtDateTime(j.updatedAt))) +
         field('Origine', esc(Jobs.SOURCES[j.sourceApp] || '–')) +
-        field('Travaux d’entretien liés', links.length ? `<ul style="margin:0;padding-left:1.1rem">${links.map(l => `<li>${esc(fmtDate(l.date))}${l.builderName ? ` - ${esc(l.builderName)}` : ''}${l.status ? ` (${esc(Jobs.status(l.status).label)})` : ''}</li>`).join('')}</ul>` : '<span class="jb-empty">Aucun travail lié pour l’instant.</span>') +
+        field('Travaux d’entretien liés', links.length ? `<ul style="margin:0;padding-left:1.1rem">${links.map(l => `<li>${esc(fmtDate(l.date))}${l.builderName ? ` - ${esc(l.builderName)}` : ''}${l.status ? ` (${esc(Jobs.status(l.status).label)})` : ''}${l.text ? `<span class="jb-sub jb-desc">${esc(l.text)}</span>` : ''}</li>`).join('')}</ul>` : '<span class="jb-empty">Aucun travail lié pour l’instant.</span>') +
         (j.status === 'done' || j.status === 'cancelled' ? field(j.status === 'done' ? 'Fermée' : 'Annulée', `${esc(fmtDateTime(j.closedAt))}${j.closingDescription ? `<div class="jb-desc">${esc(j.closingDescription)}</div>` : ''}`) : '');
       const buttons = [];
       if (admin) {
