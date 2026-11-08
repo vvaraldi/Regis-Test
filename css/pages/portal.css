@@ -140,7 +140,12 @@
 }
 .app-card__medal--none { background: rgba(255, 255, 255, 0.28); color: #fff; font-size: 0.8rem; box-shadow: none; }
 .app-card__medal-goal { margin-left: -0.2rem; }
+/* The season is over (out of season: the medal of the season that just ended): dimmed, with "saison terminée" */
+.app-card__medal--ended { opacity: 0.6; filter: grayscale(0.4); box-shadow: none; }
+.app-card__medal-ended { font-size: 0.7rem; font-weight: 600; margin-left: 0.15rem; }
 @media (max-width: 768px) {
+  .app-card__medal-ended { font-size: 0.6rem; }
+  .app-card__medal-ended-word { display: none; }
   /* phone: the medal and the number only (the goal and the details are on the profile page) */
   .app-card__medal { top: 0.35rem; right: 0.35rem; min-height: 1.4rem; padding: 0 0.4rem; font-size: 0.8rem; gap: 0.15rem; }
   .app-card__medal--none { font-size: 0.75rem; }
