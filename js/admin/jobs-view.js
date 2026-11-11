@@ -25,6 +25,11 @@ const JobsView = (function () {
     .jb-prio--admin { cursor: pointer; border-radius: var(--radius-md); }
     .jb-prio--admin:hover { background: var(--theme-surface-alt); }
     .jb-link { background: none; border: none; padding: 0; color: var(--theme-accent); font: inherit; font-weight: 600; text-align: left; cursor: pointer; text-decoration: underline; }
+    /* Phones: the priority dot and the links of the table are at least 44 px high to tap (they were 18 to 24 px) */
+    @media (max-width: 768px) {
+      .jb-prio { min-width: 44px; min-height: 44px; }
+      .jb-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 0.25rem; }
+    }
     .jb-sub { display: block; font-size: 0.8rem; color: var(--theme-text-secondary); }
     .jb-empty { color: var(--theme-text-secondary); font-size: 0.9rem; }
     .jb-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
@@ -81,7 +86,7 @@ const JobsView = (function () {
       </div>
       <div class="data-table__body">
         <table class="table table--hover table--responsive" id="jb-table">
-          <thead><tr><th title="Priorité">!</th><th>Job</th><th>Sentier</th><th>Statut</th><th>Créé</th><th>Modifié</th><th>Origine</th></tr></thead>
+          <thead><tr><th scope="col" title="Priorité">!</th><th scope="col">Job</th><th scope="col">Sentier</th><th scope="col">Statut</th><th scope="col">Créé</th><th scope="col">Modifié</th><th scope="col">Origine</th></tr></thead>
           <tbody id="jb-tbody"></tbody>
         </table>
       </div>

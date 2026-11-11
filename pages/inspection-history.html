@@ -52,8 +52,8 @@
     .badge-danger { background: rgba(239, 68, 68, 0.15); color: #991b1b; }
     .badge-secondary { background: rgba(107, 114, 128, 0.15); color: #374151; }
     .badge-primary { background: rgba(59, 130, 246, 0.15); color: #1e40af; }
-    .type-trail { color: var(--color-success); }
-    .type-shelter { color: var(--color-warning); }
+    .type-trail { color: var(--color-success-dark); }
+    .type-shelter { color: var(--color-warning-dark); }
 
     /* Action buttons */
     .action-btns { display: flex; gap: 0.25rem; }
@@ -203,13 +203,13 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th data-sort="date" class="sortable sort-desc">Date</th>
-              <th data-sort="type" class="sortable">Type</th>
-              <th data-sort="location" class="sortable">Lieu</th>
-              <th data-sort="inspector" class="sortable">Inspecteur</th>
-              <th data-sort="condition" class="sortable">État</th>
-              <th>Photos</th>
-              <th>Actions</th>
+              <th scope="col" data-sort="date" class="sortable sort-desc">Date</th>
+              <th scope="col" data-sort="type" class="sortable">Type</th>
+              <th scope="col" data-sort="location" class="sortable">Lieu</th>
+              <th scope="col" data-sort="inspector" class="sortable">Inspecteur</th>
+              <th scope="col" data-sort="condition" class="sortable">État</th>
+              <th scope="col">Photos</th>
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody id="inspections-table">

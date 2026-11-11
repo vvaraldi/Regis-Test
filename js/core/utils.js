@@ -132,22 +132,27 @@ function showMessage(message, type = 'info', duration = 5000) {
  * Show a toast notification (lightweight, works without container)
  * @param {string} message - Message to display
  * @param {string} type - Type: 'success', 'error', 'warning', 'info'
- * @param {number} duration - Duration in ms
+ * @param {number} duration - Duration in ms (default: 4 s; an error stays 8 s and has a close button)
+ *
+ * Accessibility: the message is also written into two hidden live regions (polite for the normal ones, assertive for
+ * errors) so that a screen reader announces it; the visible toast itself is hidden from it to avoid a double reading.
  */
-function showToast(message, type = 'info', duration = 4000) {
+function showToast(message, type = 'info', duration) {
+  if (typeof duration !== 'number') duration = type === 'error' ? 8000 : 4000;
   // Remove existing toast if any
   const existing = document.querySelector('.utils-toast');
   if (existing) existing.remove();
 
   const colors = {
-    success: '#16a34a',
+    success: '#12843c',   // deeper than #16a34a / #d97706: white text now has 4.5:1 or more
     error: '#dc2626',
-    warning: '#d97706',
+    warning: '#af6005',
     info: '#2563eb'
   };
 
   const toast = document.createElement('div');
   toast.className = 'utils-toast';
+  toast.setAttribute('aria-hidden', 'true');
   toast.innerHTML = message;
   toast.style.cssText = `
     position: fixed;
@@ -177,12 +182,44 @@ function showToast(message, type = 'info', duration = 4000) {
     document.head.appendChild(style);
   }
 
-  document.body.appendChild(toast);
-
-  setTimeout(() => {
+  // An error can be closed by hand (the button is a real button, reachable by the keyboard, so it is not hidden from assistive technology)
+  let hideTimer = null;
+  const hide = () => {
+    clearTimeout(hideTimer);
     toast.style.animation = 'toast-fade-out 0.3s ease forwards';
     setTimeout(() => toast.remove(), 300);
-  }, duration);
+  };
+  if (type === 'error') {
+    toast.removeAttribute('aria-hidden');
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'utils-toast__close';
+    close.setAttribute('aria-label', 'Fermer le message');
+    close.textContent = '\u2715';
+    close.style.cssText = 'margin-left: 12px; background: none; border: 0; color: inherit; font-size: 1rem; cursor: pointer; padding: 0 4px; min-width: 24px; min-height: 24px;';
+    close.addEventListener('click', hide);
+    toast.appendChild(close);
+  }
+
+  document.body.appendChild(toast);
+
+  // Announce it (the live region exists before its text changes: that is what makes the reading reliable)
+  const regionId = type === 'error' ? 'utils-toast-live-assertive' : 'utils-toast-live-polite';
+  let region = document.getElementById(regionId);
+  if (!region) {
+    region = document.createElement('div');
+    region.id = regionId;
+    region.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    region.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+    region.style.cssText = 'position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; padding: 0;';
+    document.body.appendChild(region);
+  }
+  const plain = document.createElement('div');
+  plain.innerHTML = message;
+  region.textContent = '';
+  setTimeout(() => { region.textContent = plain.textContent; }, 50);
+
+  hideTimer = setTimeout(hide, duration);
 }
 
 /**

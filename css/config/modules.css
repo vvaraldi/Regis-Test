@@ -344,6 +344,20 @@
   --theme-header-to: #047857;
 }
 
+/* Jobs in dark mode: the base violet (#7c3aed) was 2.6:1 on the dark surfaces */
+[data-theme="dark"][data-module="jobs"] {
+  --theme-accent: #a78bfa;
+  --theme-accent-light: #c4b5fd;
+  --theme-accent-dark: #8b5cf6;
+  --theme-accent-rgb: 167, 139, 250;
+
+  --theme-gradient: linear-gradient(135deg, #8b5cf6 0%, #5b21b6 100%);
+
+  --theme-header-from: #8b5cf6;
+
+  --theme-header-to: #5b21b6;
+}
+
 [data-theme="dark"][data-module="regis"] {
   --theme-accent: #2dd4bf;
   --theme-accent-light: #5eead4;

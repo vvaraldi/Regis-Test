@@ -124,6 +124,11 @@ body[data-theme="dark"][data-network="bike"]::before {
   top: var(--space-4);
 }
 
+/* Dark theme: light accent, dark text */
+[data-theme="dark"] .skip-link {
+  color: #0f172a;
+}
+
 /* Status message container */
 #status-messages {
   position: fixed;

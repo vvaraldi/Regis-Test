@@ -29,6 +29,7 @@
   <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
 
   <main id="main-content" class="main" style="display: none;">
+    <h1 class="sr-only">Journal des statuts</h1>   <!-- the page title for assistive technology (no visible change) -->
     <section class="content-section">
       <div class="section-card">
         <div class="section-card__header"><h2 class="section-card__title" id="log-title">📋 Journal des statuts</h2></div>
@@ -69,7 +70,7 @@
           <div class="data-table__body">
             <table class="table table--hover table--responsive" id="log-table">
               <thead>
-                <tr><th>Date</th><th>Sentier</th><th>Changement</th><th>Comment</th><th>Application</th><th>Par</th><th>Recommandation</th><th>Raison</th></tr>
+                <tr><th scope="col">Date</th><th scope="col">Sentier</th><th scope="col">Changement</th><th scope="col">Comment</th><th scope="col">Application</th><th scope="col">Par</th><th scope="col">Recommandation</th><th scope="col">Raison</th></tr>
               </thead>
               <tbody id="log-tbody"></tbody>
             </table>

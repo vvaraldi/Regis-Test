@@ -36,12 +36,12 @@
     /* Map markers - positioned absolutely with pixel coordinates */
     .map-marker { position: absolute; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; cursor: pointer; transform: translate(-50%, -50%); transition: transform 0.2s ease; z-index: 10; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
     .map-marker:hover { transform: translate(-50%, -50%) scale(1.1); z-index: 20; }
-    .map-marker--good { background: #10b981; }
-    .map-marker--warning { background: #f59e0b; }
-    .map-marker--critical { background: #ef4444; }
+    .map-marker--good { background: #047857; }      /* deeper than before (white numbers were 2.5:1 on #10b981, 2.2 on #f59e0b, 3.8 on #ef4444) */
+    .map-marker--warning { background: #b45309; }
+    .map-marker--critical { background: #dc2626; }
     .map-marker--not-inspected { background: #6b7280; }
-    .map-marker--open { background: #10b981; }
-    .map-marker--closed { background: #ef4444; }
+    .map-marker--open { background: #047857; }
+    .map-marker--closed { background: #dc2626; }
     .map-marker--unknown { background: #6b7280; }
     .map-marker--shelter { border-radius: 5px; font-size: 13px; }
 
@@ -62,8 +62,8 @@
     .stat-card { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--radius-lg); padding: 1rem; text-align: center; }
     .stat-card__value { font-size: 2rem; font-weight: 700; color: var(--theme-accent); }
     .stat-card__label { font-size: 0.75rem; color: var(--theme-text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
-    .stat-card--success .stat-card__value { color: var(--color-success); }
-    .stat-card--warning .stat-card__value { color: var(--color-warning); }
+    .stat-card--success .stat-card__value { color: var(--color-success-dark); }
+    .stat-card--warning .stat-card__value { color: var(--color-warning-dark); }
     .stat-card--danger .stat-card__value { color: var(--color-danger); }
 
     /* Recent inspections */

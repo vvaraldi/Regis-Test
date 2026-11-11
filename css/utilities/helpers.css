@@ -7,6 +7,17 @@
    markers positioned for that image would float over nothing, so they are hidden */
 .map-wrapper.is-missing .map-marker { display: none; }
 
+/* Map pins: the state is not given by the colour alone. A small round badge in the corner repeats it: check = good / open, cross = critical / closed,
+   exclamation = attention. (The pins are positioned absolutely, so the badge is placed against the pin itself.) */
+.map-marker--good::after, .map-marker--open::after, .map-marker--critical::after, .map-marker--closed::after, .map-marker--warning::after {
+  position: absolute; right: -8px; top: -8px; width: 16px; height: 16px; box-sizing: border-box;
+  border-radius: 50%; border: 2px solid currentColor; background: #fff;
+  font-size: 10px; line-height: 12px; font-weight: 700; text-align: center;
+}
+.map-marker--good::after, .map-marker--open::after { content: "\2713"; color: #047857; }
+.map-marker--critical::after, .map-marker--closed::after { content: "\2715"; color: #dc2626; }
+.map-marker--warning::after { content: "!"; color: #b45309; }
+
 /* ===== DISPLAY ===== */
 .d-none { display: none !important; }
 .d-block { display: block !important; }

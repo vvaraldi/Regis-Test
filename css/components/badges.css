@@ -231,7 +231,7 @@
 }
 
 .badge-inspector {
-  background-color: var(--color-info);
+  background-color: #2563eb;   /* was --color-info (#3b82f6): white text 3.7:1, now 5.2:1 */
   color: var(--color-white);
 }
 

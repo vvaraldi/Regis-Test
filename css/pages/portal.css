@@ -206,6 +206,11 @@
   color: var(--theme-accent);
 }
 
+/* Dark theme: the accent on the tile surface was 4.07:1 */
+[data-theme="dark"] .app-card__action {
+  color: var(--theme-accent-light);
+}
+
 .app-card:hover .app-card__action {
   text-decoration: underline;
 }

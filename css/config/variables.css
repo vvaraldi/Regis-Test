@@ -58,34 +58,34 @@
   --color-infraction-rgb: 220, 38, 38;
   
   /* Signalisation - Warning Orange */
-  --color-signalisation: #d97706;
+  --color-signalisation: #af6005;   /* deepened 2026-11-10: white text on it needs 4.5:1 (was #d97706, 3.2) */
   --color-signalisation-light: #fef3c7;
   --color-signalisation-dark: #92400e;
-  --color-signalisation-rgb: 217, 119, 6;
+  --color-signalisation-rgb: 175, 96, 5;
 
   /* Request/Demandes - Purple */
-  --color-request: #8b5cf6;
+  --color-request: #8357e7;
   --color-request-light: #ede9fe;
   --color-request-dark: #6d28d9;
-  --color-request-rgb: 139, 92, 246;
+  --color-request-rgb: 131, 87, 231;
 
   /* Status Randonnée - Light Green */
-  --color-status: #22c55e;
+  --color-status: #17853f;   /* was #22c55e (2.3) */
   --color-status-light: #bbf7d0;
-  --color-status-dark: #15803d;
-  --color-status-rgb: 34, 197, 94;
+  --color-status-dark: #166534;
+  --color-status-rgb: 23, 133, 63;
 
   /* Support - Light Blue */
-  --color-support: #0ea5e9;
+  --color-support: #0a7aac;   /* was #0ea5e9 (2.8) */
   --color-support-light: #bae6fd;
   --color-support-dark: #0369a1;
-  --color-support-rgb: 14, 165, 233;
+  --color-support-rgb: 10, 122, 172;
 
   /* Administration - Purple */
-  --color-admin-module: #a855f7;
+  --color-admin-module: #994ee1;
   --color-admin-module-light: #e9d5ff;
   --color-admin-module-dark: #7e22ce;
-  --color-admin-module-rgb: 168, 85, 247;
+  --color-admin-module-rgb: 153, 78, 225;
 
   /* Inspection Randonnée - Dark Green */
   --color-inspection-rando: #166534;
@@ -94,16 +94,16 @@
   --color-inspection-rando-rgb: 22, 101, 52;
 
   /* Entretien (Maintenance) - Emerald */
-  --color-maintenance: #059669;
+  --color-maintenance: #04855d;
   --color-maintenance-light: #6ee7b7;
   --color-maintenance-dark: #047857;
-  --color-maintenance-rgb: 5, 150, 105;
+  --color-maintenance-rgb: 4, 133, 93;
 
   /* Météo (weather) - Yellow */
-  --color-meteo: #ca8a04;
+  --color-meteo: #9a6903;   /* was #ca8a04 (2.9) */
   --color-meteo-light: #fde047;
-  --color-meteo-dark: #a16207;
-  --color-meteo-rgb: 202, 138, 4;
+  --color-meteo-dark: #7a5202;
+  --color-meteo-rgb: 154, 105, 3;
 
   /* Régis gère (the mountain manager) */
   --color-regis: #0f766e;

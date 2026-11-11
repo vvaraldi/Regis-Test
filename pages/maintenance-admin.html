@@ -141,12 +141,12 @@
             <table class="data-table" id="logs-table">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Responsable</th>
-                  <th>Support</th>
-                  <th>Bénévoles</th>
-                  <th>Travaux</th>
-                  <th>Statut</th>
+                  <th scope="col">Date</th>
+                  <th scope="col">Responsable</th>
+                  <th scope="col">Support</th>
+                  <th scope="col">Bénévoles</th>
+                  <th scope="col">Travaux</th>
+                  <th scope="col">Statut</th>
                 </tr>
               </thead>
               <tbody id="logs-tbody">
@@ -375,7 +375,7 @@
 
     const REPORT_HEAD = ['Date', 'Responsable', 'Support', 'Bénévoles', 'Travaux', 'Statut'];
     const WORK_HEAD = ['Date', 'Responsable', 'Secteur', 'Sentier', 'Travail', 'Photos', 'Job lié'];
-    const setHead = cols => { document.querySelector('#logs-table thead').innerHTML = '<tr>' + cols.map(c => `<th>${c}</th>`).join('') + '</tr>'; };
+    const setHead = cols => { document.querySelector('#logs-table thead').innerHTML = '<tr>' + cols.map(c => `<th scope="col">${c}</th>`).join('') + '</tr>'; };
 
     // "Par travail": one line per travail of the reports that pass the filters; the sector and trail filters judge the travail's OWN place
     function renderWorks(logs) {

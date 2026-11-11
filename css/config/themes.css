@@ -17,7 +17,7 @@
   --theme-surface-hover: #f1f5f9;
   --theme-text: #1e293b;
   --theme-text-light: #64748b;
-  --theme-text-lighter: #94a3b8;
+  --theme-text-lighter: #64748b;   /* was #94a3b8 (2.5:1 on white): small grey texts */
   --theme-border: #e2e8f0;
   --theme-border-light: #f1f5f9;
   
@@ -44,8 +44,8 @@
   --theme-surface-alt: #334155;
   --theme-surface-hover: #334155;
   --theme-text: #f1f5f9;
-  --theme-text-light: #94a3b8;
-  --theme-text-lighter: #64748b;
+  --theme-text-light: #aab6c8;   /* was #94a3b8 (4.0:1 on the lighter slate surfaces) */
+  --theme-text-lighter: #94a3b8;   /* was #64748b */
   --theme-border: #334155;
   --theme-border-light: #1e293b;
   

@@ -428,14 +428,14 @@
           <div class="user-table-section__actions">
             <div class="search-input">
               <span class="search-input__icon">🔍</span>
-              <input type="text" class="search-input__input" id="search-users" placeholder="Rechercher...">
+              <input type="text" class="search-input__input" id="search-users" placeholder="Rechercher..." aria-label="Rechercher un utilisateur">
             </div>
-            <select class="form-select form-select--sm" id="filter-status" style="width: auto;">
+            <select class="form-select form-select--sm" id="filter-status" aria-label="Filtrer par statut" style="width: auto;">
               <option value="">Tous les statuts</option>
               <option value="active">Actifs</option>
               <option value="inactive">Inactifs</option>
             </select>
-            <select class="form-select form-select--sm" id="filter-network" style="width: auto;">
+            <select class="form-select form-select--sm" id="filter-network" aria-label="Filtrer par activité" style="width: auto;">
               <option value="">Toutes les activités</option>
             </select>
             <select class="form-select form-select--sm" id="filter-app" style="width: auto;" title="Utilisateurs qui ont accès à cette application">
@@ -468,13 +468,13 @@
           <table class="table table--hover table--responsive" id="users-table">
             <thead>
               <tr>
-                <th>Nom</th>
-                <th>Courriel</th>
-                <th>Rôle</th>
-                <th>Activités</th>
-                <th>Accès (cliquer pour modifier)</th>
-                <th>Statut</th>
-                <th class="table-cell--actions">Actions</th>
+                <th scope="col">Nom</th>
+                <th scope="col">Courriel</th>
+                <th scope="col">Rôle</th>
+                <th scope="col">Activités</th>
+                <th scope="col">Accès (cliquer pour modifier)</th>
+                <th scope="col">Statut</th>
+                <th scope="col" class="table-cell--actions">Actions</th>
               </tr>
             </thead>
             <tbody id="users-tbody"></tbody>
@@ -531,11 +531,11 @@
             <table class="table table--sm">
               <thead>
                 <tr>
-                  <th>Nom</th>
-                  <th>Email</th>
-                  <th>Rôle</th>
-                  <th>Activités</th>
-                  <th>Accès</th>
+                  <th scope="col">Nom</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Rôle</th>
+                  <th scope="col">Activités</th>
+                  <th scope="col">Accès</th>
                 </tr>
               </thead>
               <tbody id="csv-preview-tbody"></tbody>
@@ -619,8 +619,8 @@
         </div>
         <div class="export-form-row">
           <div class="form-group">
-            <label class="form-label">Format</label>
-            <select class="form-select" id="export-users-format" style="width: auto;">
+            <label class="form-label" for="export-users-format">Format</label>
+            <select class="form-select" id="export-users-format" aria-label="Format de l’exportation" style="width: auto;">
               <option value="csv">CSV</option>
               <option value="json">JSON</option>
             </select>
@@ -656,10 +656,10 @@
           <table class="table table--hover table--responsive" id="volunteers-table">
             <thead>
               <tr>
-                <th style="width:2.5rem;"><input type="checkbox" id="volunteers-select-all"></th>
-                <th>Nom</th>
-                <th>Prénom</th>
-                <th>Date d'inscription</th>
+                <th scope="col" style="width:2.5rem;"><input type="checkbox" id="volunteers-select-all"></th>
+                <th scope="col">Nom</th>
+                <th scope="col">Prénom</th>
+                <th scope="col">Date d'inscription</th>
               </tr>
             </thead>
             <tbody id="volunteers-tbody"></tbody>
@@ -768,7 +768,7 @@
           <summary>Secteurs de cette activité</summary>
           <div class="trail-table-wrap">
             <table class="trail-table">
-              <thead><tr><th>Ordre</th><th>Nom</th><th>Contenu</th><th></th></tr></thead>
+              <thead><tr><th scope="col">Ordre</th><th scope="col">Nom</th><th scope="col">Contenu</th><th scope="col"></th></tr></thead>
               <tbody id="sector-rows"></tbody>
             </table>
           </div>
@@ -783,7 +783,7 @@
           <summary>Abris de cette activité</summary>
           <div class="trail-table-wrap">
             <table class="trail-table">
-              <thead><tr><th>Nom</th><th>Statut</th><th></th></tr></thead>
+              <thead><tr><th scope="col">Nom</th><th scope="col">Statut</th><th scope="col"></th></tr></thead>
               <tbody id="shelter-rows"></tbody>
             </table>
           </div>
@@ -798,7 +798,7 @@
 
         <div class="trail-table-wrap" style="margin-top: var(--space-md);">
           <table class="trail-table">
-            <thead><tr><th id="trail-th-select"><input type="checkbox" id="trail-select-all" aria-label="Tout cocher"></th><th>N°</th><th>Nom</th><th>Secteur</th><th>Type</th><th>Difficulté</th><th>Longueur</th><th>Statut</th><th>Position</th><th></th></tr></thead>
+            <thead><tr><th scope="col" id="trail-th-select"><input type="checkbox" id="trail-select-all" aria-label="Tout cocher"></th><th scope="col">N°</th><th scope="col">Nom</th><th scope="col">Secteur</th><th scope="col">Type</th><th scope="col">Difficulté</th><th scope="col">Longueur</th><th scope="col">Statut</th><th scope="col">Position</th><th scope="col"></th></tr></thead>
             <tbody id="trail-rows"></tbody>
           </table>
         </div>
@@ -1001,7 +1001,7 @@
             <input type="date" class="form-input" id="export-start-date" style="width: auto;">
           </div>
           <div class="form-group">
-            <label class="form-label">Format</label>
+            <label class="form-label" for="export-data-format">Format</label>
             <select class="form-select" id="export-data-format" style="width: auto;">
               <option value="json">JSON (fichier unique)</option>
               <option value="csv">CSV (fichiers séparés)</option>

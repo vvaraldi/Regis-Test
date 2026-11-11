@@ -92,6 +92,7 @@
 
   <!-- Main Content -->
   <main id="main-content" class="main" style="display: none;">
+    <h1 class="sr-only">Remontées &amp; Météo</h1>   <!-- the page title for assistive technology (no visible change) -->
     <!-- The lifts: their status, switched here by the Météo person (lifts only) -->
     <section class="content-section" id="lifts-section" hidden>
       <div class="section-card">
@@ -161,7 +162,7 @@
           <div class="data-table__body">
             <table class="table table--hover table--responsive" id="records-table">
               <thead>
-                <tr><th>Relevé</th><th>Température</th><th>Vent</th><th>Neige</th><th>Ciel</th><th>Commentaire</th><th>Saisi par</th><th></th></tr>
+                <tr><th scope="col">Relevé</th><th scope="col">Température</th><th scope="col">Vent</th><th scope="col">Neige</th><th scope="col">Ciel</th><th scope="col">Commentaire</th><th scope="col">Saisi par</th><th scope="col"></th></tr>
               </thead>
               <tbody id="records-tbody"></tbody>
             </table>

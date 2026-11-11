@@ -70,6 +70,12 @@
   border-color: var(--theme-accent-dark);
 }
 
+/* Dark theme: the accent colours are light, so the text is dark (white on them was 1.7 to 2.5:1) */
+[data-theme="dark"] .btn-primary,
+[data-theme="dark"] .btn-primary:hover {
+  color: #0f172a;
+}
+
 .btn-primary:active {
   transform: translateY(1px);
 }
@@ -133,9 +139,9 @@
 }
 
 .btn-danger {
-  background-color: var(--color-danger);
+  background-color: #dc2626;   /* was --color-danger (#ef4444): white text was 3.8:1, now 4.8:1 */
   color: var(--color-white);
-  border-color: var(--color-danger);
+  border-color: #dc2626;
 }
 
 .btn-danger:hover {

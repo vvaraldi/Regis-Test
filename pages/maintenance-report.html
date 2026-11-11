@@ -97,7 +97,7 @@
         <div class="section-card__header"><h2 class="section-card__title">📋 Rapport existant ou nouveau</h2></div>
         <div class="section-card__body">
           <div class="form-group">
-            <select class="form-select" id="report-selector">
+            <select class="form-select" id="report-selector" aria-label="Rapport existant ou nouveau">
               <option value="new">+ Nouveau rapport</option>
             </select>
           </div>
@@ -124,7 +124,7 @@
 
           <!-- Trail builder responsable (auto) -->
           <div class="form-group">
-            <label class="form-label">Artisan de sentiers responsable</label>
+            <label class="form-label" for="builder-name">Artisan de sentiers responsable</label>
             <input type="text" class="form-input" id="builder-name" readonly>
           </div>
 
@@ -517,28 +517,28 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Secteur <span class="form-required">*</span></label>
-            <select class="form-select entry-sector-select">
+            <label class="form-label" for="entry-sector-${rowId}">Secteur <span class="form-required">*</span></label>
+            <select class="form-select entry-sector-select" id="entry-sector-${rowId}" aria-required="true">
               <option value="">-- Sélectionner un secteur --</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Piste / Sentier <span class="form-required">*</span></label>
-            <select class="form-select entry-trail-select">
+            <label class="form-label" for="entry-trail-${rowId}">Piste / Sentier <span class="form-required">*</span></label>
+            <select class="form-select entry-trail-select" id="entry-trail-${rowId}" aria-required="true">
               <option value="">-- Sélectionner d'abord un secteur --</option>
             </select>
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Travaux effectués <span class="form-required">*</span></label>
-          <textarea class="form-input entry-job-text" rows="2" placeholder="Description des travaux..."></textarea>
+          <label class="form-label" for="entry-text-${rowId}">Travaux effectués <span class="form-required">*</span></label>
+          <textarea class="form-input entry-job-text" id="entry-text-${rowId}" aria-required="true" rows="2" placeholder="Description des travaux..."></textarea>
         </div>
         <div class="form-group entry-job" hidden>
-          <label class="form-label">Job lié <span class="form-hint">(optionnel : lie ce travail à un job ouvert)</span></label>
-          <select class="form-select entry-job-select"><option value="">-- Aucun job --</option></select>
+          <label class="form-label" for="entry-job-${rowId}">Job lié <span class="form-hint">(optionnel : lie ce travail à un job ouvert)</span></label>
+          <select class="form-select entry-job-select" id="entry-job-${rowId}"><option value="">-- Aucun job --</option></select>
           <div class="entry-job-state-box" hidden style="margin-top:0.5rem;">
-            <label class="form-label">État du job après ce travail</label>
-            <select class="form-select entry-job-state">
+            <label class="form-label" for="entry-jobstate-${rowId}">État du job après ce travail</label>
+            <select class="form-select entry-job-state" id="entry-jobstate-${rowId}">
               <option value="doing">En cours (le travail continue)</option>
               <option value="done">Fait (le job est terminé)</option>
             </select>

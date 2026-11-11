@@ -69,7 +69,7 @@ const SeasonSummaryView = (function () {
   const section = (title, note, body) => `<section class="ssv-section"><h2 class="ssv-section__title">${title}</h2>${note ? `<div class="ssv-section__note">${note}</div>` : ''}${body}</section>`;
   const figures = list => `<div class="ssv-figures">${list.map(f => `<div class="ssv-figure"><div class="ssv-figure__value">${fmtNum(f.value)}${f.unit || ''}</div><div class="ssv-figure__label">${esc(f.label)}</div></div>`).join('')}</div>`;
   const table = (head, rows, numFrom) => rows.length
-    ? `<div style="overflow-x:auto"><table class="ssv-table"><thead><tr>${head.map((h, i) => `<th class="${i >= numFrom ? 'num' : ''}">${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((c, i) => `<td class="${i >= numFrom ? 'num' : ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+    ? `<div style="overflow-x:auto"><table class="ssv-table"><thead><tr>${head.map((h, i) => `<th scope="col" class="${i >= numFrom ? 'num' : ''}">${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((c, i) => `<td class="${i >= numFrom ? 'num' : ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
     : '<div class="ssv-empty">Rien à afficher pour cette saison.</div>';
   const unavailable = what => `<div class="ssv-error">${esc(what)} n’a pas pu être lu pour le moment.</div>`;
 

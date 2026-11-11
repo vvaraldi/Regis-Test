@@ -186,3 +186,11 @@
     max-height: calc(100vh - var(--space-4));
   }
 }
+
+/* ===== TOUCH TARGETS (accessibility audit, 2026-11-10) =====
+   On a phone the small links and text buttons that were 17 to 24 px high are at least 44 px high to tap. Only the tappable area grows. */
+@media (max-width: 768px) {
+  .logo__name { display: inline-flex; align-items: center; min-height: 44px; }
+  .filters-toggle { min-height: 44px; padding: 0 0.75rem; }
+  .support-guide a { display: inline-block; padding: 0.7rem 0.25rem; margin: -0.7rem 0; }
+}
