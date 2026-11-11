@@ -10,6 +10,10 @@
  *
  * One trail (or shelter) counts ONCE per day, so sending the same inspection twice, or inspecting a trail again in the afternoon,
  * does not add a point. Only the inspections of the activity count (an inspection without activity is a ski one: the app was ski-only).
+ * WHAT counts is set per activity in js/core/config.js (networks.<id>.medal = { kinds: [...], shelters: true|false }): in winter only the UPHILL
+ * trails (no downhill, no shelters); the bike activity has no such line, so every trail inspection counts. The kind of a trail is read from the
+ * trails (an inspection does not store it; a trail that cannot be found counts as the default kind of the activity). The stored medals carry the
+ * rule they were counted with (`rule`): when the rule changes, they are counted again from the inspections, once.
  *
  * STORED in the person's profile (inspectors/{uid}.medals), so the inspections are not counted again and again:
  *   medals.ski_2026 = { count, upTo, recent: [place|day, ...], final }
@@ -51,8 +55,19 @@ const Badges = (function () {
   /** The next level to reach (null once the last one is reached). */
   function nextFor(count) { return LEVELS.find(l => l.at > count) || null; }
 
+  /** What counts for an activity (config: networks.<id>.medal): { kinds: [...] | null, shelters: bool }. */
+  function ruleFilter(networkId) {
+    const m = (APP_CONFIG.networks[networkId] || {}).medal || {};
+    return { kinds: Array.isArray(m.kinds) && m.kinds.length ? m.kinds.slice() : null, shelters: m.shelters !== false };
+  }
+  /** The rule as a short text, stored with a medal so that a changed rule is noticed. */
+  function ruleOf(networkId) {
+    const f = ruleFilter(networkId);
+    return (f.kinds ? f.kinds.join('+') : 'all') + (f.shelters ? '+shelters' : '');
+  }
+
   /** place|day -> date of the inspection, for the documents of this activity inside the season (one entry per trail or shelter and day). */
-  function keysOf(docs, range, networkId) {
+  function keysOf(docs, range, networkId, filter) {
     const found = new Map();
     docs.forEach(d => {
       // The query reads all of the person's inspections of the period, whatever the activity: keep this activity's only
@@ -62,6 +77,13 @@ const Badges = (function () {
       if (!when || isNaN(when) || when < range.start || when > range.end) return;
       const place = d.trail_id || d.shelter_id;
       if (!place) return;
+      if (filter) {
+        if (!d.trail_id) { if (filter.shelters === false) return; }   // a shelter inspection
+        else if (filter.kinds && filter.kindOf) {
+          const kind = filter.kindOf[d.trail_id] || (networkId === 'bike' ? 'bike' : 'uphill');   // a trail that cannot be found: the default kind
+          if (!filter.kinds.includes(kind)) return;
+        }
+      }
       const key = `${place}|${dayKey(when)}`;
       if (!found.has(key) || when > found.get(key)) found.set(key, when);
     });
@@ -69,14 +91,14 @@ const Badges = (function () {
   }
 
   /** The number of inspections of a list of documents, one per trail (or shelter) and day, inside the season, of this activity. */
-  function countDocs(docs, range, networkId) { return keysOf(docs, range, networkId).size; }
+  function countDocs(docs, range, networkId, filter) { return keysOf(docs, range, networkId, filter).size; }
 
   /** The stored entry brought up to date with the documents read (new place|day keys are added once). */
-  function advance(entry, docs, range, networkId) {
+  function advance(entry, docs, range, networkId, filter) {
     const base = entry || { count: 0, upTo: null, recent: [] };
     const known = new Set(base.recent || []);
     let count = base.count || 0, upTo = typeof base.upTo === 'number' ? base.upTo : null;
-    keysOf(docs, range, networkId).forEach((when, key) => {
+    keysOf(docs, range, networkId, filter).forEach((when, key) => {
       if (!known.has(key)) { known.add(key); count++; }
       if (upTo === null || when.getTime() > upTo) upTo = when.getTime();
     });
@@ -93,6 +115,20 @@ const Badges = (function () {
     const rows = [];
     snap.forEach(doc => rows.push(doc.data()));
     return rows;
+  }
+
+  /** trail id -> kind, for the activities whose medal depends on the kind of trail (kept an hour in the session); null when every trail counts. */
+  async function trailKinds(db, networkId) {
+    const f = ruleFilter(networkId);
+    if (!f.kinds) return null;
+    const ckey = 'regis-badge-kinds:' + networkId;
+    const cached = tryDo(() => JSON.parse(sessionStorage.getItem(ckey)));
+    if (cached && cached.map && Date.now() - cached.at < 60 * 60 * 1000) return cached.map;
+    const snap = await db.collection('trails').where('network', '==', networkId).get();
+    const map = {};
+    snap.forEach(doc => { const t = doc.data(); map[doc.id] = t.kind && APP_CONFIG.trailKinds && APP_CONFIG.trailKinds[t.kind] ? t.kind : (t.network === 'bike' ? 'bike' : 'uphill'); });
+    tryDo(() => sessionStorage.setItem(ckey, JSON.stringify({ at: Date.now(), map })));
+    return map;
   }
 
   const seasonKey = (networkId, range) => `${networkId}_${range.start.getFullYear()}`;
@@ -115,7 +151,9 @@ const Badges = (function () {
    */
   async function seasonCount(db, uid, networkId, range, medals, opts) {
     const key = seasonKey(networkId, range);
-    const entry = medals && medals[key];
+    const rule = ruleOf(networkId);
+    let entry = medals && medals[key];
+    if (entry && entry.rule !== rule) entry = null;   // counted under another rule (e.g. downhill and shelters used to count): count again, once
     if (entry && entry.final && typeof entry.count === 'number') return entry.count;
     // kept 10 minutes in the session: opening the portal or the profile again and again reads nothing (forget() empties it after a save)
     const ckey = cacheKey(uid, networkId, range);
@@ -124,15 +162,18 @@ const Badges = (function () {
     const net = APP_CONFIG.networks[networkId];
     const from = entry && typeof entry.upTo === 'number' ? new Date(Math.max(range.start.getTime(), startOfDay(entry.upTo) - WINDOW_DAYS * DAY_MS)) : range.start;
     let docs;
+    const filter = ruleFilter(networkId);
     try {
       const lists = [await ownInspections(db, 'trail_inspections', uid, from, range)];
-      if (net && net.features && net.features.shelters) lists.push(await ownInspections(db, 'shelter_inspections', uid, from, range));
+      if (net && net.features && net.features.shelters && filter.shelters) lists.push(await ownInspections(db, 'shelter_inspections', uid, from, range));
       docs = [].concat(...lists);
+      filter.kindOf = await trailKinds(db, networkId);
     } catch (e) {
       console.warn('Badges: the inspections could not be counted (is the index "inspector_id + date" created? see BADGES_SETUP.md).', e);
       return null;
     }
-    const next = advance(entry, docs, range, networkId);
+    const next = advance(entry, docs, range, networkId, filter);
+    next.rule = rule;
     if (!range.active) next.final = true;   // the season is over: this is its medal for good
     if (JSON.stringify(next) !== JSON.stringify(entry || null)) {
       if (opts && opts.userData) opts.userData.medals = Object.assign({}, opts.userData.medals, { [key]: next });
@@ -189,6 +230,6 @@ const Badges = (function () {
     return `${head}${plural(s.count)} ${season}.${tail}`;
   }
 
-  return { LEVELS, levelFor, nextFor, countDocs, advance, summary, seasons, forget, describe };
+  return { LEVELS, levelFor, nextFor, countDocs, advance, ruleOf, summary, seasons, forget, describe };
 })();
 if (typeof window !== 'undefined') window.Badges = Badges;

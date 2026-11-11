@@ -266,7 +266,9 @@
      * (kept 10 minutes in the session), the level is 5 / 10 / 20 / 50 / 100 and it starts again with each season. Before the first level
      * the tile shows the progress ("3/5"), so the goal is visible. If the count fails (index not created yet) nothing is shown.
      */
+    let medalUser = null;   // remembered so the medal can be drawn again when the portal is shown again (see below)
     async function addInspectionMedal(userData) {
+      medalUser = userData;
       const card = document.querySelector('.app-card--inspection');
       if (!card || userData.allowInspection !== true || typeof Badges === 'undefined') return;
       const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
@@ -288,6 +290,12 @@
       medal.innerHTML = `<span>${summary.level ? summary.level.icon : '☆'}</span><span>${summary.count}</span>${goal}${over}`;
       current.querySelector('.app-card__header').appendChild(medal);
     }
+
+    // The portal is often NOT reloaded when you come back to it (the back button, or the app opened from the home screen, which keeps the page in
+    // memory): draw the medal again then, so that an inspection just made is counted. Cheap: the count is kept 10 minutes in the session, and a
+    // saved report empties it (Badges.forget), so only then is something read (the last week).
+    window.addEventListener('pageshow', e => { if (e.persisted && medalUser) addInspectionMedal(medalUser); });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden && medalUser) addInspectionMedal(medalUser); });
 
     /**
      * On the Régis gère tile: how many recommendations of the inspections wait for a decision. ONE read of the trails when the portal opens

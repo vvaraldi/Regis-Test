@@ -163,6 +163,7 @@ const APP_CONFIG = {
       trailKinds: ['uphill', 'downhill', 'lift'],
       reportMaps: ['ski-downhill-geo', 'ski-geo'],
       inspectionKinds: ['uphill', 'downhill'],
+      medal: { kinds: ['uphill'], shelters: false },   // what counts for the season medal (js/services/badges.js): only the UPHILL trails in winter (no downhill, no shelters). Without this line (bike): every trail inspection counts
       staleKinds: ['uphill'],   // the "À inspecter" list (dashboard) is on for these kinds; add 'downhill' to turn it on there (js/services/inspection-gaps.js)
       features: { shelters: true, snowCondition: true, weather: true },
       publicTitle: 'État des sentiers de randonnée alpine',
