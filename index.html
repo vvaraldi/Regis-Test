@@ -86,6 +86,7 @@
         icon: '🛠️',
         description: 'Les travaux à faire sur les sentiers : créer un job, suivre son état et sa priorité.',
         url: 'pages/jobs.html',
+        adminUrl: 'pages/jobs-admin.html',   // an administrator goes straight to Admin: the same list plus priority, done, cancel, reopen
         permission: 'allowJobs',
         permissionDefault: false,
         adminsAlways: true,   // every administrator manages the tasks, whatever their flags
@@ -185,6 +186,7 @@
      * responsive CSS (max-width: 768px).
      */
     function landingUrl(app, isAdmin) {
+      if (isAdmin && app.adminUrl) return app.adminUrl;   // e.g. Jobs: administrators open the Admin tab
       const isMobile = window.matchMedia('(max-width: 768px)').matches;
       if (isMobile && app.mobileUrl) return app.mobileUrl;   // e.g. Inspections: the dashboard already scrolled to "À inspecter"
       if (!app.desktopUrl) return app.url;

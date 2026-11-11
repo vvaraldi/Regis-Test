@@ -345,7 +345,7 @@ const APP_CONFIG = {
     jobs: {
       title: 'Jobs',
       items: [
-        { id: 'jobs', label: 'Liste', icon: '🛠️', href: 'pages/jobs.html' },
+        { id: 'jobs', label: 'Liste', icon: '🛠️', href: 'pages/jobs.html', hideForAdmin: true },   // an administrator has everything in Admin (same list, plus priority, done, cancel, reopen)
         { id: 'jobs-admin', label: 'Admin', icon: '⚙️', href: 'pages/jobs-admin.html', admin: true }
       ]
     },

@@ -586,6 +586,7 @@
         const picked = openJobs.find(j => j.id === entry.jobSelect.value);
         entry.job = picked ? { id: picked.id, title: picked.title } : null;   // choosing "Aucun job" unlinks
         entry.jobState.value = 'doing';
+        if (picked && !entry.placeTouched) setPlaceFromJob(entry, picked);   // like "Ajouter ce travail": the travail takes the sector and the trail of the job
         refreshEntryJobs(entry);
         renderJobsPanel();
       });
@@ -675,7 +676,17 @@
       entry.jobStateBox.hidden = !entry.job;
     }
 
-    function placeChanged(entry) { refreshEntryJobs(entry); }
+    // The builder changed the sector or the trail by hand: from then on choosing a job in the list does not move the place any more (a job of another
+    // place can still be linked). A place that was only copied from the previous travail, or set from a job, is not "touched".
+    function placeChanged(entry) { entry.placeTouched = true; refreshEntryJobs(entry); }
+
+    // The sector and the trail of a job (when it has one) become those of the travail
+    function setPlaceFromJob(entry, job) {
+      if (!job || (!job.sector && !job.trail && !job.trailId)) return;
+      SectorService.selectSector(entry.sectorSelect, sectors, job.sector);
+      SectorService.fillTrails(entry.trailSelect, SectorService.find(sectors, entry.sectorSelect.value), '-- Sélectionner une piste --');
+      if (job.trail || job.trailId) SectorService.selectTrail(entry.trailSelect, job.trail, job.trailId);
+    }
 
     // A travail with nothing typed, no task and no photo is "blank" whatever its place (a new travail already holds the previous place)
     const isBlankEntry = e => !e.jobTextEl.value.trim() && !e.job && !e.picker.hasPhotos();
@@ -684,6 +695,7 @@
     function addTaskAsEntry(job) {
       if (!job || entries.some(e => e.job && e.job.id === job.id)) return;
       const entry = entries.find(isBlankEntry) || addEntryRow();
+      entry.placeTouched = false;   // the place now comes from the job
       SectorService.selectSector(entry.sectorSelect, sectors, job.sector);
       SectorService.fillTrails(entry.trailSelect, SectorService.find(sectors, entry.sectorSelect.value), '-- Sélectionner une piste --');
       if (job.trail || job.trailId) SectorService.selectTrail(entry.trailSelect, job.trail, job.trailId);

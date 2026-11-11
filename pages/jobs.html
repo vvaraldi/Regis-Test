@@ -50,8 +50,12 @@
         requiredPermission: 'allowJobs',
         permissionDefault: false,
         adminsAlways: true,
-        onAuthenticated: (data) => JobsView.mount(document.getElementById('jobs-root'), { admin: false, uid: currentUser.uid, name: data.name })
-          .catch(e => { console.error('Jobs:', e); showMessage('Les jobs n\'ont pas pu être lus.', 'error', 5000); })
+        onAuthenticated: (data) => {
+          // An administrator has everything in the Admin tab (the same list, plus priority, done, cancel, reopen): a bookmark of this page leads there
+          if (data.role === 'admin' || data.role === 'system_admin') { location.replace('jobs-admin.html' + location.search + location.hash); return; }
+          return JobsView.mount(document.getElementById('jobs-root'), { admin: false, uid: currentUser.uid, name: data.name })
+            .catch(e => { console.error('Jobs:', e); showMessage('Les jobs n\'ont pas pu être lus.', 'error', 5000); });
+        }
       });
     }
     onFirebaseReady(initJobs);

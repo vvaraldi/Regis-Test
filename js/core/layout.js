@@ -38,6 +38,7 @@
   function itemAttrs(item) {
     const attrs = [];
     if (item.admin) attrs.push('data-require-admin');
+    if (item.hideForAdmin) attrs.push('data-hide-for-admin');   // shown to everybody except administrators (auth.js)
     if (item.requires) attrs.push(`data-requires="${item.requires}"`);
     if (item.admin || item.requires) attrs.push('style="display:none;"');
     return attrs.length ? ' ' + attrs.join(' ') : '';

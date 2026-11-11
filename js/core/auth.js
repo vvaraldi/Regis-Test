@@ -220,6 +220,11 @@ function updateUIForUser(userData) {
     el.style.display = (userData.role === 'admin' || userData.role === 'system_admin') ? '' : 'none';
   });
 
+  // Links that an administrator does not need (the Jobs list: the Admin tab does the same and more)
+  document.querySelectorAll('[data-hide-for-admin]').forEach(el => {
+    el.style.display = (userData.role === 'admin' || userData.role === 'system_admin') ? 'none' : '';
+  });
+
   // Update navigation based on permissions
   updateNavPermissions(userData);
 }
