@@ -84,7 +84,7 @@
       <div class="form-section" id="all-good-section">
         <div class="form-section-body">
           <button type="button" class="btn btn-primary" id="all-good-btn" style="width: 100%; padding: 0.9rem 1rem; font-size: 1.1rem; font-weight: 700;">✅ Tout est en ordre : enregistrer</button>
-          <p class="form-hint" style="margin: 0.5rem 0 0;">Une fois le sentier choisi : enregistre tout de suite l'inspection avec « Recommander d'ouvrir », « Bon état » et aucun problème. S'il y a un problème, des photos ou une note, remplissez le formulaire ci-dessous : le bouton se grise dès que le formulaire est commencé.</p>
+          <p class="form-hint" style="margin: 0.5rem 0 0;">Une fois le sentier choisi : enregistre tout de suite l'inspection avec « Recommander d'ouvrir », « Bon état » et aucun problème. S'il y a un problème, des photos ou une note, remplissez le formulaire ci-dessous : le bouton reste grisé tant que le sentier n'est pas choisi, et se grise dès que le formulaire est commencé.</p>
         </div>
       </div>
       <div class="form-section">
@@ -200,26 +200,28 @@
       document.getElementById('condition-good').checked = true;
       submitBtn.click();
     });
-    // The button is greyed as soon as the form is started (a condition, a snow condition, a problem, a note, a photo, a job): to avoid any confusion between the two
-    // ways of saving. The recommended status does not count: a link from the dashboard can already have chosen it.
+    // The button is greyed until a trail is chosen, and again as soon as the form is started (a condition, a snow condition, a problem, a note, a photo, a job, or
+    // "Recommander de fermer"): to avoid any confusion between the two ways of saving. "Recommander d'ouvrir" alone does not count: a link from the dashboard can
+    // already have chosen it, and it is what the button would choose anyway.
     const allGoodBtn = document.getElementById('all-good-btn');
     function formStarted() {
       const hasPhotos = (selectedFiles && selectedFiles.length) || (photoPicker && typeof photoPicker.hasPhotos === 'function' && photoPicker.hasPhotos());
       const jobTicked = document.getElementById('create-job') && document.getElementById('create-job').checked;
-      return !!(form.querySelector('input[name="condition"]:checked') || form.querySelector('input[name="snow-condition"]:checked') || form.querySelectorAll('#issues-group input:checked').length ||
+      return !!(form.querySelector('#status-closed:checked') || form.querySelector('input[name="condition"]:checked') || form.querySelector('input[name="snow-condition"]:checked') || form.querySelectorAll('#issues-group input:checked').length ||
         otherIssues.value.trim() || comments.value.trim() || hasPhotos || jobTicked);
     }
     function refreshAllGood() {
-      const started = formStarted();
-      allGoodBtn.disabled = started;
-      allGoodBtn.style.background = started ? '#cbd5e1' : '';
-      allGoodBtn.style.borderColor = started ? '#cbd5e1' : '';
-      allGoodBtn.style.color = started ? '#475569' : '';
-      allGoodBtn.title = started ? 'Le formulaire est déjà commencé : utilisez « Enregistrer l\'inspection » en bas de la page.' : '';
+      const noTrail = !trailSelect.value, started = formStarted(), off = noTrail || started;
+      allGoodBtn.disabled = off;
+      allGoodBtn.style.background = off ? '#cbd5e1' : '';
+      allGoodBtn.style.borderColor = off ? '#cbd5e1' : '';
+      allGoodBtn.style.color = off ? '#475569' : '';
+      allGoodBtn.title = noTrail ? 'Choisissez d\'abord le sentier.' : (started ? 'Le formulaire est déjà commencé : utilisez « Enregistrer l\'inspection » en bas de la page.' : '');
     }
     form.addEventListener('input', refreshAllGood);
     form.addEventListener('change', refreshAllGood);
     new MutationObserver(refreshAllGood).observe(previewContainer, { childList: true, subtree: true });
+    refreshAllGood();
     setInterval(refreshAllGood, 1000);   // a restored draft or a photo added by code sets values without an event
 
     function initTrailInspection() {

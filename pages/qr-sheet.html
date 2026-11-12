@@ -126,6 +126,52 @@
       const testBox = ($('qs-test').checked && list.length) ? { w: [15, 20, 25, 30].reduce((n, z) => n + z + 3, 3), h: 42 } : null;
       const reserved = testBox ? { x: W - testBox.w - 4, y: H - testBox.h - 4, w: testBox.w, h: testBox.h } : null;
       const overlap = (a, b) => a.x < b.x + b.w + GAP && b.x < a.x + a.w + GAP && a.y < b.y + b.h + GAP && b.y < a.y + a.h + GAP;
+      // Two columns beside the map (left and right), the SAME gap between all the codes, each one joined to its trail by a straight line. The trails are shared between the
+      // two sides (the split with the fewest crossing lines, then the shortest lines); each column is ordered from top to bottom like its trails, so the lines do not cross.
+      // Not possible (no margin wide enough, e.g. a portrait sheet): the codes go in free places of the margins, below.
+      let placed = [], columnsDone = false;
+      const segCross = (s1, s2) => {
+        const o = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+        const d1 = o(s1.a, s1.b, s2.a), d2 = o(s1.a, s1.b, s2.b), d3 = o(s2.a, s2.b, s1.a), d4 = o(s2.a, s2.b, s1.b);
+        return d1 * d2 < 0 && d3 * d4 < 0;
+      };
+      (function placeColumns() {
+        const mapR = ox + map.width * s, n = list.length;
+        const marginL = ox - 3, marginR = (W - 3) - mapR;
+        const canL = marginL >= box, canR = marginR >= box;
+        if (!n || (!canL && !canR)) return;
+        const xL = 3 + (marginL - box) / 2, xR = mapR + (marginR - box) / 2;
+        const top = TITLE, bottomL = H - 3, bottomR = (reserved && reserved.x < xR + box) ? reserved.y - 3 : H - 3;   // the right column stops above the test strip
+        const byX = list.slice().sort((p1, p2) => p1.x - p2.x || p1.y - p2.y);
+        let best = null;
+        for (let k = (canL ? (canR ? 0 : n) : 0); k <= (canR ? n : n); k++) {
+          if (!canR && k !== n) continue;
+          if (!canL && k !== 0) continue;
+          const left = byX.slice(0, k).sort((p1, p2) => p1.y - p2.y), right = byX.slice(k).sort((p1, p2) => p1.y - p2.y);
+          const mMax = Math.max(left.length, right.length);
+          const spanOf = col => (col === left ? bottomL : bottomR) - top;
+          const limiting = Math.min(left.length === mMax ? spanOf(left) : 1e9, right.length === mMax ? spanOf(right) : 1e9);
+          const gap = Math.min(10, (limiting - mMax * boxH) / (mMax + 1));   // the same gap between all the codes, in both columns
+          if (gap < GAP) continue;
+          const items = [];
+          [[left, xL, bottomL, 'L'], [right, xR, bottomR, 'R']].forEach(([col, x, bottom, side]) => {
+            if (!col.length) return;
+            const block = col.length * boxH + (col.length - 1) * gap;
+            const meanY = col.reduce((sum, p) => sum + p.y, 0) / col.length;
+            const start = Math.min(Math.max(meanY - block / 2, top), bottom - block);
+            col.forEach((p, i) => { const r = { x, y: start + i * (boxH + gap), w: box, h: boxH }; items.push({ p, r, end: { x: side === 'L' ? x + box : x, y: r.y + box / 2 } }); });
+          });
+          const segs = items.map(it => ({ a: { x: it.p.x, y: it.p.y }, b: it.end }));
+          let crossings = 0, length = 0;
+          segs.forEach((s1, i) => { length += Math.hypot(s1.a.x - s1.b.x, s1.a.y - s1.b.y); for (let j = i + 1; j < segs.length; j++) if (segCross(s1, segs[j])) crossings++; });
+          const score = crossings * 100000 + length;
+          if (!best || score < best.score) best = { score, items, crossings };
+        }
+        if (!best) return;
+        best.items.forEach(it => { it.p.rect = it.r; it.p.end = it.end; placed.push(it.r); });
+        columnsDone = true;
+      })();
+      if (!columnsDone) {
       const slots = [];
       for (let y = TITLE; y + boxH <= H - 3; y += boxH + GAP) for (let x = 3; x + box <= W - 3; x += box + GAP) {
         const r = { x, y, w: box, h: boxH };
@@ -134,7 +180,6 @@
         slots.push(r);
       }
       const dist = (p, r) => Math.hypot(p.x - (r.x + r.w / 2), p.y - (r.y + box / 2));
-      const placed = [];
       const todo = list.slice();
       while (todo.length) {   // the trail with the closest free slot first: short lines, few crossings
         let pick = null;
@@ -155,6 +200,8 @@
         placed.push(p.rect);
       });
 
+      }
+
       // ---- the corner test strip: the same code at several sizes ----
       let testHtml = '';
       if ($('qs-test').checked && list.length) {
@@ -171,7 +218,7 @@
         `<div class="qs-title">${esc(APP_CONFIG.networks[Network.current()].name)} · ${esc(kindLabel)} : scannez le code pour inspecter le sentier</div>` +
         `<div class="qs-sub">Rapport d'inspection du sentier choisi (connexion à Regis nécessaire) · codes de ${q} mm</div>` +
         `<img class="qs-map" alt="" src="${esc(Network.url(map.image))}" style="left:${ox}mm;top:${oy}mm;width:${map.width * s}mm;height:${map.height * s}mm">` +
-        `<svg class="qs-lines" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${list.map(p => `<line x1="${p.x}" y1="${p.y}" x2="${p.rect.x + p.rect.w / 2}" y2="${p.rect.y + box / 2}" stroke="#e11d48" stroke-width="0.5"/><circle cx="${p.x}" cy="${p.y}" r="1.3" fill="#e11d48" stroke="#fff" stroke-width="0.4"/>`).join('')}</svg>` +
+        `<svg class="qs-lines" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${list.map(p => `<line x1="${p.x}" y1="${p.y}" x2="${p.end ? p.end.x : p.rect.x + p.rect.w / 2}" y2="${p.end ? p.end.y : p.rect.y + box / 2}" stroke="#e11d48" stroke-width="0.5"/><circle cx="${p.x}" cy="${p.y}" r="1.3" fill="#e11d48" stroke="#fff" stroke-width="0.4"/>`).join('')}</svg>` +
         list.map(p => `<div class="qs-qr" style="left:${p.rect.x}mm;top:${p.rect.y}mm;width:${box}mm;height:${box}mm;padding:1.5mm;border:0.3mm solid #333">${qrSvg(p.url)}</div><div class="qs-label" style="left:${p.rect.x}mm;top:${p.rect.y + box + 0.4}mm;width:${box}mm">${esc(p.label)}</div>`).join('') +
         testHtml;
       $('qs-info').textContent = `${list.length} sentier${list.length > 1 ? 's' : ''} avec un code${noPos ? ` (${noPos} sans position sur la carte : sans code)` : ''} · papier ${W} × ${H} mm · code de ${q} mm + marge blanche de 1,5 mm · échelle de la carte : 1 px = ${(s).toFixed(2)} mm`;

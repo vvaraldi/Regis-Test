@@ -149,11 +149,20 @@
     }
 
     /**
-     * Get return URL - always go to main portal
+     * Where to go after the login: the page the person was trying to open (the address is passed as ?returnUrl= by auth.js, e.g. a QR code on a trail sign
+     * opens the inspection report of that trail), otherwise the portal. Only an address of THIS site (same origin, under the same root folder, not this login
+     * page) is accepted: anything else goes to the portal.
      */
-    function getReturnUrl() {
-      // Always redirect to main portal after login
-      return '../index.html';
+    function getReturnUrl(search) {
+      const portal = '../index.html';
+      try {
+        const wanted = new URLSearchParams(search !== undefined ? search : window.location.search).get('returnUrl');
+        if (!wanted) return portal;
+        const u = new URL(wanted, window.location.href);
+        const root = window.location.pathname.slice(0, window.location.pathname.lastIndexOf('pages/'));   // the site root folder, e.g. /Regis/
+        if (u.origin !== window.location.origin || !u.pathname.startsWith(root) || /\/pages\/login\.html$/.test(u.pathname) || /\/pages\/(forgot|new)-password\.html$/.test(u.pathname)) return portal;
+        return u.href;
+      } catch (e) { return portal; }
     }
 
     /**

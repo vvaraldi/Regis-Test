@@ -19,6 +19,7 @@
 
 .user-table-section__header {
   display: flex;
+  flex-wrap: wrap;   /* the filters (search, status, delay, activity, application, page size) go on a second line instead of being cut */
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
@@ -46,6 +47,7 @@
 
 .user-table-section__actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
 }
