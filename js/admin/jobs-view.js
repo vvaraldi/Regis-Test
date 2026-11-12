@@ -76,6 +76,7 @@ const JobsView = (function () {
         <select class="form-select" id="jb-f-priority" aria-label="Priorité"><option value="">Toutes les priorités</option>${Jobs.PRIORITIES.map(p => `<option value="${p.id}">${p.icon} ${p.label}</option>`).join('')}</select>
         <select class="form-select" id="jb-f-sector" aria-label="Secteur"><option value="">Tous les secteurs</option></select>
         <select class="form-select" id="jb-f-trail" aria-label="Sentier"><option value="">Tous les sentiers</option></select>
+        <select class="form-select" id="jb-f-mine" aria-label="Mes jobs"><option value="">Tous les jobs</option><option value="1">Mes jobs (créés ou travaillés par moi)</option></select>
         <select class="form-select" id="jb-f-source" aria-label="Origine"><option value="">Toutes les origines</option>${Object.keys(Jobs.SOURCES).map(k => `<option value="${k}">${esc(Jobs.SOURCES[k])}</option>`).join('')}</select>
         <label class="jb-sub" for="jb-f-from" style="display:inline">Créé du</label><input type="date" class="form-input" id="jb-f-from" aria-label="Créé à partir du">
         <label class="jb-sub" for="jb-f-to" style="display:inline">au</label><input type="date" class="form-input" id="jb-f-to" aria-label="Créé jusqu’au">
@@ -133,10 +134,13 @@ const JobsView = (function () {
     // ----- the list -----
     function filters() {
       return { status: $('jb-f-status').value, priority: $('jb-f-priority').value, sector: $('jb-f-sector').value, trail: $('jb-f-trail').value,
-        source: $('jb-f-source').value, from: $('jb-f-from').value, to: $('jb-f-to').value, text: $('jb-f-text').value };
+        source: $('jb-f-source').value, mine: $('jb-f-mine').value, from: $('jb-f-from').value, to: $('jb-f-to').value, text: $('jb-f-text').value };
     }
     function visible() {
-      let list = Jobs.filter(jobs, filters());
+      const f = filters();
+      let list = Jobs.filter(jobs, f);
+      // "Mes jobs": the ones I created, or that one of my travaux (Entretien reports) worked on
+      if (f.mine === '1') list = list.filter(j => j.createdBy === opts.uid || (j.workLinks || []).some(w => w.builderId === opts.uid));
       if (!admin) list = list.filter(j => j.status !== 'cancelled');
       return Jobs.sort(list, $('jb-sort').value);
     }
@@ -295,7 +299,7 @@ const JobsView = (function () {
     }
 
     // ----- events -----
-    ['jb-f-status', 'jb-f-priority', 'jb-f-trail', 'jb-f-source', 'jb-f-from', 'jb-f-to', 'jb-sort'].forEach(id => $(id).addEventListener('change', render));
+    ['jb-f-status', 'jb-f-priority', 'jb-f-trail', 'jb-f-mine', 'jb-f-source', 'jb-f-from', 'jb-f-to', 'jb-sort'].forEach(id => $(id).addEventListener('change', render));
     $('jb-f-sector').addEventListener('change', () => { fillTrailFilter(); render(); });
     $('jb-f-text').addEventListener('input', render);
     $('jb-sector').addEventListener('change', () => SectorService.fillTrails($('jb-trail'), SectorService.find(sectors, $('jb-sector').value), '-- Tout le secteur / aucun sentier précis --'));

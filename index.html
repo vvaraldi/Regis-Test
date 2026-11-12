@@ -259,6 +259,7 @@
       });
       addRegisBadge(userData);
       addInspectionMedal(userData);
+      recordLastSeen(userData);
     }
 
     /**
@@ -266,6 +267,18 @@
      * (kept 10 minutes in the session), the level is 5 / 10 / 20 / 50 / 100 and it starts again with each season. Before the first level
      * the tile shows the progress ("3/5"), so the goal is visible. If the count fails (index not created yet) nothing is shown.
      */
+    // The last time this person opened the portal, written at most every 12 hours (the Administration > Utilisateurs list uses it to point at accounts that
+    // are no longer used). A convenience: never blocks or disturbs the page, and does nothing if the rules do not allow it yet.
+    async function recordLastSeen(userData) {
+      try {
+        const last = userData && userData.lastSeenAt && (userData.lastSeenAt.toDate ? userData.lastSeenAt.toDate() : new Date(userData.lastSeenAt));
+        if (last && Date.now() - last.getTime() < 12 * 60 * 60 * 1000) return;
+        const user = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+        if (!user) return;
+        await db.collection('inspectors').doc(user.uid).update({ lastSeenAt: firebase.firestore.FieldValue.serverTimestamp() });
+      } catch (e) { /* not important */ }
+    }
+
     let medalUser = null;   // remembered so the medal can be drawn again when the portal is shown again (see below)
     async function addInspectionMedal(userData) {
       medalUser = userData;

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Planche de codes QR des sentiers à imprimer">
+  <meta name="theme-color" content="#7e22ce">
+  <title>Codes QR des sentiers</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔳</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .qs-controls { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; align-items: flex-end; margin-bottom: 0.75rem; }
+    .qs-controls .form-group { margin: 0; }
+    .qs-help { font-size: 0.875rem; color: var(--theme-text-light); margin: 0 0 0.75rem; }
+    .qs-scroll { overflow: auto; background: #e2e8f0; padding: 1rem; border-radius: 8px; }
+    /* The sheet is drawn in millimetres: what is on the screen is what is printed (paper size chosen above) */
+    .qs-sheet { position: relative; background: #fff; margin: 0 auto; box-shadow: 0 2px 10px rgba(0,0,0,0.25); overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; color: #111; }
+    .qs-sheet img.qs-map { position: absolute; display: block; }
+    .qs-sheet svg.qs-lines { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .qs-qr { position: absolute; background: #fff; box-sizing: border-box; text-align: center; }
+    .qs-qr svg { display: block; width: 100%; }
+    .qs-label { position: absolute; font-size: 2.6mm; line-height: 3mm; text-align: center; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .qs-title { position: absolute; left: 4mm; top: 3mm; font-size: 4mm; font-weight: 700; }
+    .qs-sub { position: absolute; left: 4mm; top: 8mm; font-size: 2.8mm; color: #444; }
+    .qs-test { position: absolute; border: 0.3mm dashed #999; background: #fff; padding: 1.5mm; box-sizing: border-box; }
+    .qs-test-row { display: flex; align-items: flex-end; gap: 3mm; }
+    .qs-test-item { text-align: center; font-size: 2.4mm; }
+    @media print {
+      body { background: #fff !important; }
+      header, .header, footer, .footer, .qs-noprint, #status-messages, .page-loading { display: none !important; }
+      main, .main { padding: 0 !important; margin: 0 !important; max-width: none !important; display: block !important; }
+      .qs-scroll { padding: 0; background: none; overflow: visible; }
+      .qs-sheet { box-shadow: none; margin: 0; }
+    }
+  </style>
+  <style id="qs-page-size"></style>
+</head>
+<body data-theme="light" data-module="admin" data-nav="admin" data-page="qr-sheet">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <main id="main-content" class="main" style="display: none;">
+    <h1 class="sr-only">Codes QR des sentiers</h1>
+    <section class="content-section qs-noprint">
+      <div class="section-card">
+        <div class="section-card__header"><h2 class="section-card__title">🔳 Planche de codes QR des sentiers</h2></div>
+        <div class="section-card__body">
+          <p class="qs-help">Une carte avec un code QR par sentier, à imprimer et à afficher. En scannant le code avec un téléphone, on ouvre le rapport d'inspection de ce sentier, déjà choisi (il faut être connecté). Choisissez la carte, la taille et le papier, puis <b>Imprimer</b> (dans la fenêtre d'impression : marges « Aucune », échelle 100 %, pas d'en-têtes).</p>
+          <div class="qs-controls">
+            <div class="form-group"><label class="form-label" for="qs-kind">Carte</label><select id="qs-kind" class="form-select"></select></div>
+            <div class="form-group"><label class="form-label" for="qs-size">Taille des codes</label>
+              <select id="qs-size" class="form-select"><option value="15">15 mm (très petit)</option><option value="20">20 mm (minimum conseillé)</option><option value="25" selected>25 mm (conseillé)</option><option value="30">30 mm (grand)</option><option value="40">40 mm (de loin)</option></select></div>
+            <div class="form-group"><label class="form-label" for="qs-paper">Papier</label>
+              <select id="qs-paper" class="form-select"><option value="A3L" selected>A3 paysage</option><option value="A3P">A3 portrait</option><option value="A4L">A4 paysage</option><option value="A4P">A4 portrait</option></select></div>
+            <div class="form-group" id="qs-shelters-box" hidden><label class="form-check"><input type="checkbox" id="qs-shelters"> Ajouter les abris</label></div>
+            <div class="form-group"><label class="form-check"><input type="checkbox" id="qs-test" checked> Planche d'essai des tailles (coin de la feuille)</label></div>
+            <div class="form-group"><button type="button" class="btn btn-primary" id="qs-print">🖨️ Imprimer</button></div>
+          </div>
+          <p class="qs-help" id="qs-info"></p>
+        </div>
+      </div>
+    </section>
+    <div class="qs-scroll"><div class="qs-sheet" id="qs-sheet"></div></div>
+  </main>
+
+  <footer class="footer footer--simple qs-noprint"><div class="footer__content"><p class="footer__copyright">© 2026 Regis for Mont Orford</p></div></footer>
+  <div id="status-messages"></div>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/vendor/qrcode.js"></script>
+  <script>
+    // QR sheet: the map of one kind of trail, with a QR code for every trail, placed beside its position and joined to it by a line. The code opens
+    // the inspection report of that trail (pages/inspection-trail-report.html?trail=ID). Drawn in millimetres, printed as it is on screen.
+    const PAPER = { A3L: [420, 297], A3P: [297, 420], A4L: [297, 210], A4P: [210, 297] };
+    let places = [];   // [{ id, label, number, x, y (map px), url }]
+
+    const $ = id => document.getElementById(id);
+    const absUrl = path => new URL(siteUrl(path), window.location.href).href;
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    function qrSvg(text) {
+      const qr = qrcode(0, 'M');   // medium error correction: a scratch or a bit of dirt on the sign is tolerated
+      qr.addData(text); qr.make();
+      return qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+    }
+
+    async function load() {
+      const net = Network.current(), cfg = APP_CONFIG.networks[net];
+      const kinds = cfg.inspectionKinds || [];
+      $('qs-kind').innerHTML = kinds.map(k => `<option value="${k}">${esc(APP_CONFIG.trailKinds[k].label)} (${esc(cfg.name)})</option>`).join('');
+      $('qs-shelters-box').hidden = !(cfg.features && cfg.features.shelters);
+      const snap = await db.collection('trails').where('network', '==', net).get();
+      window.__trails = []; snap.forEach(d => window.__trails.push({ id: d.id, ...d.data() }));
+      window.__shelters = [];
+      if (cfg.features && cfg.features.shelters) { const s = await db.collection('shelters').where('network', '==', net).get(); s.forEach(d => window.__shelters.push({ id: d.id, ...d.data() })); }
+      ['qs-kind', 'qs-size', 'qs-paper', 'qs-shelters', 'qs-test'].forEach(id => $(id).addEventListener('change', render));
+      $('qs-print').addEventListener('click', () => window.print());
+      render();
+    }
+
+    function render() {
+      const kind = $('qs-kind').value, q = +$('qs-size').value, paper = PAPER[$('qs-paper').value];
+      const [W, H] = paper, M = 6, TITLE = 14;
+      $('qs-page-size') && ($('qs-page-size').textContent = `@page { size: ${W}mm ${H}mm; margin: 0; }`);
+      const map = APP_CONFIG.maps[APP_CONFIG.trailKinds[kind].map];
+      const s = Math.min((W - 2 * M) / map.width, (H - 2 * M - TITLE) / map.height);   // mm per map pixel
+      const ox = M + ((W - 2 * M) - map.width * s) / 2, oy = M + TITLE;
+      const hasPos = o => o.coordinates && typeof o.coordinates.left === 'number' && typeof o.coordinates.top === 'number';
+      const list = window.__trails.filter(t => TrailService.kindOf(t) === kind && !TrailService.isArchived(t) && hasPos(t))
+        .sort((a, b) => (a.number || 0) - (b.number || 0) || String(a.name).localeCompare(String(b.name)))
+        .map(t => ({ id: t.id, label: (t.number ? t.number + ' · ' : '') + (t.name || t.id), x: ox + t.coordinates.left * s, y: oy + t.coordinates.top * s, url: absUrl('pages/inspection-trail-report.html') + '?trail=' + encodeURIComponent(t.id) }));
+      if ($('qs-shelters').checked && kind === 'uphill') {
+        window.__shelters.filter(h => hasPos(h) && !h.archived).forEach(h => list.push({ id: h.id, label: '🏠 ' + (h.name || h.id), x: ox + h.coordinates.left * s, y: oy + h.coordinates.top * s, url: absUrl('pages/inspection-shelter-report.html') + '?shelter=' + encodeURIComponent(h.id) }));
+      }
+      const noPos = window.__trails.filter(t => TrailService.kindOf(t) === kind && !TrailService.isArchived(t) && !hasPos(t)).length;
+
+      // ---- placing the codes: in the white margins around the map (they never hide what is printed on the map), each one joined to its trail by a line ----
+      const box = q + 3, boxH = box + 3.6, GAP = 1.5;
+      const mapRect = { x: ox - 1, y: oy - 1, w: map.width * s + 2, h: map.height * s + 2 };
+      const testBox = ($('qs-test').checked && list.length) ? { w: [15, 20, 25, 30].reduce((n, z) => n + z + 3, 3), h: 42 } : null;
+      const reserved = testBox ? { x: W - testBox.w - 4, y: H - testBox.h - 4, w: testBox.w, h: testBox.h } : null;
+      const overlap = (a, b) => a.x < b.x + b.w + GAP && b.x < a.x + a.w + GAP && a.y < b.y + b.h + GAP && b.y < a.y + a.h + GAP;
+      const slots = [];
+      for (let y = TITLE; y + boxH <= H - 3; y += boxH + GAP) for (let x = 3; x + box <= W - 3; x += box + GAP) {
+        const r = { x, y, w: box, h: boxH };
+        if (overlap(r, mapRect) && !(r.x + r.w <= mapRect.x || r.x >= mapRect.x + mapRect.w || r.y + r.h <= mapRect.y || r.y >= mapRect.y + mapRect.h)) continue;   // on the map
+        if (reserved && overlap(r, reserved)) continue;
+        slots.push(r);
+      }
+      const dist = (p, r) => Math.hypot(p.x - (r.x + r.w / 2), p.y - (r.y + box / 2));
+      const placed = [];
+      const todo = list.slice();
+      while (todo.length) {   // the trail with the closest free slot first: short lines, few crossings
+        let pick = null;
+        todo.forEach(p => slots.forEach(r => { if (!r.used) { const d = dist(p, r); if (!pick || d < pick.d) pick = { p, r, d }; } }));
+        if (!pick) break;
+        pick.r.used = true; pick.p.rect = pick.r; placed.push(pick.r); todo.splice(todo.indexOf(pick.p), 1);
+      }
+      // no free margin slot left (very small paper): beside the marker, outside the other codes
+      todo.forEach(p => {
+        let best = null;
+        for (let r = box / 2 + 3; r < 260 && !best; r += 3) for (let a = 0; a < 360 && !best; a += 20) {
+          const cx = p.x + r * Math.cos(a * Math.PI / 180), cy = p.y + r * Math.sin(a * Math.PI / 180);
+          const rect = { x: cx - box / 2, y: cy - box / 2, w: box, h: boxH };
+          if (rect.x < 2 || rect.y < 2 || rect.x + rect.w > W - 2 || rect.y + rect.h > H - 2 || placed.some(o => overlap(rect, o)) || (reserved && overlap(rect, reserved))) continue;
+          best = rect;
+        }
+        p.rect = best || { x: 2, y: 2, w: box, h: boxH };
+        placed.push(p.rect);
+      });
+
+      // ---- the corner test strip: the same code at several sizes ----
+      let testHtml = '';
+      if ($('qs-test').checked && list.length) {
+        const sizes = [15, 20, 25, 30], tw = reserved.w, th = reserved.h;
+        const tx = reserved.x, ty = reserved.y;
+        const svg = qrSvg(list[0].url);
+        testHtml = `<div class="qs-test" style="left:${tx}mm;top:${ty}mm;width:${tw}mm;height:${th}mm"><div style="font-size:2.4mm;font-weight:700;margin-bottom:1mm">Essai : quel code se lit bien ?</div><div class="qs-test-row">${sizes.map(z => `<div class="qs-test-item"><div style="width:${z}mm;background:#fff">${svg}</div>${z} mm</div>`).join('')}</div></div>`;
+      }
+
+      const kindLabel = APP_CONFIG.trailKinds[kind].label;
+      const sheet = $('qs-sheet');
+      sheet.style.width = W + 'mm'; sheet.style.height = H + 'mm';
+      sheet.innerHTML =
+        `<div class="qs-title">${esc(APP_CONFIG.networks[Network.current()].name)} · ${esc(kindLabel)} : scannez le code pour inspecter le sentier</div>` +
+        `<div class="qs-sub">Rapport d'inspection du sentier choisi (connexion à Regis nécessaire) · codes de ${q} mm</div>` +
+        `<img class="qs-map" alt="" src="${esc(Network.url(map.image))}" style="left:${ox}mm;top:${oy}mm;width:${map.width * s}mm;height:${map.height * s}mm">` +
+        `<svg class="qs-lines" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${list.map(p => `<line x1="${p.x}" y1="${p.y}" x2="${p.rect.x + p.rect.w / 2}" y2="${p.rect.y + box / 2}" stroke="#e11d48" stroke-width="0.5"/><circle cx="${p.x}" cy="${p.y}" r="1.3" fill="#e11d48" stroke="#fff" stroke-width="0.4"/>`).join('')}</svg>` +
+        list.map(p => `<div class="qs-qr" style="left:${p.rect.x}mm;top:${p.rect.y}mm;width:${box}mm;height:${box}mm;padding:1.5mm;border:0.3mm solid #333">${qrSvg(p.url)}</div><div class="qs-label" style="left:${p.rect.x}mm;top:${p.rect.y + box + 0.4}mm;width:${box}mm">${esc(p.label)}</div>`).join('') +
+        testHtml;
+      $('qs-info').textContent = `${list.length} sentier${list.length > 1 ? 's' : ''} avec un code${noPos ? ` (${noPos} sans position sur la carte : sans code)` : ''} · papier ${W} × ${H} mm · code de ${q} mm + marge blanche de 1,5 mm · échelle de la carte : 1 px = ${(s).toFixed(2)} mm`;
+      $('loading').style.display = 'none';
+    }
+
+    function initQrSheet() {
+      checkAuthStatus({
+        requireAuth: true,
+        requiredRoles: ['system_admin'],
+        onAuthenticated: () => load().catch(e => { console.error('QR sheet:', e); showMessage('La planche n\'a pas pu être préparée.', 'error', 5000); })
+      });
+    }
+    onFirebaseReady(initQrSheet);
+  </script>
+</body>
+</html>

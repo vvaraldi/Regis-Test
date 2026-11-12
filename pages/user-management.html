@@ -99,6 +99,10 @@
       border-color: transparent;
     }
 
+    /* Accounts not used for a while (the delay is set above the table) */
+    .user-row--stale > td { background: #fff1e0; }
+    [data-theme="dark"] .user-row--stale > td { background: rgba(245, 158, 11, 0.18); }
+    .user-seen__ago { color: var(--theme-text-light); font-size: 0.8125rem; }
     .user-table__access {
       display: flex;
       gap: 0.5rem;
@@ -434,7 +438,13 @@
               <option value="">Tous les statuts</option>
               <option value="active">Actifs</option>
               <option value="inactive">Inactifs</option>
+              <option value="stale">⏳ Sans connexion récente</option>
             </select>
+            <div class="page-size-select" title="Un compte actif qui n'a pas ouvert Regis depuis ce nombre de jours est surligné en orange">
+              <label for="stale-days">Sans connexion depuis (jours) :</label>
+              <input type="number" class="form-input form-input--sm" id="stale-days" min="7" max="730" value="90" style="width: 5.5rem;">
+              <span class="user-table-section__count" id="stale-count"></span>
+            </div>
             <select class="form-select form-select--sm" id="filter-network" aria-label="Filtrer par activité" style="width: auto;">
               <option value="">Toutes les activités</option>
             </select>
@@ -474,6 +484,7 @@
                 <th scope="col">Activités</th>
                 <th scope="col">Accès (cliquer pour modifier)</th>
                 <th scope="col">Statut</th>
+                <th scope="col">Dernière connexion</th>
                 <th scope="col" class="table-cell--actions">Actions</th>
               </tr>
             </thead>
@@ -1159,6 +1170,17 @@
           </div>
         </div>
       </div>
+
+      <div class="data-export-section links-card" id="links-qrsheet-card" hidden>
+        <div class="data-export-section__header">
+          <span>🔳</span>
+          <h3>Codes QR des sentiers</h3>
+        </div>
+        <p class="data-export-section__description">
+          Une carte avec un code QR par sentier, à imprimer et à afficher : le scanner ouvre le rapport d'inspection du sentier, déjà choisi.
+        </p>
+        <a class="btn btn-secondary btn-sm" href="qr-sheet.html">🔳 Ouvrir la planche à imprimer</a>
+      </div>
     </div>
   </main>
 
@@ -1359,6 +1381,7 @@
       list.href = list.textContent = pageLink('public-list.html');
 
       document.getElementById('links-volunteer-card').hidden = !showVolunteers;
+      document.getElementById('links-qrsheet-card').hidden = !isCurrentUserSystemAdmin;   // the QR sheet is for the system admin
       if (showVolunteers) {
         const link = pageLink('maintenance-volunteer-register.html');
         const volunteer = document.getElementById('link-volunteer');
@@ -1611,6 +1634,18 @@
 
     // keepPage === true: the list was only refreshed (a user was edited, a badge clicked): stay on this page.
     // Anything else (a search, a filter, the page size) starts again from page 1.
+    // ----- accounts that have not been used for a while (Administration > Utilisateurs) -----
+    // `lastSeenAt` is written when the person opens the portal (at most every 12 h). Accounts seen before that was added have none: shown as "-", never counted as stale.
+    const STALE_KEY = 'regis-stale-days';
+    function staleDays() {
+      const stored = parseInt((() => { try { return localStorage.getItem(STALE_KEY); } catch (e) { return null; } })(), 10);
+      const field = parseInt((document.getElementById('stale-days') || {}).value, 10);
+      return field > 0 ? field : (stored > 0 ? stored : 90);
+    }
+    const seenDate = user => user.lastSeenAt ? (user.lastSeenAt.toDate ? user.lastSeenAt.toDate() : new Date(user.lastSeenAt)) : null;
+    const daysSinceSeen = user => { const d = seenDate(user); return d && !isNaN(d) ? Math.floor((Date.now() - d.getTime()) / 86400000) : null; };
+    const isStale = user => user.status === 'active' && daysSinceSeen(user) !== null && daysSinceSeen(user) > staleDays();
+
     function filterAndRenderUsers(keepPage) {
       if (keepPage !== true) usersPage = 1;
       const search = document.getElementById('search-users').value.toLowerCase();
@@ -1618,11 +1653,15 @@
       const networkFilter = document.getElementById('filter-network').value;
       const appFilter = document.getElementById('filter-app').value;   // an allow* flag, or '' = every user
 
+      const staleN = users.filter(isStale).length;
+      const staleBox = document.getElementById('stale-count');
+      if (staleBox) staleBox.textContent = staleN ? `(${staleN} concerné${staleN > 1 ? 's' : ''})` : '';
+
       filteredUsers = users.filter(user => {
         const matchesSearch = !search ||
           user.name?.toLowerCase().includes(search) ||
           user.email?.toLowerCase().includes(search);
-        const matchesStatus = !statusFilter || user.status === statusFilter;
+        const matchesStatus = !statusFilter || (statusFilter === 'stale' ? isStale(user) : user.status === statusFilter);
         const matchesNetwork = !networkFilter || networksOf(user).includes(networkFilter);
         const matchesApp = !appFilter || user[appFilter] === true;
         return matchesSearch && matchesStatus && matchesNetwork && matchesApp;
@@ -1664,7 +1703,7 @@
         const manageable = canManage(user);
 
         return `
-        <tr>
+        <tr class="${isStale(user) ? 'user-row--stale' : ''}">
           <td data-label="Nom">
             <span class="user-table__name" ${manageable ? `onclick="editUser('${user.id}')"` : ''}>${escapeHtml(user.name || '-')}</span>
           </td>
@@ -1696,6 +1735,7 @@
               ${user.status === 'active' ? 'Actif' : 'Inactif'}
             </span>
           </td>
+          <td data-label="Dernière connexion" title="${seenDate(user) ? '' : 'Pas encore suivie : la date apparaît à la prochaine connexion de la personne'}">${seenDate(user) ? `${seenDate(user).toLocaleDateString('fr-CA')} <span class="user-seen__ago">(${daysSinceSeen(user) === 0 ? 'aujourd’hui' : 'il y a ' + daysSinceSeen(user) + ' j'})</span>` : '-'}</td>
           <td class="table-cell--actions" data-label="Actions">
             <div class="user-table__actions">
               ${manageable
@@ -2687,6 +2727,8 @@ Marie Tremblay,marie.tremblay@example.com,MotDePasse456,admin,,true,true,true,fa
           document.getElementById('export-network').addEventListener('change', initializeExportDate);
           document.getElementById('search-users').addEventListener('input', debounce(() => filterAndRenderUsers(), 300));
           document.getElementById('filter-status').addEventListener('change', () => filterAndRenderUsers());
+          try { const stored = localStorage.getItem(STALE_KEY); if (stored) document.getElementById('stale-days').value = stored; } catch (e) {}
+          document.getElementById('stale-days').addEventListener('change', e => { try { localStorage.setItem(STALE_KEY, String(parseInt(e.target.value, 10) || 90)); } catch (err) {} filterAndRenderUsers(true); });
           document.getElementById('filter-network').addEventListener('change', () => filterAndRenderUsers());
           document.getElementById('filter-app').addEventListener('change', () => filterAndRenderUsers());
           document.getElementById('users-page-size').addEventListener('change', e => {

@@ -81,6 +81,12 @@
           </div>
         </div>
       </div>
+      <div class="form-section" id="all-good-section">
+        <div class="form-section-body">
+          <button type="button" class="btn btn-primary" id="all-good-btn" style="width: 100%; padding: 0.9rem 1rem; font-size: 1.1rem; font-weight: 700;">✅ Tout est en ordre : enregistrer</button>
+          <p class="form-hint" style="margin: 0.5rem 0 0;">Une fois le sentier choisi : enregistre tout de suite l'inspection avec « Recommander d'ouvrir », « Bon état » et aucun problème. S'il y a un problème, des photos ou une note, remplissez le formulaire ci-dessous.</p>
+        </div>
+      </div>
       <div class="form-section">
         <div class="form-section-header"><h2 class="form-section-title">🚪 Statut et état du sentier</h2></div>
         <div class="form-section-body">
@@ -181,6 +187,19 @@
     const submitBtn = document.getElementById('submit-btn');
     const successMessage = document.getElementById('success-message');
     const errorMessage = document.getElementById('error-message');
+
+    // "Tout est en ordre": for the usual case. The trail is chosen, nothing to report: ONE tap saves the inspection (open recommended, good condition, no problem),
+    // through the normal save (same checks, same draft, same medal). With a problem, a photo or a note already entered, the button refuses and sends to the form.
+    document.getElementById('all-good-btn').addEventListener('click', () => {
+      if (!trailSelect.value) { showToast('Choisissez d\'abord le sentier.', 'warning'); trailSelect.focus(); return; }
+      const hasPhotos = (selectedFiles && selectedFiles.length) || (photoPicker && typeof photoPicker.hasPhotos === 'function' && photoPicker.hasPhotos());
+      if (form.querySelectorAll('#issues-group input:checked').length || otherIssues.value.trim() || comments.value.trim() || hasPhotos) {
+        showToast('Des problèmes, des photos ou une note sont déjà saisis : utilisez « Enregistrer l\'inspection ».', 'warning'); return;
+      }
+      document.getElementById('status-open').checked = true;
+      document.getElementById('condition-good').checked = true;
+      submitBtn.click();
+    });
 
     function initTrailInspection() {
       storage = firebase.storage();
