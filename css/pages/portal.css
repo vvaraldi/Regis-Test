@@ -118,6 +118,7 @@
   align-items: center;
   justify-content: center;
 }
+.app-card__badge--old { background: #c2410c; }   /* Jobs: the number of old open jobs (orange; white text 5:1) */
 
 /* The medal of the season on the Inspections tile (js/services/badges.js): the level reached, or the progress before the first one */
 .app-card--inspection .app-card__header { position: relative; }

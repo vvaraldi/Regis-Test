@@ -209,7 +209,9 @@ const APP_CONFIG = {
   jobs: {
     createFrom: { inspections: true, signalisations: true },
     // In the Entretien report: the open tasks of the place and the link of a travail to a task (false = none of it, the report works as before)
-    entretien: true
+    entretien: true,
+    // A job still open (à faire / en cours) after this many days is "old": an orange number on the Jobs tile of the portal, an orange line in the lists
+    oldDays: 14
   },
 
   // The earliest season the admin Statistiques tab's season navigator can go back to, for every

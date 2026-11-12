@@ -258,6 +258,7 @@
         appGrid.appendChild(card);
       });
       addRegisBadge(userData);
+      addJobsBadge(userData);
       addInspectionMedal(userData);
       recordLastSeen(userData);
     }
@@ -309,6 +310,34 @@
     // saved report empties it (Badges.forget), so only then is something read (the last week).
     window.addEventListener('pageshow', e => { if (e.persisted && medalUser) addInspectionMedal(medalUser); });
     document.addEventListener('visibilitychange', () => { if (!document.hidden && medalUser) addInspectionMedal(medalUser); });
+
+    /**
+     * On the Jobs tile: how many jobs are still open (à faire / en cours) after more than APP_CONFIG.jobs.oldDays days (14). An orange number; nothing when there
+     * is none. ONE read of the jobs of the activity when the portal opens, for the people who see the tile (administrators, or the Jobs permission).
+     */
+    async function addJobsBadge(userData) {
+      const card = document.querySelector('.app-card--jobs');
+      if (!card) return;
+      try {
+        const days = (APP_CONFIG.jobs && APP_CONFIG.jobs.oldDays) || 14, limit = Date.now() - days * 86400000;
+        const snap = await db.collection('jobs').where('network', '==', Network.current()).get();
+        let old = 0;
+        snap.forEach(doc => {
+          const j = doc.data(), created = j.createdAt && (j.createdAt.toDate ? j.createdAt.toDate() : new Date(j.createdAt));
+          if (Network.matches(j) && (j.status === 'todo' || j.status === 'doing') && created && !isNaN(created) && created.getTime() < limit) old++;
+        });
+        const current = document.querySelector('.app-card--jobs');
+        const prev = current && current.querySelector('.app-card__badge');
+        if (prev) prev.remove();
+        if (!old || !current) return;
+        const badge = document.createElement('span');
+        badge.className = 'app-card__badge app-card__badge--old';
+        badge.textContent = old;
+        badge.title = old + (old > 1 ? ' jobs ouverts' : ' job ouvert') + ' depuis plus de ' + days + ' jours, pas encore terminé' + (old > 1 ? 's' : '');
+        badge.setAttribute('aria-label', badge.title);
+        current.querySelector('.app-card__header').appendChild(badge);
+      } catch (e) { console.warn('Jobs: the old jobs could not be counted.', e); }
+    }
 
     /**
      * On the Régis gère tile: how many recommendations of the inspections wait for a decision. ONE read of the trails when the portal opens

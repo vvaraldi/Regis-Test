@@ -55,6 +55,16 @@ const Jobs = (function () {
 
   const isOpen = job => OPEN.includes(job.status);
 
+  /** After how many days an open job is "old" (config: jobs.oldDays, 14 by default). */
+  const oldDays = () => { const n = typeof APP_CONFIG !== 'undefined' && APP_CONFIG.jobs && APP_CONFIG.jobs.oldDays; return typeof n === 'number' && n > 0 ? n : 14; };
+  /** Whole days since the job was created (null without a valid date). */
+  function ageDays(job, now) {
+    const d = toDate(job && job.createdAt);
+    return d && !isNaN(d) ? Math.floor(((now || new Date()).getTime() - d.getTime()) / 86400000) : null;
+  }
+  /** An open job older than the limit (a done or cancelled one is never "old"). */
+  const isOld = (job, now) => isOpen(job) && ageDays(job, now) !== null && ageDays(job, now) > oldDays();
+
   /**
    * The filters of the list. `f`: { status: '' | id | 'open' (todo + doing), priority, sector, trail (trailId), source, text,
    * from, to (Date or yyyy-mm-dd, on the creation date) }. Cancelled jobs are only listed when asked for (status 'cancelled' or 'all').
@@ -196,6 +206,6 @@ const Jobs = (function () {
     return patch;
   }
 
-  return { STATUSES, PRIORITIES, SOURCES, OPEN, DEFAULT_PRIORITY, status, priority, nextPriority, isOpen, filter, sort, validate, newJob, statusPatch, counts, forPlace, lastLink, linkOutcome, shortDate, labelOf };
+  return { STATUSES, PRIORITIES, SOURCES, OPEN, DEFAULT_PRIORITY, status, priority, nextPriority, isOpen, filter, sort, validate, newJob, statusPatch, counts, forPlace, lastLink, linkOutcome, shortDate, labelOf, oldDays, ageDays, isOld };
 })();
 if (typeof window !== 'undefined') window.Jobs = Jobs;

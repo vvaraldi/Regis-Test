@@ -24,6 +24,11 @@ const JobsView = (function () {
     .jb-prio { background: none; border: none; font-size: 1.3rem; line-height: 1; padding: 0.1rem 0.25rem; cursor: default; }
     .jb-prio--admin { cursor: pointer; border-radius: var(--radius-md); }
     .jb-prio--admin:hover { background: var(--theme-surface-alt); }
+    /* An open job that is old (config jobs.oldDays): light orange line and the number of days */
+    .jb-row--old > td { background: #fff1e0; }
+    .jb-old { color: #b45309; font-weight: 700; white-space: nowrap; }
+    [data-theme="dark"] .jb-row--old > td { background: rgba(245, 158, 11, 0.18); }
+    [data-theme="dark"] .jb-old { color: #fbbf24; }
     .jb-link { background: none; border: none; padding: 0; color: var(--theme-accent); font: inherit; font-weight: 600; text-align: left; cursor: pointer; text-decoration: underline; }
     /* Phones: the priority dot and the links of the table are at least 44 px high to tap (they were 18 to 24 px) */
     @media (max-width: 768px) {
@@ -148,7 +153,8 @@ const JobsView = (function () {
       const base = admin ? jobs : jobs.filter(j => j.status !== 'cancelled');
       const c = Jobs.counts(base);
       const item = (v, l) => `<div class="jb-counter"><div class="jb-counter__value">${v}</div><div class="jb-counter__label">${l}</div></div>`;
-      $('jb-counters').innerHTML = item(c.todo, 'À faire') + item(c.doing, 'En cours') + item(c.highOpen, '🔴 Haute priorité ouverts') + item(c.done, 'Faits') + (admin ? item(c.cancelled, 'Annulés') : '');
+      const oldN = base.filter(j => Jobs.isOld(j)).length;
+      $('jb-counters').innerHTML = item(c.todo, 'À faire') + item(c.doing, 'En cours') + item(c.highOpen, '🔴 Haute priorité ouverts') + (oldN ? item(oldN, '🟠 Ouverts depuis plus de ' + Jobs.oldDays() + ' j') : '') + item(c.done, 'Faits') + (admin ? item(c.cancelled, 'Annulés') : '');
     }
     // The origin column: a task made from an inspection or a signalisation is a link that opens that report in the small window (js/services/report-peek.js)
     function rowOrigin(j) {
@@ -162,12 +168,13 @@ const JobsView = (function () {
       const prio = admin
         ? `<button type="button" class="jb-prio jb-prio--admin" data-prio="${esc(j.id)}" title="${esc(p.label)} - cliquer pour changer" aria-label="Priorité ${esc(p.label)}, cliquer pour changer">${p.icon}</button>`
         : `<span class="jb-prio" title="${esc(p.label)}" role="img" aria-label="Priorité ${esc(p.label)}">${p.icon}</span>`;
-      return `<tr data-id="${esc(j.id)}">
+      const old = Jobs.isOld(j);   // open for too long: light orange line, and how long
+      return `<tr data-id="${esc(j.id)}"${old ? ' class="jb-row--old"' : ''}>
         <td data-label="Priorité">${prio}</td>
         <td data-label="Job"><button type="button" class="jb-link" data-open="${esc(j.id)}">${esc(j.title)}</button></td>
         <td data-label="Sentier">${place.length ? `<strong>${esc(place[0])}</strong>${place[1] ? `<span class="jb-sub">${esc(place[1])}</span>` : ''}` : '–'}</td>
         <td data-label="Statut">${pill(j.status)}</td>
-        <td data-label="Créé">${esc(fmtDate(j.createdAt))}</td>
+        <td data-label="Créé">${esc(fmtDate(j.createdAt))}${old ? `<span class="jb-old" title="Job encore ouvert (à faire ou en cours) depuis plus de ${Jobs.oldDays()} jours"> · ouvert depuis ${Jobs.ageDays(j)} j</span>` : ''}</td>
         <td data-label="Modifié">${esc(fmtDate(j.updatedAt))}</td>
         <td data-label="Origine">${rowOrigin(j)}</td>
       </tr>`;
