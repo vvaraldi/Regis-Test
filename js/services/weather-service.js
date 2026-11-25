@@ -22,21 +22,31 @@ const WeatherService = (() => {
   const CLOUD_COVER = { clear: 'Dégagé', partly: 'Partiellement nuageux', overcast: 'Couvert' };
   const SKY = { sun: 'Soleil', snow: 'Neige', rain: 'Pluie', fog: 'Brouillard' };
   const LISTS = (APP_CONFIG.weather && APP_CONFIG.weather.lists) || {};   // the typed-only choices (config.js)
-  // In the order of the form (the customer's priority). windForce, snowType, snowBase and snowCover exist only typed
+  // In the order of the form (the customer's priority). windForce, the snow depths and the three snow words exist only typed
   // by hand: Environment Canada does not give them.
+  //   type 'number'  a number between min and max;  'choice'  one of `choices` (the id is stored);
+  //   type 'text'    free words (at most TEXT_MAX characters), `suggestions` (id -> words) are only offered in the box: what is stored
+  //                  is the words. A reading saved when these were drop-downs holds an id: wordsOf() shows it as its words.
+  // snowType / snowBase / snowCover keep their keys (the saved readings) and are shown as Surface / Base / Couverture.
+  const TEXT_MAX = 60;
   const FIELDS = [
     { key: 'tempC', label: 'Température', unit: '°C', type: 'number', min: -60, max: 50, step: 0.1 },
     { key: 'feelsLikeC', label: 'Température ressentie', unit: '°C', type: 'number', min: -90, max: 60, step: 1 },
     { key: 'windForce', label: 'Force du vent', type: 'choice', choices: LISTS.windForce || {}, listed: true },
     { key: 'windKmh', label: 'Vent', unit: 'km/h', type: 'number', min: 0, max: 300, step: 1 },
     { key: 'newSnowCm', label: 'Neige fraîche (24 h)', unit: 'cm', type: 'number', min: 0, max: 300, step: 1 },
-    { key: 'snowType', label: 'Conditions de neige', type: 'choice', choices: LISTS.snowType || {}, listed: true },
+    { key: 'newSnow48Cm', label: 'Neige fraîche (48 h)', unit: 'cm', type: 'number', min: 0, max: 500, step: 1 },
+    { key: 'newSnow7dCm', label: 'Neige fraîche (7 jours)', unit: 'cm', type: 'number', min: 0, max: 1000, step: 1 },
+    { key: 'newSnowSeasonCm', label: 'Neige tombée (saison)', unit: 'cm', type: 'number', min: 0, max: 2000, step: 1 },
     { key: 'snowDepthCm', label: 'Neige au sol (base)', unit: 'cm', type: 'number', min: 0, max: 1000, step: 1 },
-    { key: 'snowBase', label: 'Fond', type: 'choice', choices: LISTS.snowBase || {}, listed: true },
-    { key: 'snowCover', label: 'Couverture', type: 'choice', choices: LISTS.snowCover || {}, listed: true },
+    { key: 'snowBase', label: 'Base', type: 'text', suggestions: LISTS.snowBase || {} },
+    { key: 'snowType', label: 'Surface', type: 'text', suggestions: LISTS.snowType || {} },
+    { key: 'snowCover', label: 'Couverture', type: 'text', suggestions: LISTS.snowCover || {} },
     { key: 'cloudCover', label: 'Nuages', type: 'choice', choices: CLOUD_COVER },
     { key: 'sky', label: 'Conditions générales', type: 'choice', choices: SKY }
   ];  const KEYS = FIELDS.map(f => f.key);
+  /** The words of a typed-words value: the suggestion when it is an id (older readings), else the text itself */
+  const wordsOf = (f, value) => (f.suggestions && Object.prototype.hasOwnProperty.call(f.suggestions, value)) ? f.suggestions[value] : String(value);
   const fieldOf = key => FIELDS.find(f => f.key === key);
 
   const config = () => APP_CONFIG.weather;
@@ -189,6 +199,12 @@ const WeatherService = (() => {
         else values[f.key] = v;
         return;
       }
+      if (f.type === 'text') {
+        const t = String(v).replace(/\s+/g, ' ').trim();
+        if (t.length > TEXT_MAX) errors[f.key] = `${f.label} : ${TEXT_MAX} caractères au plus.`;
+        else values[f.key] = wordsOf(f, t);   // a suggestion's id is stored as its words
+        return;
+      }
       const n = num(typeof v === 'string' ? v.trim().replace(',', '.') : v);
       if (n === null) errors[f.key] = `${f.label} : un nombre est attendu.`;
       else if (n < f.min || n > f.max) errors[f.key] = `${f.label} : entre ${f.min} et ${f.max} ${f.unit || ''}.`.replace(/ \.$/, '.');
@@ -339,6 +355,7 @@ const WeatherService = (() => {
     const f = fieldOf(key);
     if (!f) return String(value);
     if (f.type === 'choice') return f.choices[value] || String(value);
+    if (f.type === 'text') return wordsOf(f, value);
     const text = String(value).replace('.', ',');
     return f.unit ? `${text} ${f.unit}` : text;
   }
@@ -366,7 +383,8 @@ const WeatherService = (() => {
     const loc = location(record.locationId);
     keys.forEach(k => {
       // every choice goes out as its words (the other website has no copy of the lists); numbers as stored
-      measures[k] = fieldOf(k).type === 'choice' ? (fieldOf(k).choices[eff[k].value] || String(eff[k].value)) : eff[k].value;
+      const f = fieldOf(k);
+      measures[k] = f.type === 'choice' ? (f.choices[eff[k].value] || String(eff[k].value)) : (f.type === 'text' ? wordsOf(f, eff[k].value) : eff[k].value);
       if (eff[k].source !== 'manual' && eff[k].source !== 'station') {   // the mountain's own station is not credited to Environnement Canada
         webFields.push(k);
         const st = loc.stations.find(s => s.id === eff[k].source);
@@ -441,7 +459,7 @@ const WeatherService = (() => {
   }
 
   return {
-    COLLECTION, FIELDS, KEYS, CLOUD_COVER, SKY, fieldOf, location,
+    COLLECTION, FIELDS, KEYS, TEXT_MAX, CLOUD_COVER, SKY, fieldOf, wordsOf, location,
     format, feelsLike, mapObservation, observationUrl, fetchWebValues, fetchStationValues,
     validateManual, buildRecord, effectiveValues, save, update, remove, list, listDay,
     publicDocument, publishLatest, dayKey, dailyValues, missingDays

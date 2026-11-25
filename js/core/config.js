@@ -81,13 +81,14 @@ const APP_CONFIG = {
     api: 'https://api.weather.gc.ca/collections/swob-realtime/items',
     maxAgeHours: 3,                 // an observation older than this (before the chosen time) is not offered
     defaultLocation: 'mountain',
-    // The choices of the fields typed by hand (the customer's sheet): id -> words shown. The id is what is
-    // stored, so a word can be changed here without touching the readings already saved; do not change an id
-    // that is already used. The order here is the order of the drop-down.
+    // The choices of the fields typed by hand (the customer's sheet): id -> words shown. windForce is a drop-down: the id is what is
+    // stored, so a word can be changed here without touching the readings already saved; do not change an id that is already used.
+    // snowType (shown as "Surface"), snowBase ("Base") and snowCover ("Couverture") are FREE TEXT since 2026-11: the lists below are
+    // only the suggestions of the box (what is stored is the words typed or picked; readings saved earlier hold an id, shown as its words).
     lists: {
       windForce:  { nul: 'Nul', faible: 'Faible', moyen: 'Moyen', fort: 'Fort', 'tres-fort': 'Très fort' },
-      snowType:   { 'poudreuse-legere': 'Poudreuse légère', 'poudreuse-lourde': 'Poudreuse lourde', granulaire: 'Granulaire', mouillee: 'Neige mouillée', croutee: 'Croûtée', glacee: 'Glacée', printaniere: 'Printanière' },
-      snowBase:   { solide: 'Solide', variable: 'Variable', mou: 'Mou', glace: 'Glacé', mince: 'Mince' },
+      snowType:   { 'poudreuse-legere': 'Poudreuse légère', 'poudreuse-lourde': 'Poudreuse lourde', granulaire: 'Granulaire', mouillee: 'Neige mouillée', croutee: 'Croûtée', glacee: 'Glacée', printaniere: 'Condition printanière' },
+      snowBase:   { solide: 'Solide', variable: 'Variable', mou: 'Mou', ramollie: 'Ramollie', glace: 'Glacé', mince: 'Mince' },
       snowCover:  { excellente: 'Excellente', bonne: 'Bonne', 'endroits-a-decouvert': 'Endroits à découvert', insuffisante: 'Insuffisante' }
     },
     locations: {

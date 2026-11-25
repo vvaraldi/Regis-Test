@@ -183,7 +183,7 @@ const TrailAdmin = (function () {
       const numberInput = document.createElement('input');
       numberInput.type = 'text';
       numberInput.className = 'form-input trail-number-input';
-      numberInput.maxLength = 6;
+      numberInput.maxLength = 4;
       numberInput.value = t.number != null ? t.number : '';
       numberInput.disabled = archived;
       numberInput.setAttribute('aria-label', `Numéro de ${t.name || t.id}`);
@@ -201,7 +201,7 @@ const TrailAdmin = (function () {
         TrailService.kindOf(t) === 'downhill' ? (TrailService.surfaceOf(t) ? `${TrailService.surfaceOf(t)} ac.` : '0') : '',
         TrailService.statusText(TrailService.statusOf(t), true),
         hasPosition ? '✓' : '-'
-      ].forEach(text => row.appendChild(el('td', '', text)));
+      ].forEach((text, i) => row.appendChild(el('td', i < 3 ? 'trail-wrap' : '', text)));   // name, sector and type may wrap: no sideways scrolling
       const action = el('td');
       const button = el('button', 'btn btn-secondary btn-sm', 'Modifier');
       button.type = 'button';

@@ -23,6 +23,7 @@
     /* the typed boxes make ONE column, 145 px wide for every row: a drop-down fills it (145 px), a number box is 100 px */
     .wx-input-wrap input.form-input { width: 100px; max-width: 100%; text-align: right; padding-left: 0.4rem; padding-right: 0.4rem; }
     .wx-input-wrap .form-select { width: 145px; max-width: 100%; }
+    .wx-input-wrap input.form-input.wx-text { width: 145px; text-align: left; }   /* free words (with suggestions) fill the column like a drop-down */
     /* a box filled from the station: tinted (it is still yours to change); the raw value stays in the Station column */
     .wx-from-station { background: var(--theme-accent-light, #dbeafe) !important; border-color: var(--theme-accent, #2563eb) !important; }
     /* fields that no source gives (wind force, the snow lists): the two source cells stay in place and show "—", like every other empty cell, so the typed boxes line up in one column */
@@ -222,6 +223,7 @@
     function display(key, value) {
       const f = WS.fieldOf(key);
       if (f.type === 'choice') return f.choices[value] || String(value);
+      if (f.type === 'text') return WS.wordsOf(f, value);
       return `${num(value)}${f.unit ? ' ' + f.unit : ''}`;
     }
 
@@ -229,11 +231,14 @@
     function buildFields() {
       el('fields-grid').innerHTML = WS.FIELDS.map(f => {
         const unit = f.unit ? ` <span class="wx-unit">(${f.unit})</span>` : '';
+        // choice: a drop-down; text: free words with the suggestions of the list (a datalist); number: a number box
         const input = f.type === 'choice'
           ? `<select class="form-select" id="in-${f.key}"><option value="">—</option>${Object.entries(f.choices).map(([id, label]) => `<option value="${id}">${label}</option>`).join('')}</select>`
-          : `<input type="number" class="form-input" id="in-${f.key}" step="${f.step}" min="${f.min}" max="${f.max}" inputmode="decimal" autocomplete="off">`;
-        // the four lists typed by hand have no source at all: their box takes the room of the two source columns
-        const typedOnly = ['windForce', 'snowType', 'snowBase', 'snowCover'].includes(f.key);
+          : f.type === 'text'
+            ? `<input type="text" class="form-input wx-text" id="in-${f.key}" list="dl-${f.key}" maxlength="${WS.TEXT_MAX}" autocomplete="off" placeholder="Écrire ou choisir"><datalist id="dl-${f.key}">${Object.values(f.suggestions).map(label => `<option value="${escapeHtml(label)}"></option>`).join('')}</datalist>`
+            : `<input type="number" class="form-input" id="in-${f.key}" step="${f.step}" min="${f.min}" max="${f.max}" inputmode="decimal" autocomplete="off">`;
+        // what no source gives (wind force, the snow depths and words) has no source at all: the box takes the room of the two source columns
+        const typedOnly = ['windForce', 'newSnow48Cm', 'newSnow7dCm', 'newSnowSeasonCm', 'snowType', 'snowBase', 'snowCover'].includes(f.key);
         return `<div class="wx-row${typedOnly ? ' wx-row--typed' : ''}" data-key="${f.key}">
           <label class="wx-label" for="in-${f.key}">${f.label}${unit}</label>
           <div class="wx-web wx-web--none" id="web-${f.key}">—</div>
@@ -338,7 +343,7 @@
 
     /** A station value as the box takes it: rounded to the precision of the field (a whole number for km/h, one decimal for degrees) */
     function fitToField(f, v) {
-      if (!f || f.type === 'choice') return String(v);
+      if (!f || f.type !== 'number') return String(v);
       const step = String(f.step || 1), decimals = step.includes('.') ? step.split('.')[1].length : 0;
       return String(Number(Number(v).toFixed(decimals)));
     }
@@ -454,7 +459,8 @@
       el('recorded-at').value = toLocalInput(toDate(record.recordedAt));
       WS.KEYS.forEach(k => {
         const v = record.manual && record.manual[k];
-        el(`in-${k}`).value = v === null || v === undefined ? '' : v;
+        // free words saved when the box was a drop-down hold an id: the box shows its words
+        el(`in-${k}`).value = v === null || v === undefined ? '' : (WS.fieldOf(k).type === 'text' ? WS.wordsOf(WS.fieldOf(k), v) : v);
       });
       el('comment').value = record.comment || '';
       // the web values are those read when the reading was saved: they are not read again
@@ -515,7 +521,8 @@
         const show = k => v[k] ? escapeHtml(display(k, v[k].value)) + mark(k) : '';
         const temp = v.tempC ? show('tempC') + (v.feelsLikeC && v.feelsLikeC.value !== v.tempC.value ? ` (ressenti ${show('feelsLikeC')})` : '') : '';
         const wind = (v.windForce && !v.windKmh) ? show('windForce') : v.windKmh ? (v.windForce ? show('windForce') + ', ' : '') + show('windKmh') : '';
-        const snow = cellText([v.newSnowCm ? 'frais ' + show('newSnowCm') : '', v.snowType ? show('snowType') : '', v.snowDepthCm ? 'base ' + show('snowDepthCm') : '', v.snowBase ? 'fond ' + show('snowBase') : '', v.snowCover ? 'couv. ' + show('snowCover') : '']);
+        const snow = cellText([v.newSnowCm ? 'frais 24 h ' + show('newSnowCm') : '', v.newSnow48Cm ? '48 h ' + show('newSnow48Cm') : '', v.newSnow7dCm ? '7 j ' + show('newSnow7dCm') : '', v.newSnowSeasonCm ? 'saison ' + show('newSnowSeasonCm') : '',
+          v.snowDepthCm ? 'au sol ' + show('snowDepthCm') : '', v.snowBase ? 'base ' + show('snowBase') : '', v.snowType ? 'surface ' + show('snowType') : '', v.snowCover ? 'couv. ' + show('snowCover') : '']);
         const sky = cellText([v.cloudCover ? show('cloudCover') : '', v.sky ? show('sky') : '']);
         const comment = r.comment ? `<div class="wx-comment" title="${escapeHtml(r.comment)}">${escapeHtml(r.comment)}</div>` : '—';
         return `<tr data-id="${r.id}">

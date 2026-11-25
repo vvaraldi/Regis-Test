@@ -115,11 +115,15 @@ const WeatherPublic = (() => {
       if (has(m, 'windKmh') && has(m, 'windForce')) subs.push(`Force : ${esc(m.windForce)}`);
       tile('Vent', has(m, 'windKmh') ? `${esc(num(m.windKmh))} km/h` : esc(m.windForce), subs.join(' · '), !has(m, 'windKmh'));
     }
-    // every snow condition is a tile of its own: fresh snow, depth, conditions, fond, couverture
+    // every snow condition is a tile of its own: the snow that fell (24 h, 48 h, 7 days, the season), the depth on the ground, then the
+    // three words of the snow: base, surface, couverture (free text typed by the Météo person)
     if (has(m, 'newSnowCm')) tile('Neige fraîche (24 h)', `${esc(num(m.newSnowCm))} cm`, '');
+    if (has(m, 'newSnow48Cm')) tile('Neige fraîche (48 h)', `${esc(num(m.newSnow48Cm))} cm`, '');
+    if (has(m, 'newSnow7dCm')) tile('Neige fraîche (7 jours)', `${esc(num(m.newSnow7dCm))} cm`, '');
+    if (has(m, 'newSnowSeasonCm')) tile('Neige tombée (saison)', `${esc(num(m.newSnowSeasonCm))} cm`, '');
     if (has(m, 'snowDepthCm')) tile('Neige au sol', `${esc(num(m.snowDepthCm))} cm`, '');
-    if (has(m, 'snowType')) tile('Conditions de neige', esc(m.snowType), '', true);
-    if (has(m, 'snowBase')) tile('Fond', esc(m.snowBase), '', true);
+    if (has(m, 'snowBase')) tile('Base', esc(m.snowBase), '', true);
+    if (has(m, 'snowType')) tile('Surface', esc(m.snowType), '', true);
     if (has(m, 'snowCover')) tile('Couverture', esc(m.snowCover), '', true);
     if (has(m, 'cloudCover')) tile('Nuages', esc(m.cloudCover), '', true);
     if (has(m, 'sky')) tile('Conditions générales', esc(m.sky), '', true);
