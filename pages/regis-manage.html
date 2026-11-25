@@ -94,6 +94,30 @@
     .rg-status--open { background: #16a34a; }
     .rg-status--closed { background: #dc2626; }
     .rg-status--unknown { background: #6b7280; }
+    /* open but not fully: orange here (the public page shows it green), so the manager remembers to update it once fully open */
+    .rg-status--progressive { background: #f59e0b; }
+    .rg-mode { font-size: 0.72rem; line-height: 1.2; border-radius: 999px; padding: 0.05rem 0.5rem; white-space: nowrap; }
+    .rg-mode--groomed { background: rgba(22,163,74,0.14); color: #166534; }
+    .rg-mode--progressive { background: rgba(245,158,11,0.2); color: #92400e; font-weight: 600; }
+    .rg-comment { flex-basis: 100%; font-size: 0.75rem; line-height: 1.15; color: var(--theme-text-secondary); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rg-count--prog strong { color: #b45309; }
+
+    /* the window of a downhill trail: the new state on the left, the comment on the right */
+    .rg-state-modal .rg-modal__content { max-width: 620px; }
+    .rg-state__cols { display: flex; gap: 1rem; }
+    .rg-state__col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .rg-state__col--states { flex: 1.25; }
+    .rg-state__label { font-size: 0.85rem; color: var(--theme-text-secondary); margin-bottom: 0.35rem; }
+    .rg-state__opts { display: flex; flex-direction: column; gap: 0.5rem; }
+    .rg-state__gap { height: 0.9rem; }
+    .rg-state__opt { border: 1px solid var(--theme-border); border-radius: 8px; padding: 0.6rem 0.5rem; background: var(--theme-surface); cursor: pointer; font: inherit; color: inherit; text-align: center; }
+    .rg-state__opt:hover { border-color: var(--theme-text-secondary); }
+    .rg-state__opt[aria-checked="true"] { border: 2px solid var(--theme-accent-dark, #115e59); background: rgba(var(--theme-accent-rgb, 15,118,110), 0.1); font-weight: 600; padding: calc(0.6rem - 1px) calc(0.5rem - 1px); }
+    .rg-state__note { flex: 1; min-height: 11rem; resize: none; width: 100%; box-sizing: border-box; }
+    .rg-state__foot { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
+    .rg-state__hint { font-size: 0.75rem; color: var(--theme-text-secondary); text-align: right; margin: 0.5rem 0 0; }
+    .rg-state__now { font-size: 0.85rem; color: var(--theme-text-secondary); margin: 0 0 0.75rem; }
+    @media (max-width: 520px) { .rg-state__cols { flex-direction: column; } .rg-state__note { min-height: 5rem; } }
 
     /* the arrow beside the status: a recommendation to change it (green = open, red = close); clicking it ignores the recommendation */
     .rg-arrow { width: 1.4rem; height: 1.4rem; border-radius: 50%; border: 2px solid; background: #fff; font-size: 0.75rem; line-height: 1; cursor: pointer; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
@@ -163,6 +187,37 @@
     </div>
   </div>
 
+  <!-- The state of a downhill trail: the new state (Fermé, Ouvert, Ouvert damé, Ouverture progressive) and a comment -->
+  <div class="rg-modal rg-state-modal" id="state-modal" role="dialog" aria-modal="true" aria-labelledby="state-title">
+    <div class="rg-modal__content">
+      <div class="rg-modal__header"><h3 class="rg-modal__title" id="state-title">-</h3><button type="button" class="rg-modal__close" id="state-close" aria-label="Fermer">×</button></div>
+      <div class="rg-modal__body">
+        <p class="rg-state__now" id="state-now"></p>
+        <div class="rg-state__cols">
+          <div class="rg-state__col rg-state__col--states">
+            <div class="rg-state__label" id="state-label">Nouvel état</div>
+            <div class="rg-state__opts" id="state-opts" role="radiogroup" aria-labelledby="state-label">
+              <button type="button" class="rg-state__opt" role="radio" data-state="closed">Fermé</button>
+              <div class="rg-state__gap" aria-hidden="true"></div>
+              <button type="button" class="rg-state__opt" role="radio" data-state="open">Ouvert</button>
+              <button type="button" class="rg-state__opt" role="radio" data-state="groomed">Ouvert damé</button>
+              <button type="button" class="rg-state__opt" role="radio" data-state="progressive">Ouverture progressive</button>
+            </div>
+          </div>
+          <div class="rg-state__col">
+            <label class="rg-state__label" for="state-note">Commentaire (facultatif)</label>
+            <textarea class="form-input rg-state__note" id="state-note" maxlength="200" placeholder="Ex : surface dure en bas, éviter la gauche"></textarea>
+          </div>
+        </div>
+        <div class="rg-state__foot">
+          <button type="button" class="btn btn-secondary" id="state-cancel">Annuler</button>
+          <button type="button" class="btn btn-primary" id="state-save">Enregistrer</button>
+        </div>
+        <p class="rg-state__hint">Entrée enregistre · double-clic sur un état enregistre · Échap annule</p>
+      </div>
+    </div>
+  </div>
+
   <div id="status-messages"></div>
 
   <script src="../js/core/utils.js"></script>
@@ -215,9 +270,9 @@
       trails.forEach(t => { const s = sectorOf(t); if (s && t.sector) names[t.sector] = s.name; });
       return names;
     }
-    function context(mode, scope) {
+    function context(mode, scope, reason) {
       return { user: { uid: currentUser.uid, name: (window.currentUserData && window.currentUserData.name) || currentUser.email || '' },
-        app: 'regis', mode, scope: scope || null, network: Network.current(), sectorNames: sectorNames() };
+        app: 'regis', mode, scope: scope || null, reason: reason || '', network: Network.current(), sectorNames: sectorNames() };
     }
 
     // ---- loading ----
@@ -255,6 +310,7 @@
     let live = null, extrasLoaded = false, lastStampAt = null, lastChanges = [], changesTimer = null, liveState = 'live';
     const hm = d => d.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' });
     const recKey = t => { const r = recOf(t); return r ? r.status : ''; };
+    const detailKey = t => (TrailService.openModeOf(t) || '') + '|' + TrailService.noteOf(t);   // sub-state and comment of a downhill trail
 
     function renderLiveNote() {
       const note = el('live-note');
@@ -275,7 +331,7 @@
       list.forEach(n => {
         const o = before.get(n.id);
         if (!o) { changes.push(n.name + ' (nouveau)'); changedIds.push(n.id); return; }
-        if (statusOf(o) !== statusOf(n)) { changes.push(n.name + ' (' + (statusOf(n) === 'open' ? 'ouvert' : statusOf(n) === 'closed' ? 'fermé' : 'inconnu') + ')'); changedIds.push(n.id); }
+        if (statusOf(o) !== statusOf(n) || detailKey(o) !== detailKey(n)) { changes.push(n.name + ' (' + TrailService.statusWord(n).toLowerCase() + ')'); changedIds.push(n.id); }
         else if (recKey(o) !== recKey(n)) { const k = recKey(n); changes.push(n.name + ' (' + (k ? 'recommandation ' + (k === 'open' ? 'd\'ouvrir' : 'de fermer') : 'recommandation traitée') + ')'); changedIds.push(n.id); }
       });
       trails = list;
@@ -319,10 +375,12 @@
       open: list.filter(t => statusOf(t) === 'open').length,
       closed: list.filter(t => statusOf(t) === 'closed').length,
       unknown: list.filter(t => statusOf(t) === 'unknown').length,
+      progressive: list.filter(t => TrailService.openModeOf(t) === 'progressive').length,   // open, but not fully (counted in `open` too)
       reco: list.filter(t => recOf(t)).length
     });
     function countsHtml(c) {
       return `<span class="rg-count rg-count--open"><strong>${c.open}</strong> ouverts</span>`
+        + (c.progressive ? `<span class="rg-count rg-count--prog">dont <strong>${c.progressive}</strong> en ouverture progressive</span>` : '')
         + `<span class="rg-count rg-count--closed"><strong>${c.closed}</strong> fermés</span>`
         + (c.unknown ? `<span class="rg-count"><strong>${c.unknown}</strong> inconnus</span>` : '')
         + `<span class="rg-count rg-count--reco"><strong>${c.reco}</strong> recommandation${c.reco > 1 ? 's' : ''} à traiter</span>`;
@@ -364,11 +422,18 @@
       const arrow = rec
         ? `<button type="button" class="rg-arrow rg-arrow--${rec.status}" data-act="ignore" data-id="${esc(t.id)}" title="${rec.status === 'open' ? 'Une inspection recommande d\'ouvrir' : 'Une inspection recommande de fermer'}. Cliquer pour ignorer la recommandation." aria-label="Ignorer la recommandation">${rec.status === 'open' ? '▲' : '▼'}</button>`
         : '<span class="rg-arrow-slot"></span>';
+      // a downhill trail has a sub-state (Ouvert damé, Ouverture progressive) and a comment, and its status button opens a window
+      const isDown = TrailService.kindOf(t) === 'downhill';
+      const mode = TrailService.openModeOf(t), word = TrailService.statusWord(t), comment = TrailService.noteOf(t);
+      const modeTag = mode ? `<span class="rg-mode rg-mode--${mode}">${esc(word)}</span>` : '';
+      const commentHtml = comment ? `<span class="rg-comment" title="${esc(comment)}">${esc(comment)}</span>` : '';
+      const dotClass = mode === 'progressive' ? 'progressive' : status;
+      const dotTitle = isDown ? `${word} - cliquer pour changer l'état` : `${STATUS_WORD[status]} - cliquer pour ${status === 'open' ? 'fermer' : 'ouvrir'}`;
       return `<div class="rg-row${rec ? ' rg-row--reco' : ''}" data-id="${esc(t.id)}">
         <span class="rg-num">${esc(TrailService.markerLabel(t))}</span>
-        <span class="rg-main"><span class="rg-name">${esc(t.name || t.id)}</span>${note}</span>
+        <span class="rg-main"><span class="rg-name">${esc(t.name || t.id)}</span>${modeTag}${note}${commentHtml}</span>
         ${arrow}
-        <button type="button" class="rg-status rg-status--${status}" data-act="toggle" data-id="${esc(t.id)}" title="${STATUS_WORD[status]} - cliquer pour ${status === 'open' ? 'fermer' : 'ouvrir'}" aria-label="${STATUS_WORD[status]} - cliquer pour ${status === 'open' ? 'fermer' : 'ouvrir'}"></button>
+        <button type="button" class="rg-status rg-status--${dotClass}" data-act="${isDown ? 'state' : 'toggle'}" data-id="${esc(t.id)}" title="${esc(dotTitle)}" aria-label="${esc(dotTitle)}"${isDown ? ' aria-haspopup="dialog"' : ''}></button>
       </div>`;
     }
     /** Inside a sector box: the rows (side by side in the full-width groups) */
@@ -458,16 +523,59 @@
       list.forEach(t => {
         if (statusOf(t) === status) return;
         t.status = status;
+        t.openMode = null;   // a new status ends the sub-state and the comment (as StatusService.change does)
+        t.note = null;
         t.lastUpdated = new Date();
         const rec = t.recommendation;
         if (rec && rec.status === status) t.recommendation = null;
       });
     }
-    function changeTrails(list, status, mode, scope) {
+    function changeTrails(list, status, mode, scope, reason) {
       return run(async () => {
-        const result = await StatusService.change(db, firebase, list, status, context(mode, scope));
+        const result = await StatusService.change(db, firebase, list, status, context(mode, scope, reason));
         applyLocal(list, status);
         return result;
+      });
+    }
+
+    // ---- the window of a downhill trail: new state + comment ----
+    let stateTrail = null, stateChoice = '', stateTouched = false;
+    const STATE_STATUS = { closed: 'closed', open: 'open', groomed: 'open', progressive: 'open' };
+    /** The state of a trail as one of the four choices of the window */
+    const stateKey = t => statusOf(t) === 'open' ? (TrailService.openModeOf(t) || 'open') : (statusOf(t) === 'closed' ? 'closed' : '');
+    function chooseState(key) {
+      stateChoice = key;
+      document.querySelectorAll('#state-opts .rg-state__opt').forEach(b => b.setAttribute('aria-checked', b.dataset.state === key ? 'true' : 'false'));
+      // the comment follows the current state until the manager types: a new status starts with an empty one
+      if (!stateTouched && stateTrail) el('state-note').value = STATE_STATUS[key] === statusOf(stateTrail) ? TrailService.noteOf(stateTrail) : '';
+    }
+    function openState(id) {
+      const t = trails.find(x => x.id === id);
+      if (!t) return;
+      stateTrail = t; stateTouched = false;
+      el('state-title').textContent = `${TrailService.markerLabel(t)} · ${t.name || t.id}`;
+      el('state-now').textContent = 'Actuellement : ' + TrailService.statusWord(t) + (TrailService.noteOf(t) ? ' · ' + TrailService.noteOf(t) : '');
+      chooseState(statusOf(t) === 'open' ? 'closed' : 'open');   // the opposite of what it is now
+      el('state-modal').classList.add('show');
+      const first = document.querySelector(`#state-opts [data-state="${stateChoice}"]`);
+      if (first) first.focus();
+    }
+    function closeState() { el('state-modal').classList.remove('show'); stateTrail = null; }
+    function saveState(key) {
+      const t = stateTrail;
+      if (!t || busy) return;
+      const choice = key || stateChoice;
+      const status = STATE_STATUS[choice];
+      if (!status) return;
+      const detail = { status, openMode: choice === 'groomed' || choice === 'progressive' ? choice : null, note: el('state-note').value };
+      closeState();
+      run(async () => {
+        const result = await StatusService.update(db, firebase, t, detail, context('individual', null));
+        if (result.changed) {
+          const rec = t.recommendation;
+          t.status = status; t.openMode = detail.openMode; t.note = String(detail.note).replace(/\s+/g, ' ').trim() || null; t.lastUpdated = new Date();
+          if (rec && rec.status === status) t.recommendation = null;
+        }
       });
     }
 
@@ -479,7 +587,9 @@
       if (act === 'fold') { const key = btn.dataset.group + '|' + btn.dataset.sector; if (folded.has(key)) folded.delete(key); else folded.add(key); saveFolded(); render(); return; }
       if (busy) return;
       const trail = trails.find(t => t.id === btn.dataset.id);
-      if (act === 'toggle' && trail) {
+      if (act === 'state' && trail) {
+        openState(trail.id);
+      } else if (act === 'toggle' && trail) {
         changeTrails([trail], statusOf(trail) === 'open' ? 'closed' : 'open', 'individual', null);
       } else if (act === 'ignore' && trail) {
         run(async () => {
@@ -489,13 +599,23 @@
       } else if (act === 'sector-open' || act === 'sector-closed') {
         const id = btn.dataset.sector;
         const name = id === '__none' ? 'Sans secteur' : (sectors.find(s => s.id === id) || {}).name;
-        changeTrails(boxTrails(btn.dataset.group, id), act === 'sector-open' ? 'open' : 'closed', 'sector', name);
+        const status = act === 'sector-open' ? 'open' : 'closed';
+        const list = boxTrails(btn.dataset.group, id);
+        // a whole sector of downhill trails is a big move on the snow: it asks first (only the trails that are not yet in that status change)
+        if (btn.dataset.group === 'downhill') {
+          const n = list.filter(t => statusOf(t) !== status).length;
+          if (!n) { showMessage(`Toutes les descentes du secteur « ${name} » sont déjà ${status === 'open' ? 'ouvertes' : 'fermées'}.`, 'info', 4000); return; }
+          const msg = `Voulez-vous vraiment ${status === 'open' ? 'ouvrir' : 'fermer'} tout le secteur « ${name} » ?\n\n${n} descente${n > 1 ? 's' : ''} ${status === 'open' ? 'passeront à Ouvert' : 'seront fermées'}.`
+            + (status === 'open' ? '\nCelles déjà ouvertes gardent leur état (damé, progressive) et leur commentaire.' : '\nLeur état (damé, progressive) et leur commentaire seront effacés.');
+          if (!confirm(msg)) return;
+        }
+        changeTrails(list, status, 'sector', name, status === 'open' ? 'Secteur ouvert en batch' : 'Secteur fermé en batch');
       }
     }
     function mountainAll(status) {
       const word = status === 'open' ? 'ouvrir' : 'fermer';
       if (!confirm(`Voulez-vous vraiment ${word} toute la montagne (${trails.length} pistes, montées et remontées) ?`)) return;
-      changeTrails(trails, status, 'mountain', null);
+      changeTrails(trails, status, 'mountain', null, status === 'open' ? 'Montagne ouverte en batch' : 'Montagne fermée en batch');
     }
 
     function initRegis() {
@@ -508,7 +628,15 @@
       el('group-filter').addEventListener('change', e => { const g = e.target.dataset.group; if (g) { hiddenGroups[g] = !e.target.checked; render(); } });
       el('insp-close').addEventListener('click', closeInspection);
       el('insp-modal').addEventListener('click', e => { if (e.target.id === 'insp-modal') closeInspection(); });
-      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeInspection(); });
+      el('state-close').addEventListener('click', closeState);
+      el('state-cancel').addEventListener('click', closeState);
+      el('state-save').addEventListener('click', () => saveState());
+      el('state-modal').addEventListener('click', e => { if (e.target.id === 'state-modal') closeState(); });
+      el('state-opts').addEventListener('click', e => { const b = e.target.closest('[data-state]'); if (b) chooseState(b.dataset.state); });
+      el('state-opts').addEventListener('dblclick', e => { const b = e.target.closest('[data-state]'); if (b) saveState(b.dataset.state); });   // double-click on a state saves it
+      el('state-note').addEventListener('input', () => { stateTouched = true; });
+      el('state-modal').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && e.target.id !== 'state-cancel' && e.target.id !== 'state-close') { e.preventDefault(); saveState(e.target.dataset && e.target.dataset.state); } });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeInspection(); closeState(); } });
       checkAuthStatus({
         requireAuth: true,
         requiredPermission: 'allowRegis',

@@ -809,7 +809,7 @@
 
         <div class="trail-table-wrap" style="margin-top: var(--space-md);">
           <table class="trail-table">
-            <thead><tr><th scope="col" id="trail-th-select"><input type="checkbox" id="trail-select-all" aria-label="Tout cocher"></th><th scope="col">N°</th><th scope="col">Nom</th><th scope="col">Secteur</th><th scope="col">Type</th><th scope="col">Difficulté</th><th scope="col">Longueur</th><th scope="col">Statut</th><th scope="col">Position</th><th scope="col"></th></tr></thead>
+            <thead><tr><th scope="col" id="trail-th-select"><input type="checkbox" id="trail-select-all" aria-label="Tout cocher"></th><th scope="col">N°</th><th scope="col">Nom</th><th scope="col">Secteur</th><th scope="col">Type</th><th scope="col">Difficulté</th><th scope="col">Longueur</th><th scope="col">Surface</th><th scope="col">Statut</th><th scope="col">Position</th><th scope="col"></th></tr></thead>
             <tbody id="trail-rows"></tbody>
           </table>
         </div>
@@ -837,9 +837,17 @@
               <label class="form-label" for="tr-difficulty">Difficulté</label>
               <select class="form-select" id="tr-difficulty"></select>
             </div>
+            <div class="form-group" id="tr-subtype-group" hidden>
+              <label class="form-label" for="tr-subtype" id="tr-subtype-label">Catégorie</label>
+              <select class="form-select" id="tr-subtype"></select>
+            </div>
             <div class="form-group">
               <label class="form-label" for="tr-length">Longueur (km) <span class="form-hint">(information)</span></label>
               <input type="text" inputmode="decimal" class="form-input" id="tr-length">
+            </div>
+            <div class="form-group" id="tr-surface-group" hidden>
+              <label class="form-label" for="tr-surface">Surface (acres) <span class="form-hint">(pour le % de surface ouverte)</span></label>
+              <input type="text" inputmode="decimal" class="form-input" id="tr-surface">
             </div>
             <div class="form-group">
               <label class="form-label">Position sur la carte</label>

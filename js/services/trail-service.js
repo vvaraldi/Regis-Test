@@ -106,6 +106,49 @@ const TrailService = (function () {
     return trail && (trail.status === 'open' || trail.status === 'closed') ? trail.status : 'unknown';
   }
 
+  /** 'piste' | 'sousbois' | 'parc' for a downhill trail (Piste when not set), null for the other kinds */
+  function trailTypeOf(trail) {
+    if (!trail || kindOf(trail) !== 'downhill') return null;
+    return APP_CONFIG.trailTypes[trail.trailType] ? trail.trailType : 'piste';
+  }
+
+  /** 'remontee' | 'tapis' for a lift (Remontée when not set), null for the other kinds */
+  function liftTypeOf(trail) {
+    if (!trail || kindOf(trail) !== 'lift') return null;
+    return APP_CONFIG.liftTypes[trail.liftType] ? trail.liftType : 'remontee';
+  }
+
+  /** The words for the type of a downhill trail or a lift ('Sous-bois', 'Tapis magique'), '' for the other kinds */
+  function typeLabel(trail) {
+    const t = trailTypeOf(trail);
+    if (t) return APP_CONFIG.trailTypes[t].label;
+    const l = liftTypeOf(trail);
+    return l ? APP_CONFIG.liftTypes[l].label : '';
+  }
+
+  /** The surface of a downhill trail in acres (0 when not set) */
+  function surfaceOf(trail) {
+    const n = trail ? Number(trail.surfaceAcres) : 0;
+    return isFinite(n) && n > 0 ? n : 0;
+  }
+
+  /** 'groomed' | 'progressive' for a downhill trail that is open with a sub-state, else null (plain Ouvert, closed, other kinds) */
+  function openModeOf(trail) {
+    if (!trail || trail.status !== 'open' || kindOf(trail) !== 'downhill') return null;
+    return APP_CONFIG.openModes[trail.openMode] ? trail.openMode : null;
+  }
+
+  /** The words of the status of a trail: "Ouvert", "Ouvert damé", "Ouverture progressive", "Fermé", "Inconnu" */
+  function statusWord(trail) {
+    const mode = openModeOf(trail);
+    return mode ? APP_CONFIG.openModes[mode].label : statusText(statusOf(trail));
+  }
+
+  /** The comment left with the last status change of a trail (free text), '' when none */
+  function noteOf(trail) {
+    return trail && typeof trail.note === 'string' ? trail.note.trim() : '';
+  }
+
   function statusText(status, withIcon) {
     const s = APP_CONFIG.labels.trailStatus[status] || APP_CONFIG.labels.trailStatus.unknown;
     return withIcon ? `${s.icon} ${s.label}` : s.label;
@@ -155,6 +198,6 @@ const TrailService = (function () {
     return `${prefix}_${Math.max(0, ...used) + 1}`;
   }
 
-  return { kindOf, kindLabel, scaleOf, difficultyOf, difficultyLabel, isInspected, isArchived, isActive, mapIdOf, kindsInView, viewKinds, geoMapIdOf, issuesOf, statusOf, statusText, conditionText, conditionIcon, markerLabel, describe, compare, nextId };
+  return { kindOf, kindLabel, scaleOf, difficultyOf, difficultyLabel, isInspected, isArchived, isActive, mapIdOf, kindsInView, viewKinds, geoMapIdOf, issuesOf, statusOf, trailTypeOf, liftTypeOf, typeLabel, surfaceOf, openModeOf, statusWord, noteOf, statusText, conditionText, conditionIcon, markerLabel, describe, compare, nextId };
 })();
 window.TrailService = TrailService;

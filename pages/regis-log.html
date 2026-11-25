@@ -15,6 +15,7 @@
     .lg-pill--open { background: #16a34a; }
     .lg-pill--closed { background: #dc2626; }
     .lg-pill--unknown { background: #6b7280; }
+    .lg-pill--progressive { background: #f59e0b; }
     .lg-arrow { margin: 0 0.25rem; color: var(--theme-text-secondary); }
     .lg-sub { display: block; font-size: 0.8rem; color: var(--theme-text-secondary); }
     .lg-reco--accepted { color: #15803d; font-weight: 600; }
@@ -52,6 +53,7 @@
             <select class="form-select" id="f-action" aria-label="Genre de ligne">
               <option value="">Tous les genres</option>
               <option value="status">Changements de statut</option>
+              <option value="detail">Damé, ouverture progressive ou commentaire</option>
               <option value="ignore">Recommandations ignorées</option>
             </select>
             <select class="form-select" id="f-mode" aria-label="Comment">
@@ -120,12 +122,17 @@
       return [open, far];
     }
 
-    const pill = s => `<span class="lg-pill lg-pill--${s === 'open' || s === 'closed' ? s : 'unknown'}">${STATUS_WORD[s] || STATUS_WORD.unknown}</span>`;
+    // a downhill trail that is open can be "Ouvert damé" (green) or "Ouverture progressive" (orange here, as in Régis gère)
+    const MODE_STATE = { groomed: 'Ouvert damé', progressive: 'Ouverture progressive' };
+    const pill = (s, mode) => {
+      const m = s === 'open' && MODE_STATE[mode] ? mode : '';
+      return `<span class="lg-pill lg-pill--${m === 'progressive' ? 'progressive' : (s === 'open' || s === 'closed' ? s : 'unknown')}">${m ? MODE_STATE[m] : (STATUS_WORD[s] || STATUS_WORD.unknown)}</span>`;
+    };
 
     function lineHtml(l) {
       const d = toDate(l.at);
       const ignore = l.action === 'ignore';
-      const change = ignore ? `${pill(l.from)} <span class="lg-sub">recommandation ignorée</span>` : `${pill(l.from)}<span class="lg-arrow">→</span>${pill(l.to)}`;
+      const change = ignore ? `${pill(l.from)} <span class="lg-sub">recommandation ignorée</span>` : `${pill(l.from, l.fromOpenMode)}<span class="lg-arrow">→</span>${pill(l.to, l.openMode)}`;
       const how = (MODE_WORD[l.mode] || l.mode || '') + (l.mode === 'sector' && l.scope ? ` : ${l.scope}` : '');
       const reco = l.recommended
         ? `${l.recommended === 'open' ? 'Ouvrir' : 'Fermer'} → <span class="lg-reco--${l.decision === 'ignored' ? 'ignored' : 'accepted'}">${l.decision === 'ignored' ? 'ignorée' : 'acceptée'}</span>`

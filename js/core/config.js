@@ -254,6 +254,23 @@ const APP_CONFIG = {
     'black':        { label: 'Noire',        icon: '⚫' },
     'double-black': { label: 'Double noire', icon: '⚫⚫' }
   },
+  // Sub-types, entered in Administration > Sentiers: a downhill trail is a Piste (default), a Sous-bois or a Parc à neige
+  // (trails/{id}.trailType, + surfaceAcres); a lift is a Remontée (default) or a Tapis magique (trails/{id}.liftType).
+  trailTypes: {
+    piste:    { label: 'Piste' },
+    sousbois: { label: 'Sous-bois' },
+    parc:     { label: 'Parc à neige' }
+  },
+  liftTypes: {
+    remontee: { label: 'Remontée' },
+    tapis:    { label: 'Tapis magique' }
+  },
+  // What a downhill trail can be once it is open (trails/{id}.openMode; none = plain "Ouvert"). Régis gère shows
+  // 'progressive' in orange (to remind the manager to update it once fully open), the public page in green.
+  openModes: {
+    groomed:     { label: 'Ouvert damé' },
+    progressive: { label: 'Ouverture progressive' }
+  },
   // The difficulties each kind of trail can have, easiest first
   difficultyScales: {
     uphill:   ['green', 'blue', 'black'],
@@ -377,6 +394,9 @@ Object.freeze(APP_CONFIG.maps);
 Object.freeze(APP_CONFIG.networks);
 Object.freeze(APP_CONFIG.defaultNetworks);
 Object.freeze(APP_CONFIG.trailKinds);
+Object.freeze(APP_CONFIG.trailTypes);
+Object.freeze(APP_CONFIG.liftTypes);
+Object.freeze(APP_CONFIG.openModes);
 Object.freeze(APP_CONFIG.difficulties);
 Object.freeze(APP_CONFIG.difficultyScales);
 Object.freeze(APP_CONFIG.labels);

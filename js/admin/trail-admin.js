@@ -139,7 +139,7 @@ const TrailAdmin = (function () {
     const body = $('trail-rows');
     body.replaceChildren();
     const rows = visibleRows();
-    const columns = 10;
+    const columns = 11;
 
     $('trail-count').textContent = `(${rows.length})`;
     updateSelectedCount();
@@ -195,9 +195,10 @@ const TrailAdmin = (function () {
       [
         (t.name || t.id) + (archived ? ' (masqué)' : ''),
         sector ? sector.name : (t.sector ? `${t.sector} (inconnu)` : 'Sans secteur'),
-        TrailService.kindLabel(TrailService.kindOf(t)),
+        TrailService.kindLabel(TrailService.kindOf(t)) + (TrailService.typeLabel(t) ? ' · ' + TrailService.typeLabel(t) : ''),
         TrailService.difficultyLabel(TrailService.difficultyOf(t), true) || '-',
         t.length != null && t.length !== '' ? `${t.length} km` : '-',
+        TrailService.kindOf(t) === 'downhill' ? (TrailService.surfaceOf(t) ? `${TrailService.surfaceOf(t)} ac.` : '0') : '',
         TrailService.statusText(TrailService.statusOf(t), true),
         hasPosition ? '✓' : '-'
       ].forEach(text => row.appendChild(el('td', '', text)));
@@ -379,6 +380,20 @@ const TrailAdmin = (function () {
     select.value = scale.includes(selected) ? selected : '';
   }
 
+  // Category of a downhill trail (Piste, Sous-bois, Parc à neige) or of a lift (Remontée, Tapis magique); surface in acres (downhill only)
+  function fillSubtype(kind, trail, keepCurrent) {
+    const isDown = kind === 'downhill', isLift = kind === 'lift';
+    $('tr-subtype-group').hidden = !(isDown || isLift);
+    $('tr-surface-group').hidden = !isDown;
+    if (!isDown && !isLift) return;
+    const table = isDown ? APP_CONFIG.trailTypes : APP_CONFIG.liftTypes;
+    const wanted = keepCurrent ? $('tr-subtype').value : (trail ? (isDown ? TrailService.trailTypeOf(trail) : TrailService.liftTypeOf(trail)) : '');
+    $('tr-subtype-label').textContent = isDown ? 'Catégorie de la descente' : 'Catégorie de la remontée';
+    const select = $('tr-subtype');
+    select.replaceChildren(...Object.keys(table).map(k => new Option(table[k].label, k)));
+    select.value = table[wanted] ? wanted : Object.keys(table)[0];   // Piste / Remontée by default
+  }
+
   function fillSectorSelect(trail) {
     const select = $('tr-sector');
     select.replaceChildren(new Option('Sans secteur', ''), ...networkSectors().map(s => new Option(s.name, s.id)));
@@ -416,6 +431,8 @@ const TrailAdmin = (function () {
     $('tr-kind').replaceChildren(...kindsOfNetwork().map(k => new Option(TrailService.kindLabel(k), k)));
     $('tr-kind').value = kind;
     fillDifficulty(kind, trail ? TrailService.difficultyOf(trail) : '');
+    fillSubtype(kind, trail, false);
+    $('tr-surface').value = trail && TrailService.surfaceOf(trail) ? TrailService.surfaceOf(trail) : (kind === 'downhill' ? '0' : '');
     fillSectorSelect(trail);
     if (!trail && state.sectorFilter && state.sectorFilter !== NO_SECTOR) $('tr-sector').value = state.sectorFilter;
     $('tr-length').value = trail && trail.length != null ? trail.length : '';
@@ -452,6 +469,8 @@ const TrailAdmin = (function () {
   function onKindChange(kind) {
     const previousMap = state.mapId;
     fillDifficulty(kind, $('tr-difficulty').value);
+    fillSubtype(kind, state.editing && state.editing.trail, false);   // the saved category if the trail is of that kind, else the default
+    if (kind === 'downhill' && $('tr-surface').value.trim() === '') $('tr-surface').value = '0';
     state.placing = false;
     refreshMap();
     if (state.mapId !== previousMap && state.position) {
@@ -485,12 +504,15 @@ const TrailAdmin = (function () {
     const hasDifficulty = TrailService.scaleOf(kind).length > 0;
     const difficulty = hasDifficulty ? $('tr-difficulty').value : '';
     const length = parseLength($('tr-length').value);
+    const surface = kind === 'downhill' ? parseLength($('tr-surface').value) : null;
+    const subtype = (kind === 'downhill' || kind === 'lift') ? $('tr-subtype').value : '';
     const sector = $('tr-sector').value;
     const editingId = state.editing.id;
     const archived = TrailService.isArchived(state.editing.trail);
 
     if (!name) { showMessage('Le nom du sentier est requis.', 'warning'); return; }
     if (Number.isNaN(length)) { showMessage('La longueur doit être un nombre de km (ou vide).', 'warning'); return; }
+    if (Number.isNaN(surface)) { showMessage('La surface doit être un nombre d\'acres (ou vide).', 'warning'); return; }
     const duplicate = !archived && numberTaken(number, kind, editingId);
     if (duplicate) { showMessage(`Le numéro ${number} est déjà utilisé par « ${duplicate.name} ».`, 'warning'); return; }
 
@@ -507,6 +529,10 @@ const TrailAdmin = (function () {
           number: number === '' ? del : number,
           difficulty: difficulty === '' ? del : difficulty,
           length: length === null ? del : length,
+          // category and surface only exist for the kinds that have them (a trail changed to another kind loses them)
+          trailType: kind === 'downhill' ? subtype : del,
+          liftType: kind === 'lift' ? subtype : del,
+          surfaceAcres: kind === 'downhill' && surface !== null ? surface : del,
           coordinates: state.position ? { left: state.position.left, top: state.position.top } : del,
           modifiedAt: stamp, modifiedBy: userId
         };
@@ -518,6 +544,8 @@ const TrailAdmin = (function () {
         if (number !== '') data.number = number;
         if (difficulty !== '') data.difficulty = difficulty;
         if (length !== null) data.length = length;
+        if (kind === 'downhill') { data.trailType = subtype; if (surface !== null) data.surfaceAcres = surface; }
+        if (kind === 'lift') data.liftType = subtype;
         if (sector !== '') data.sector = sector;
         if (state.position) data.coordinates = { left: state.position.left, top: state.position.top };
         await window.db.collection('trails').doc(savedId).set(data);

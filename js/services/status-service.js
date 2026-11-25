@@ -12,18 +12,25 @@
  *                             - always the OPPOSITE of the trail's status (an inspection that agrees with the status
  *                             clears it); a newer inspection replaces an older recommendation.
  *
- * trail_inspections/{id}.recommendationOutcome   written when the manager decides what to do with that inspection's recommendation:
+ * trails/{id}.openMode, note   downhill trails only: the sub-state of an open trail ('groomed' = Ouvert damé, 'progressive' = Ouverture
+ *                             progressive; none = plain Ouvert) and a free comment (<= 200 characters), both kept until the next change
+ *                             of status or of the window (a new status clears them).
+ *
+ * trail_inspections/{id}.recommendationOutcome  written when the manager decides what to do with that inspection's recommendation:
  *                             { decision: 'accepted'|'ignored', status, byUid, byName, at } - so whoever opens the inspection in
  *                             Inspections sees what became of it (see outcomeText).
  *
  * status_log/{id}
  *   network, trailId, trailName, trailNumber, kind, sector, sectorName   what was changed
- *   action       'status' (the status was switched) | 'ignore' (a recommendation was dismissed, the status stays)
+ *   action       'status' (the status was switched) | 'detail' (same status, the sub-state or the comment of a downhill trail changed)
+ *                | 'ignore' (a recommendation was dismissed, the status stays)
  *   from, to     the status before and after ('open' | 'closed' | 'unknown')
+ *   openMode, fromOpenMode   the sub-state after / before ('groomed' | 'progressive'): only present when there is one
  *   mode         how: 'individual' | 'sector' | 'mountain'      scope: the sector's name for 'sector', else null
  *   app          which app: 'regis' (Régis gère) | 'meteo' (Météo)
  *   byUid, byName, at                                           who and when (server time)
- *   reason       free text (empty for now: the screens do not ask for one yet)
+ *   reason       free text: the comment typed in the window of Régis gère, or "Secteur ouvert en batch" and the like for a sector / mountain action
+ *                (empty for the one-click switches)
  *   recommended  the status an inspection had recommended at that time, or null
  *   decision     'accepted' | 'ignored' | null                  what was done with that recommendation
  *   inspectionId the inspection that made it, or null
@@ -129,13 +136,57 @@ const StatusService = (() => {
         const patch = { status, lastUpdated: fb.firestore.FieldValue.serverTimestamp() };
         if (rec && rec.status === status) accepted.push(rec);
         if (t.recommendation && (!rec || rec.status === status)) patch.recommendation = null;   // accepted (or stale)
+        // a new status ends what described the old one: the sub-state ("Ouvert damé") and the comment
+        if (t.openMode) patch.openMode = null;
+        if (t.note) patch.note = null;
         batch.update(db.collection('trails').doc(t.id), patch);
-        batch.set(db.collection(LOG).doc(), logLine(t, { action: 'status', from: statusOf(t), to: status, decision: rec && rec.status === status ? 'accepted' : null }, ctx, fb, batchId));
+        batch.set(db.collection(LOG).doc(), logLine(t, Object.assign({ action: 'status', from: statusOf(t), to: status, decision: rec && rec.status === status ? 'accepted' : null }, modeFields(t, null)), ctx, fb, batchId));
       });
       await batch.commit();
     }
     for (const rec of accepted) await markOutcome(db, fb, rec, 'accepted', ctx);
     return { changed: todo.length, skipped: trails.length - todo.length };
+  }
+
+  /** The sub-state of a downhill trail ('groomed' | 'progressive') or null; only an open trail has one */
+  const openModeOf = t => (t && t.status === 'open' && (t.openMode === 'groomed' || t.openMode === 'progressive')) ? t.openMode : null;
+  const NOTE_MAX = 200;
+  const noteText = v => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
+
+  /** The sub-state fields of a log line: only written when a sub-state is involved (before or after) */
+  function modeFields(trail, toMode) {
+    const from = openModeOf(trail);
+    const out = {};
+    if (from) out.fromOpenMode = from;
+    if (toMode) out.openMode = toMode;
+    return out;
+  }
+
+  /**
+   * One downhill trail, in the window of Régis gère: the new status, the sub-state when it is open ('groomed' | 'progressive' | null =
+   * plain "Ouvert") and a free comment (kept until the next change). Written even when the status stays the same (Ouvert -> Ouvert damé,
+   * or only the comment changed); nothing is written when nothing differs. Recommendation: accepted when it says the new status, like change().
+   * The log line says what the person typed (reason); its action is 'status' when the status switched, else 'detail'.
+   * ctx: as for change(). Returns { changed: 0|1 }.
+   */
+  async function update(db, fb, trail, detail, ctx) {
+    const status = detail && detail.status;
+    if (status !== 'open' && status !== 'closed') throw new Error('Statut invalide.');
+    const mode = status === 'open' && (detail.openMode === 'groomed' || detail.openMode === 'progressive') ? detail.openMode : null;
+    const note = noteText(detail.note);
+    const sameStatus = statusOf(trail) === status;
+    if (sameStatus && (openModeOf(trail) || null) === mode && noteText(trail.note) === note) return { changed: 0 };
+    const rec = recommendationOf(trail);
+    const accepts = !!rec && rec.status === status;
+    const patch = { status, openMode: mode, note: note || null, lastUpdated: fb.firestore.FieldValue.serverTimestamp() };
+    if (trail.recommendation && (!rec || accepts)) patch.recommendation = null;
+    const batch = db.batch();
+    batch.update(db.collection('trails').doc(trail.id), patch);
+    batch.set(db.collection(LOG).doc(), logLine(trail, Object.assign({ action: sameStatus ? 'detail' : 'status', from: statusOf(trail), to: status, decision: accepts ? 'accepted' : null }, modeFields(trail, mode)),
+      Object.assign({}, ctx, { mode: 'individual', scope: null, reason: note }), fb, null));
+    await batch.commit();
+    if (accepts) await markOutcome(db, fb, rec, 'accepted', ctx);
+    return { changed: 1 };
   }
 
   /** Dismisses the recommendation of a trail (the status stays); the line of the log says it was ignored. */
@@ -150,6 +201,6 @@ const StatusService = (() => {
     return { changed: 1 };
   }
 
-  return { LOG, statusOf, recommendationOf, recommendationFrom, outcomeText, change, ignore };
+  return { LOG, NOTE_MAX, statusOf, openModeOf, recommendationOf, recommendationFrom, outcomeText, change, update, ignore };
 })();
 if (typeof window !== 'undefined') window.StatusService = StatusService;
