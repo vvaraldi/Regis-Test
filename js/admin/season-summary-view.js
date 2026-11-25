@@ -181,8 +181,8 @@ const SeasonSummaryView = (function () {
         parts.push(section('Météo', 'À partir des relevés saisis dans l’application Météo.', !W ? unavailable('Les relevés météo') : figures([
           { label: 'Relevés', value: W.readings }, { label: 'Jours avec relevé', value: W.days },
           { label: 'Température la plus basse', value: W.minTemp, unit: ' °C' }, { label: 'Température la plus haute', value: W.maxTemp, unit: ' °C' },
-          { label: 'Neige fraîche cumulée', value: W.newSnowCm, unit: ' cm' }, { label: 'Neige au sol maximale', value: W.maxDepthCm, unit: ' cm' }
-        ]) + '<div class="ssv-section__note">La neige fraîche cumulée additionne, pour chaque jour, le relevé le plus élevé de la journée.</div>'));
+          { label: 'Neige tombée (saison)', value: W.seasonSnowCm, unit: ' cm' }, { label: 'Neige au sol maximale', value: W.maxDepthCm, unit: ' cm' }
+        ]) + '<div class="ssv-section__note">La neige tombée sur la saison est la valeur saisie dans le dernier relevé de la période (elle n’est pas calculée).</div>'));
       }
 
       const M = cur.maintenance;

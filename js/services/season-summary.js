@@ -135,15 +135,15 @@ const SeasonSummary = (function () {
     const rows = input.weather.map(w => ({ at: toDate(w.recordedAt), m: w.manual || {} })).filter(w => inRange(w.at, range));
     const temps = rows.map(w => w.m.tempC).filter(v => typeof v === 'number');
     const depths = rows.map(w => w.m.snowDepthCm).filter(v => typeof v === 'number');
-    // fresh snow: the highest reading of each day, added up (several readings a day must not count the same snow twice)
-    const perDay = {};
-    rows.forEach(w => { if (typeof w.m.newSnowCm === 'number') { const k = w.at.toDateString(); perDay[k] = Math.max(perDay[k] || 0, w.m.newSnowCm); } });
+    // the snow that fell over the season is NOT calculated: it is the value typed in the latest reading of the period that has one (the
+    // Météo form asks for it); a way to calculate it will come later
+    const seasonRow = rows.filter(w => typeof w.m.newSnowSeasonCm === 'number').sort((a, b) => b.at - a.at)[0];
     return {
       readings: rows.length,
       days: new Set(rows.map(w => w.at.toDateString())).size,
       minTemp: temps.length ? Math.min(...temps) : null,
       maxTemp: temps.length ? Math.max(...temps) : null,
-      newSnowCm: Math.round(Object.values(perDay).reduce((s, v) => s + v, 0)),
+      seasonSnowCm: seasonRow ? seasonRow.m.newSnowSeasonCm : null,
       maxDepthCm: depths.length ? Math.max(...depths) : null
     };
   }
@@ -198,7 +198,7 @@ const SeasonSummary = (function () {
       add('closedDays', 'Jours de fermeture (total des sentiers)', s.closures.closedDays, ' j', false);
       add('accepted', 'Recommandations acceptées', s.closures.acceptedPct, ' %');
     }
-    if (s.weather) add('snow', 'Neige fraîche cumulée', s.weather.newSnowCm, ' cm');
+    if (s.weather) add('snow', 'Neige tombée (saison)', s.weather.seasonSnowCm, ' cm');
     if (s.maintenance) {
       add('maintenance', 'Jours d’entretien', s.maintenance.days, '', true);
       add('personDays', 'Jours de travail (total des personnes)', s.maintenance.personDays, '', true);
