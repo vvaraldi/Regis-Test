@@ -43,6 +43,8 @@
     .pl-num { text-align: right; font-weight: 700; color: var(--theme-text-light); font-size: 0.9rem; }
     .pl-name small { color: var(--theme-text-light); margin-left: 0.35rem; }
     .pl-pill { display: inline-flex; align-items: center; gap: 0.35rem; min-width: 5.2rem; justify-content: center; padding: 0.2rem 0.7rem; border-radius: 999px; font-size: 0.82rem; font-weight: 700; color: #fff; }
+    .pl-pill--mode { min-width: 0; max-width: 8.5rem; text-align: center; line-height: 1.15; padding: 0.2rem 0.6rem; }
+    .pl-note { display: block; font-size: 0.78rem; font-style: italic; font-weight: 400; color: var(--theme-text-light); margin-top: 0.05rem; overflow-wrap: anywhere; }
     .pl-pill--open { background: #10b981; }
     .pl-pill--closed { background: #ef4444; }
     .pl-pill--unknown { background: #6b7280; }
@@ -88,6 +90,9 @@
     <!-- Shown when the public file has not been rewritten for a long time (updates paused, or the function is down) -->
     <div class="ps-message ps-message--warn" id="stale-note" hidden></div>
 
+    <!-- How much of the mountain is open: % of the ski surface, Pistes / Parc à neige / Sous-bois / Montées / Remontées / Tapis magique (ski only) -->
+    <section id="mountain-stats" aria-label="État de la montagne" hidden></section>
+
     <div class="ps-legend" id="legend" hidden>
       <span><i class="ps-dot ps-dot--open"></i>Ouvert</span>
       <span><i class="ps-dot ps-dot--closed"></i>Fermé</span>
@@ -110,6 +115,7 @@
   <script src="../js/core/config.js"></script>
   <script src="../js/core/network.js"></script>
   <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/mountain-stats.js"></script>
   <script src="../js/services/weather-public.js"></script>
   <script src="../js/services/status-snapshot.js"></script>
   <script src="../js/core/utils.js"></script>
@@ -139,9 +145,12 @@
       const status = statusOf(t);
       const kind = TrailService.kindOf(t);
       const diff = TrailService.difficultyOf(t) ? TrailService.difficultyLabel(TrailService.difficultyOf(t)) : '';
+      // a downhill trail that is open can be "Ouvert damé" or "Ouverture progressive" (green too: it is open); the comment of the manager goes under the name
+      const mode = TrailService.openModeOf(t), word = mode ? TrailService.statusWord(t) : STATUS_WORD[status];
+      const note = TrailService.noteOf(t);
       return `<div class="pl-row"><span class="pl-num">${esc(TrailService.markerLabel(t))}</span>`
-        + `<span class="pl-name">${esc(t.name || t.id)}${diff && kind !== 'lift' ? `<small>${esc(diff)}</small>` : ''}${where ? `<span class="pl-where">${esc(where)}</span>` : ''}</span>`
-        + `<span class="pl-pill pl-pill--${status}">${STATUS_WORD[status]}</span></div>`;
+        + `<span class="pl-name">${esc(t.name || t.id)}${diff && kind !== 'lift' ? `<small>${esc(diff)}</small>` : ''}${where ? `<span class="pl-where">${esc(where)}</span>` : ''}${note ? `<span class="pl-note">${esc(note)}</span>` : ''}</span>`
+        + `<span class="pl-pill pl-pill--${status}${mode ? ' pl-pill--mode' : ''}">${esc(word)}</span></div>`;
     }
 
     function sectorBox(name, list) {
@@ -189,6 +198,11 @@
           + widePartHtml('Montées', uphill);
       }
       el('sectors').innerHTML = html;
+      // the numbers of the whole mountain, above the list (nothing for the bike activity)
+      const statsHtml = MountainStats.html(MountainStats.compute(allTrails));
+      if (statsHtml) MountainStats.injectStyles();
+      el('mountain-stats').innerHTML = statsHtml;
+      el('mountain-stats').hidden = !statsHtml;
       el('legend').hidden = !allTrails.length;
       const times = allTrails.map(t => t.lastUpdated && t.lastUpdated.toDate ? t.lastUpdated.toDate().getTime() : 0).filter(Boolean);
       el('last-update').textContent = times.length ? formatDateTime(new Date(Math.max(...times))) : '--';
