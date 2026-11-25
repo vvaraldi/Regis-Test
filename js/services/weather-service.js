@@ -403,6 +403,24 @@ const WeatherService = (() => {
   }
 
   /**
+   * A reading as the simple object the public panel draws (WeatherPublic.panelHtml): { locationName, recordedAt (ISO text), measures (every
+   * value, choices as their words), webFields, attribution }. For the administration (the page "À une date"): ALL the values, including the
+   * airport's estimates, which the public document leaves out. Returns null when the reading has no value at all.
+   */
+  function plainReading(record) {
+    const eff = effectiveValues(record);
+    const keys = Object.keys(eff);
+    if (!keys.length) return null;
+    const measures = {};
+    keys.forEach(k => {
+      const f = fieldOf(k);
+      measures[k] = f.type === 'choice' ? (f.choices[eff[k].value] || String(eff[k].value)) : (f.type === 'text' ? wordsOf(f, eff[k].value) : eff[k].value);
+    });
+    const t = ms(record.recordedAt);
+    return { locationName: location(record.locationId).name, recordedAt: new Date(t).toISOString(), measures, webFields: [], attribution: null };
+  }
+
+  /**
    * Rewrites weather_public/latest from the most recent reading that has something publishable (looking at the 20 most
    * recent), or removes it when there is none. Call it after a reading is saved, corrected or deleted.
    * Returns the public document written, or null.
@@ -462,7 +480,7 @@ const WeatherService = (() => {
     COLLECTION, FIELDS, KEYS, TEXT_MAX, CLOUD_COVER, SKY, fieldOf, wordsOf, location,
     format, feelsLike, mapObservation, observationUrl, fetchWebValues, fetchStationValues,
     validateManual, buildRecord, effectiveValues, save, update, remove, list, listDay,
-    publicDocument, publishLatest, dayKey, dailyValues, missingDays
+    publicDocument, plainReading, publishLatest, dayKey, dailyValues, missingDays
   };
 })();
 window.WeatherService = WeatherService;

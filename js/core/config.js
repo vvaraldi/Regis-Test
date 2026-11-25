@@ -360,7 +360,8 @@ const APP_CONFIG = {
       title: 'Régis gère',
       items: [
         { id: 'regis-manage', label: 'Tableau de bord', icon: '🏔️', href: 'pages/regis-manage.html' },
-        { id: 'regis-log', label: 'Gestion', icon: '📋', href: 'pages/regis-log.html' }   // the status log, read only
+        { id: 'regis-log', label: 'Gestion', icon: '📋', href: 'pages/regis-log.html' },   // the status log, read only
+        { id: 'regis-at', label: 'À une date', icon: '🕒', href: 'pages/regis-at.html', admin: true }   // the mountain at any date and hour (administrators)
       ]
     },
     jobs: {

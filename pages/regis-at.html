@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Régis gère : la montagne à une date et une heure données">
+  <meta name="theme-color" content="#0f766e">
+  <title>Régis gère - À une date</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔️</text></svg>">
+  <link rel="stylesheet" href="../css/main.css">
+  <style>
+    .at-controls { display: flex; align-items: center; gap: 0.5rem 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    .at-controls .form-input { width: auto; }
+    .at-title { margin: 0.75rem 0 0.25rem; font-size: 1.15rem; font-weight: 700; }
+    .at-notes { margin: 0 0 0.75rem; padding-left: 1.1rem; font-size: 0.85rem; color: var(--theme-text-secondary); }
+    .at-notes li { margin: 0.1rem 0; }
+    .at-warn { color: #92400e; }
+    .at-weather-note { font-size: 0.85rem; color: var(--theme-text-secondary); margin: 0 0 0.4rem; }
+    .at-empty { padding: 1rem; text-align: center; color: var(--theme-text-secondary); }
+    #at-result[aria-busy="true"] { opacity: 0.5; }
+  </style>
+</head>
+<body data-theme="light" data-module="regis" data-nav="regis" data-page="regis-at">
+  <script src="../js/core/config.js"></script>
+  <script src="../js/core/network.js"></script>
+  <script src="../js/core/layout.js"></script>
+  <div id="loading" class="page-loading"><div class="loading-spinner"></div><p class="loading-text">Chargement...</p></div>
+
+  <main id="main-content" class="main" style="display: none;">
+    <h1 class="sr-only">La montagne à une date</h1>   <!-- the page title for assistive technology -->
+    <section class="content-section">
+      <div class="section-card">
+        <div class="section-card__header"><h2 class="section-card__title">🕒 La montagne à une date</h2></div>
+        <div class="section-card__body">
+          <div class="at-controls">
+            <label class="form-label" for="at-input" style="margin:0;">Date et heure</label>
+            <input type="datetime-local" class="form-input" id="at-input">
+            <button type="button" class="btn btn-primary btn-sm" id="at-show">Afficher</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="at-now">Maintenant</button>
+          </div>
+          <p class="at-weather-note" id="at-hint">Les pistes, montées et remontées ouvertes à ce moment-là et le dernier relevé météo avant, reconstitués à partir du journal des changements.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section" id="at-result" aria-live="polite" hidden>
+      <h2 class="at-title" id="at-title"></h2>
+      <ul class="at-notes" id="at-notes"></ul>
+      <div id="at-stats"></div>
+      <p class="at-weather-note" id="at-weather-note" hidden></p>
+      <div id="at-weather" hidden></div>
+      <div id="at-list"></div>
+      <p class="at-empty" id="at-empty" hidden>Aucun sentier à afficher.</p>
+    </section>
+  </main>
+
+  <div id="status-messages"></div>
+  <script src="../js/core/utils.js"></script>
+  <script src="../js/core/theme.js"></script>
+  <script src="../js/core/ui.js"></script>
+  <script src="../js/core/datetime-field.js"></script>
+  <script src="../js/core/firebase-loader.js"></script>
+  <script src="../js/core/auth.js"></script>
+  <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/sector-service.js"></script>
+  <script src="../js/services/weather-service.js"></script>
+  <script src="../js/services/weather-public.js"></script>
+  <script src="../js/services/mountain-stats.js"></script>
+  <script src="../js/services/status-list-view.js"></script>
+  <script src="../js/services/mountain-at.js"></script>
+  <script>
+    // Régis gère > À une date: the mountain at any date and hour (administrators). What was open then, rebuilt from the status log, the
+    // counts of the public page, and the last weather reading before that moment - drawn like the public list page.
+    // The log lines up to that moment are read (up to LIMIT, newest first), and the first one on record to know where the log starts.
+    // Types, surfaces and sectors are TODAY's (the log does not keep them).
+    const LIMIT = 6000;
+    let trails = [], sectors = [], loadedNetwork = null, token = 0;
+    const el = id => document.getElementById(id);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fmtDay = d => d.toLocaleDateString('fr-CA', { day: 'numeric', month: 'long', year: 'numeric' });
+    const fmtTime = d => d.toLocaleTimeString('fr-CA', { hour: '2-digit', minute: '2-digit' });
+    const pad = n => String(n).padStart(2, '0');
+    function gap(msDiff) {
+      const m = Math.round(Math.abs(msDiff) / 60000);
+      if (m < 60) return `${m} min`;
+      if (m < 2880) return `${Math.floor(m / 60)} h ${pad(m % 60)}`;
+      return `${Math.round(m / 1440)} jours`;
+    }
+    const lineOf = d => ({ id: d.id, ...d.data() });
+
+    /** The trails of the activity (not hidden) and its sectors, read once */
+    async function loadBase() {
+      if (loadedNetwork === Network.current()) return;
+      const snap = await db.collection('trails').where('network', '==', Network.current()).get();
+      trails = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => Network.matches(t) && !TrailService.isArchived(t));
+      sectors = (await SectorService.loadAll(true)).filter(s => s.network === Network.current());
+      loadedNetwork = Network.current();
+    }
+
+    async function loadLog(at) {
+      const TS = firebase.firestore.Timestamp, stamp = TS.fromDate(at);
+      const mine = l => Network.matches(l);
+      const beforeSnap = await db.collection('status_log').where('at', '<=', stamp).orderBy('at', 'desc').limit(LIMIT).get();
+      const before = beforeSnap.docs.map(lineOf).filter(mine);
+      // when some trail has no change up to then, the first change AFTER tells what it started from
+      const seen = new Set(MountainAt.relevant(before).map(l => l.trailId));
+      let after = [];
+      if (trails.some(t => !seen.has(t.id))) {
+        const afterSnap = await db.collection('status_log').where('at', '>', stamp).orderBy('at', 'asc').limit(LIMIT).get();
+        after = afterSnap.docs.map(lineOf).filter(mine);
+      }
+      // where the log starts: the oldest line of this activity
+      const firstSnap = await db.collection('status_log').orderBy('at', 'asc').limit(50).get();
+      const start = MountainAt.firstLine(firstSnap.docs.map(lineOf).filter(mine).concat(before, after));
+      return { before, after, start, truncated: beforeSnap.size >= LIMIT };
+    }
+
+    async function loadWeather(at) {
+      if (!Network.feature('weather')) return null;
+      const snap = await db.collection('weather_records').where('recordedAt', '<=', firebase.firestore.Timestamp.fromDate(at)).orderBy('recordedAt', 'desc').limit(10).get();
+      const place = APP_CONFIG.weather.defaultLocation;
+      const records = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(r => (r.locationId || place) === place);
+      return MountainAt.weatherAt(records, at);
+    }
+
+    function note(text, warn) { return `<li${warn ? ' class="at-warn"' : ''}>${esc(text)}</li>`; }
+
+    async function show(at) {
+      const mine = ++token;
+      el('at-result').hidden = false;
+      el('at-result').setAttribute('aria-busy', 'true');
+      try {
+        await loadBase();
+        const [log, found] = await Promise.all([loadLog(at), loadWeather(at)]);
+        if (mine !== token) return;   // another date was asked meanwhile
+        const rebuilt = MountainAt.reconstruct(trails, log.before, log.after, at);
+        const beforeLog = log.start === null || at < log.start;
+        const notes = [];
+        notes.push(note('Reconstitué à partir du journal des changements de Régis gère. Les types, surfaces et secteurs sont ceux d\'aujourd\'hui.'));
+        if (log.start && at < log.start) notes.push(note(`Le journal commence le ${fmtDay(log.start)} : avant cette date, un sentier jamais modifié ensuite montre son état actuel (indiqué sur sa ligne).`, true));
+        if (log.start === null) notes.push(note('Le journal est vide : tous les états montrés sont les états actuels.', true));
+        if (at.getTime() > Date.now()) notes.push(note('Cette date est dans le futur : c\'est l\'état actuel.', true));
+        if (log.truncated) notes.push(note(`Le journal est très long : seuls les ${LIMIT} changements les plus récents avant cette date ont été lus, des états peuvent manquer.`, true));
+        const unknown = rebuilt.filter(t => TrailService.statusOf(t) === 'unknown').length;
+        if (unknown) notes.push(note(`${unknown} sentier${unknown > 1 ? 's' : ''} sans état connu à ce moment-là.`));
+        el('at-title').textContent = `La montagne le ${fmtDay(at)} à ${fmtTime(at)}`;
+        el('at-notes').innerHTML = notes.join('');
+
+        MountainStats.injectStyles(); StatusListView.injectStyles();
+        el('at-stats').innerHTML = MountainStats.html(MountainStats.compute(rebuilt));
+        el('at-list').innerHTML = StatusListView.html(rebuilt, sectors, { noteFor: t => (t.how === 'current' && beforeLog) ? 'Avant le journal : état actuel' : '' });
+        el('at-empty').hidden = rebuilt.length > 0;
+
+        const plain = found ? WeatherService.plainReading(found.record) : null;
+        const weatherEl = el('at-weather'), weatherNote = el('at-weather-note');
+        if (Network.feature('weather')) {
+          if (plain) {
+            WeatherPublic.injectStyles();
+            weatherEl.innerHTML = WeatherPublic.panelHtml(plain, { icon: Network.seasonIcon(), now: at.getTime() });
+            weatherNote.textContent = `Dernier relevé avant ce moment : ${gap(found.ageMs)} plus tôt.`;
+          } else {
+            weatherEl.innerHTML = '';
+            weatherNote.textContent = 'Aucun relevé météo avant ce moment.';
+          }
+          weatherEl.hidden = !plain; weatherNote.hidden = false;
+        } else { weatherEl.hidden = true; weatherNote.hidden = true; }
+      } catch (e) {
+        console.error('À une date:', e);
+        if (mine === token) showMessage('La montagne à cette date n\'a pas pu être reconstituée : ' + (e.message || e), 'error', 6000);
+      } finally {
+        if (mine === token) el('at-result').removeAttribute('aria-busy');
+      }
+    }
+
+    function askedDate() {
+      const d = DateTimeField.read(el('at-input'));
+      if (!d) { showMessage('Choisissez une date et une heure.', 'warning', 3500); return null; }
+      return d;
+    }
+
+    function initAt() {
+      DateTimeField.init(el('at-input'));
+      const param = new URLSearchParams(location.search).get('at');
+      DateTimeField.set(el('at-input'), (param && DateTimeField.parse(param)) || new Date());
+      el('at-show').addEventListener('click', () => { const d = askedDate(); if (d) show(d); });
+      el('at-input').addEventListener('change', () => { const d = DateTimeField.read(el('at-input')); if (d) show(d); });
+      el('at-input').addEventListener('keydown', e => { if (e.key === 'Enter') { const d = askedDate(); if (d) show(d); } });
+      el('at-now').addEventListener('click', () => { const d = new Date(); DateTimeField.set(el('at-input'), d); show(d); });
+      checkAuthStatus({
+        requireAuth: true,
+        requiredPermission: 'allowRegis',
+        requiredRoles: ['admin', 'system_admin'],   // administrators only (the tab is hidden for the others too)
+        permissionDefault: false,
+        onAuthenticated: () => { const d = DateTimeField.read(el('at-input')); if (d) show(d); }
+      });
+    }
+
+    onFirebaseReady(initAt);
+  </script>
+</body>
+</html>
