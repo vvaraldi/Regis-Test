@@ -309,6 +309,34 @@
     .cal-map img { display: block; width: auto; height: auto; max-width: none; }
     .cal-map svg { position: absolute; left: 0; top: 0; pointer-events: none; }
 
+    /* Santé tab: one card per check, coloured by its state */
+    .sh-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+    .sh-head__side { display: flex; align-items: center; gap: 0.75rem; }
+    .sh-when { font-size: 0.8rem; color: var(--theme-text-secondary); }
+    .sh-summary:empty { display: none; }
+    .sh-summary { padding: 0.65rem 0.9rem; border-radius: var(--radius-md); font-weight: 600; margin-bottom: var(--space-md); }
+    .sh-summary--ok { background: rgba(22,163,74,0.15); color: #166534; }
+    .sh-summary--warn { background: rgba(245,158,11,0.2); color: #92400e; }
+    .sh-summary--bad { background: rgba(220,38,38,0.15); color: #991b1b; }
+    [data-theme="dark"] .sh-summary--ok { color: #86efac; }
+    [data-theme="dark"] .sh-summary--warn { color: #fcd34d; }
+    [data-theme="dark"] .sh-summary--bad { color: #fca5a5; }
+    .sh-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: var(--space-md); }
+    .sh-card { border: 1px solid var(--theme-border); border-top: 4px solid #9ca3af; border-radius: var(--radius-md); padding: 0.75rem 0.9rem; background: var(--theme-surface); }
+    .sh-card--ok { border-top-color: #16a34a; }
+    .sh-card--warn { border-top-color: #f59e0b; }
+    .sh-card--bad { border-top-color: #dc2626; }
+    .sh-card__head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+    .sh-card__title { margin: 0; font-size: 0.95rem; }
+    .sh-pill { font-size: 0.72rem; font-weight: 700; border-radius: 999px; padding: 0.1rem 0.55rem; white-space: nowrap; color: #fff; background: #6b7280; }
+    .sh-pill--ok { background: #15803d; }
+    .sh-pill--warn { background: #b45309; }
+    .sh-pill--bad { background: #b91c1c; }
+    .sh-card__big { font-size: 1.25rem; font-weight: 700; margin: 0.35rem 0 0.2rem; }
+    .sh-card__line { font-size: 0.8rem; color: var(--theme-text-secondary); overflow-wrap: anywhere; }
+    .sh-card__link { display: inline-block; margin-top: 0.4rem; font-size: 0.85rem; }
+    .sh-legend { font-size: 0.8rem; color: var(--theme-text-secondary); margin: var(--space-md) 0 0; }
+
     /* Sentiers tab: the trail list, the editor and the markers on the map */
     .trail-table-wrap { overflow-x: auto; margin-bottom: var(--space-md); }
     .trail-table { width: 100%; border-collapse: collapse; }
@@ -384,6 +412,9 @@
       </button>
       <button class="admin-tabs__btn" data-tab="publication" id="publication-tab-btn" onclick="switchTab('publication')" style="display: none;">
         🌐 Statut public
+      </button>
+      <button class="admin-tabs__btn" data-tab="health" id="health-tab-btn" onclick="switchTab('health')" style="display: none;">
+        🩺 Santé
       </button>
       <button class="admin-tabs__btn" data-tab="station" id="station-tab-btn" onclick="switchTab('station')" style="display: none;">
         🌦️ Station météo
@@ -1125,6 +1156,21 @@
         </p>
       </div>
     </div>
+    <!-- TAB: SYSTEM HEALTH (system admin): is everything working? Filled by js/admin/system-health-admin.js when the tab is opened -->
+    <div class="admin-tab-content" id="health-tab">
+      <div class="section-card">
+        <div class="section-card__header sh-head">
+          <h3 class="section-card__title">🩺 Santé du système</h3>
+          <div class="sh-head__side"><span class="sh-when" id="sh-when"></span><button type="button" class="btn btn-secondary btn-sm" id="sh-refresh">Actualiser</button></div>
+        </div>
+        <div class="section-card__body">
+          <div class="sh-summary" id="sh-summary" aria-live="polite"></div>
+          <div class="sh-cards" id="sh-cards"></div>
+          <p class="sh-legend">Vert = normal · orange = à surveiller · rouge = à corriger. Ce tableau ne prévient personne : gardez les alertes par courriel de la sauvegarde et de la page publique.</p>
+        </div>
+      </div>
+    </div>
+
     <!-- TAB: WEATHER STATION (system admin): the connection to the Davis station of the mountain - content to come -->
     <div class="admin-tab-content" id="station-tab">
       <div class="data-export-section">
@@ -1322,6 +1368,8 @@
   <script src="../js/admin/season-summary-view.js"></script>
   <script src="../js/services/status-snapshot.js"></script>
   <script src="../js/admin/public-status-admin.js"></script>
+  <script src="../js/services/system-health.js"></script>
+  <script src="../js/admin/system-health-admin.js"></script>
   <!-- QR code drawing for the "Liens et astuces" tab (qrcode-generator 1.4.4, MIT, bundled) -->
   <script src="../js/vendor/qrcode.js"></script>
 
@@ -1362,8 +1410,8 @@
     // TAB NAVIGATION
     // ========================================
     
-    // Sentiers, Cartes, Données and Statut public are for the system admin only (the others never see these tabs)
-    const SYSTEM_ADMIN_TABS = ['trails', 'maps', 'data', 'publication', 'station'];
+    // Sentiers, Cartes, Données, Statut public and Santé are for the system admin only (the others never see these tabs)
+    const SYSTEM_ADMIN_TABS = ['trails', 'maps', 'data', 'publication', 'health', 'station'];
 
     function switchTab(tabName) {
       if (SYSTEM_ADMIN_TABS.includes(tabName) && !isCurrentUserSystemAdmin) return;
@@ -2712,6 +2760,7 @@ Marie Tremblay,marie.tremblay@example.com,MotDePasse456,admin,,true,true,true,fa
             TrailAdmin.init(currentUser.uid, myNetworks());
             MapCalibration.init(currentUser.uid);
             PublicStatusAdmin.init(currentUser.uid);
+            SystemHealthAdmin.init();
           }
           // Volunteers (bike network only): shown to a system admin or an admin who works in bike
           const bikeAdmin = isCurrentUserSystemAdmin || myNetworks().includes('bike');

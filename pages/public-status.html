@@ -43,8 +43,15 @@
     .ps-legend { display: flex; gap: 1.25rem; flex-wrap: wrap; padding: 0.6rem 0.25rem 0; font-size: 0.8rem; color: var(--theme-text-light); }
     .ps-legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
 
-    /* Tap/hover label on a marker (phones have no hover, so the title attribute is not enough) */
-    .ps-tip { position: absolute; transform: translate(-50%, calc(-100% - 22px)); background: var(--theme-surface); color: var(--theme-text); border: 1px solid var(--theme-border); border-radius: 8px; padding: 0.35rem 0.6rem; font-size: 0.8rem; font-weight: 600; white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.25); z-index: 10; pointer-events: none; }
+    /* The card of a trail: on mouse-over, or by tapping its marker (phones have no mouse-over) */
+    .ps-card { position: absolute; min-width: 12rem; max-width: 17rem; background: var(--theme-surface); color: var(--theme-text); border: 1px solid var(--theme-border); border-radius: 10px; padding: 0.55rem 0.75rem; box-shadow: 0 4px 14px rgba(0,0,0,0.28); z-index: 10; pointer-events: none; text-align: left; }
+    .ps-card__name { font-weight: 700; font-size: 0.9rem; }
+    .ps-card__meta { font-size: 0.75rem; color: var(--theme-text-light); margin: 0.1rem 0 0.35rem; }
+    .ps-card__state { display: inline-block; font-size: 0.78rem; font-weight: 700; color: #fff; border-radius: 999px; padding: 0.1rem 0.6rem; }
+    .ps-card__state--open { background: #047857; }
+    .ps-card__state--closed { background: #b91c1c; }
+    .ps-card__state--unknown { background: #4b5563; }
+    .ps-card__note { font-size: 0.8rem; font-style: italic; margin-top: 0.35rem; overflow-wrap: anywhere; }
 
     .ps-message { padding: 1rem; text-align: center; color: var(--theme-text-light); }
     .ps-message--error { color: #dc2626; }
@@ -81,6 +88,9 @@
     <!-- Shown when the public file has not been rewritten for a long time (updates paused, or the function is down) -->
     <div class="ps-message ps-message--warn" id="stale-note" hidden></div>
 
+    <!-- How much of the mountain is open, as on the list page: % of the ski surface and open / total by kind (ski only) -->
+    <section id="mountain-stats" aria-label="État de la montagne" hidden></section>
+
     <div class="ps-map">
       <div class="ps-map__wrapper" id="map-wrapper">
         <img alt="Carte des sentiers du Mont Orford" id="map-image"><!-- src set for the season's activity -->
@@ -109,6 +119,7 @@
   <script src="../js/core/network.js"></script>
   <script src="../js/services/map-service.js"></script>
   <script src="../js/services/trail-service.js"></script>
+  <script src="../js/services/mountain-stats.js"></script>
   <script src="../js/services/weather-public.js"></script>
   <script src="../js/services/status-snapshot.js"></script>
   <script src="../js/core/utils.js"></script>
@@ -116,6 +127,9 @@
 
   <script>
     let rawTrails = []; // this activity's inspected trails, every kind together
+    let allTrails = []; // every trail AND lift of the activity (hidden ones left out): what the numbers above the map count
+    let allSectors = []; // { id, name, aliases }: the card of a trail names its sector
+    let pinnedId = null; // the trail whose card was opened by a tap or a click: it stays, also through the refresh of every minute
     let trails = [];    // rawTrails filtered to currentKind: what is actually drawn
     let currentKind = null; // which inspectionKind the map shows (null = the activity has only one)
     let mapSize = null; // natural size of the map image; marker coordinates are pixels on it
@@ -132,11 +146,20 @@
 
       renderMarkers(sorted);
       renderLastUpdate(sorted);
+      renderStats();
+    }
+
+    /** The numbers of the whole mountain (every kind and the lifts, whatever map is shown); nothing for the bike activity */
+    function renderStats() {
+      const html = MountainStats.html(MountainStats.compute(allTrails));
+      if (html) MountainStats.injectStyles();
+      el('mountain-stats').innerHTML = html;
+      el('mountain-stats').hidden = !html;
     }
 
     function renderMarkers(list) {
       const wrapper = el('map-wrapper');
-      hideTip();
+      hideCard();
       wrapper.querySelectorAll('.ps-marker').forEach(m => m.remove());
       if (!mapSize) return; // drawn once the image has loaded
 
@@ -151,10 +174,20 @@
         marker.textContent = numberOf(trail);
         marker.style.left = `${(pos.left / mapSize.width) * 100}%`;
         marker.style.top = `${(pos.top / mapSize.height) * 100}%`;
-        marker.title = `${trail.name || numberOf(trail)} - ${TrailService.statusText(status)}`;
-        marker.setAttribute('aria-label', marker.title);
-        marker.addEventListener('click', () => showTip(marker));
+        marker.dataset.id = trail.id;
+        // the card replaces the browser's own tooltip (no title attribute); screen readers get the name and the state from the label
+        marker.setAttribute('aria-label', `${trail.name || numberOf(trail)} - ${TrailService.statusWord(trail)}${TrailService.noteOf(trail) ? ' - ' + TrailService.noteOf(trail) : ''}`);
+        marker.addEventListener('mouseenter', () => showCard(marker, trail));
+        marker.addEventListener('mouseleave', () => leaveCard());
+        marker.addEventListener('focus', () => showCard(marker, trail));
+        marker.addEventListener('blur', () => leaveCard());
+        marker.addEventListener('click', () => {
+          if (pinnedId === trail.id) { pinnedId = null; hideCard(); return; }
+          pinnedId = trail.id;
+          showCard(marker, trail);
+        });
         wrapper.appendChild(marker);
+        if (pinnedId === trail.id) showCard(marker, trail);
       });
     }
 
@@ -165,19 +198,42 @@
       el('last-update').textContent = times.length ? formatDateTime(new Date(Math.max(...times))) : '--';
     }
 
-    function hideTip() {
-      document.querySelectorAll('.ps-tip').forEach(t => t.remove());
+    const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    function hideCard() {
+      document.querySelectorAll('.ps-card').forEach(c => c.remove());
     }
 
-    // Label above a tapped marker: "name : status" (the marker's title already holds that text)
-    function showTip(marker) {
-      hideTip();
-      const tip = document.createElement('div');
-      tip.className = 'ps-tip';
-      tip.textContent = marker.title.replace(' - ', ' : ');
-      tip.style.left = marker.style.left;
-      tip.style.top = marker.style.top;
-      el('map-wrapper').appendChild(tip);
+    /** The mouse or the focus left a marker: back to the card that was pinned, if any */
+    function leaveCard() {
+      hideCard();
+      const marker = pinnedId && [...document.querySelectorAll('.ps-marker')].find(m => m.dataset.id === pinnedId);
+      const trail = pinnedId && trails.find(t => t.id === pinnedId);
+      if (marker && trail) showCard(marker, trail);
+    }
+
+    // Name, what it is (type, difficulty, sector), the exact state ("Ouvert damé"...) and the manager's comment
+    function showCard(marker, trail) {
+      hideCard();
+      const sector = trail.sector && (allSectors.find(s => s.id === trail.sector) || allSectors.find(s => (s.aliases || []).includes(trail.sector)));
+      const difficulty = TrailService.difficultyOf(trail) ? TrailService.difficultyLabel(TrailService.difficultyOf(trail)) : '';
+      const meta = [TrailService.typeLabel(trail), difficulty, sector ? sector.name : ''].filter(Boolean).join(' · ');
+      const note = TrailService.noteOf(trail);
+      const card = document.createElement('div');
+      card.className = 'ps-card';
+      card.setAttribute('role', 'tooltip');
+      card.innerHTML = `<div class="ps-card__name">${esc(numberOf(trail))} · ${esc(trail.name || numberOf(trail))}</div>`
+        + (meta ? `<div class="ps-card__meta">${esc(meta)}</div>` : '')
+        + `<span class="ps-card__state ps-card__state--${statusOf(trail)}">${esc(TrailService.statusWord(trail))}</span>`
+        + (note ? `<div class="ps-card__note">${esc(note)}</div>` : '');
+      const wrapper = el('map-wrapper'), view = wrapper.parentElement;
+      wrapper.appendChild(card);
+      // above the marker (below when there is no room), and inside the part of the map that is on screen (it scrolls sideways on a phone)
+      const x = marker.offsetLeft, y = marker.offsetTop, w = card.offsetWidth, h = card.offsetHeight;
+      const left = Math.max(view.scrollLeft + 4, Math.min(x - w / 2, view.scrollLeft + view.clientWidth - w - 4));
+      const top = y - h - 20 >= 4 ? y - h - 20 : y + 20;
+      card.style.left = left + 'px';
+      card.style.top = top + 'px';
     }
 
     // Small toggle at the bottom: preview another activity's page without waiting for the season to
@@ -232,6 +288,7 @@
     function switchKind(kind) {
       if (kind === currentKind) return;
       currentKind = kind;
+      pinnedId = null;
       renderKindToggle();
       updateTitle();
       mapSize = null;
@@ -291,7 +348,9 @@
 
     function applySnapshot(snapshot) {
       // The season's activity only, every inspected kind together (render() then keeps currentKind's)
-      rawTrails = snapshot.trails.filter(t => Network.matches(t) && TrailService.isActive(t));
+      allTrails = snapshot.trails.filter(t => Network.matches(t) && t.archived !== true);
+      allSectors = snapshot.sectors || [];
+      rawTrails = allTrails.filter(t => TrailService.isActive(t));
       lastWeather = snapshot.weather;
       if (snapshot.generatedAt) {
         el('data-checked').textContent = formatDateTime(snapshot.generatedAt);
@@ -364,7 +423,8 @@
           return;
         }
         // The season's activity only, every inspected kind together (render() then keeps currentKind's)
-        rawTrails = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(t => Network.matches(t) && TrailService.isActive(t));
+        allTrails = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(t => Network.matches(t) && t.archived !== true);
+        rawTrails = allTrails.filter(t => TrailService.isActive(t));
         el('loading').hidden = true;
         el('error').hidden = true;
         render();
@@ -417,8 +477,9 @@
       document.addEventListener('themeChanged', syncThemeBtn);
       syncThemeBtn();
 
-      // Tapping anywhere but a marker closes the label
-      document.addEventListener('click', e => { if (!e.target.closest('.ps-marker')) hideTip(); });
+      // Tapping anywhere but a marker (or Escape) closes the card
+      document.addEventListener('click', e => { if (!e.target.closest('.ps-marker')) { pinnedId = null; hideCard(); } });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') { pinnedId = null; hideCard(); } });
 
       watchMapImage();
       startData().catch(error => {
