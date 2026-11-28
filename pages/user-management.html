@@ -1041,7 +1041,21 @@
             <input type="checkbox" id="export-meteo" checked>
             <div class="export-option-label">
               <span class="export-option-name">🌦️ Météo</span>
-              <span class="export-option-desc">weather_records (CSV : une ligne par relevé, valeurs saisies et valeurs du web; hiver et été, sans filtre d'activité)</span>
+              <span class="export-option-desc">weather_records (CSV : une ligne par relevé, valeurs saisies et valeurs du web, en mots; hiver et été, sans filtre d'activité)</span>
+            </div>
+          </label>
+          <label class="export-option">
+            <input type="checkbox" id="export-trails" checked>
+            <div class="export-option-label">
+              <span class="export-option-name">🧭 Sentiers et remontées</span>
+              <span class="export-option-desc">trails : l'état actuel (catégorie, difficulté, longueur, surface, statut, commentaire), sentiers masqués compris, sans filtre de date</span>
+            </div>
+          </label>
+          <label class="export-option">
+            <input type="checkbox" id="export-status-log" checked>
+            <div class="export-option-label">
+              <span class="export-option-name">📋 Journal des statuts</span>
+              <span class="export-option-desc">status_log : qui a ouvert ou fermé quoi, quand et comment, depuis la date de début (permission Régis gère nécessaire)</span>
             </div>
           </label>
         </div>
@@ -2244,6 +2258,42 @@
       }));
     }
 
+    // A stored weather value as the CSV shows it: the words of a choice (and of a reading saved when the snow words were lists), numbers as they are
+    function weatherWord(key, value) {
+      if (value === null || value === undefined || value === '') return '';
+      const f = WeatherService.fieldOf(key);
+      if (f.type === 'choice') return f.choices[value] || value;
+      if (f.type === 'text') return WeatherService.wordsOf(f, value);
+      return value;
+    }
+
+    // CSV of the trails and lifts as they are now: one row each, in words
+    function trailsCsvRows(trails) {
+      return trails.map(t => ({
+        id: t.id, network: t.network || '', number: t.number != null ? t.number : '', name: t.name || '', sector: t.sectorName || '',
+        kind: TrailService.kindLabel(TrailService.kindOf(t)), category: TrailService.typeLabel(t),
+        difficulty: TrailService.difficultyLabel(TrailService.difficultyOf(t)), lengthKm: t.length != null ? t.length : '',
+        surfaceAcres: TrailService.kindOf(t) === 'downhill' ? TrailService.surfaceOf(t) : '',
+        status: TrailService.statusWord(t), comment: TrailService.noteOf(t), hidden: t.archived === true ? 'Oui' : 'Non', lastUpdated: t.lastUpdated || ''
+      }));
+    }
+
+    // CSV of the status log: one row per change (or ignored recommendation), in words
+    function statusLogCsvRows(lines) {
+      const word = (status, mode) => (mode && APP_CONFIG.openModes[mode]) ? APP_CONFIG.openModes[mode].label : TrailService.statusText(status);
+      const actions = { status: 'Statut', detail: 'Damé, ouverture progressive ou commentaire', ignore: 'Recommandation ignorée' };
+      const modes = { individual: 'Un sentier', sector: 'Un secteur', mountain: 'Toute la montagne' };
+      const apps = { regis: 'Régis gère', meteo: 'Remontées & Météo' };
+      return lines.map(l => ({
+        id: l.id, network: l.network || '', date: l.at || '', number: l.trailNumber != null ? l.trailNumber : '', trail: l.trailName || l.trailId || '',
+        kind: l.kind ? TrailService.kindLabel(l.kind) : '', sector: l.sectorName || '', change: actions[l.action] || l.action || '',
+        before: word(l.from, l.fromOpenMode), after: word(l.to, l.openMode), comment: l.reason || '',
+        how: modes[l.mode] || l.mode || '', scope: l.scope || '', app: apps[l.app] || l.app || '', by: l.byName || '',
+        recommended: l.recommended ? (l.recommended === 'open' ? 'Ouvrir' : 'Fermer') : '',
+        decision: l.decision === 'accepted' ? 'acceptée' : (l.decision === 'ignored' ? 'ignorée' : '')
+      }));
+    }
+
     // CSV of the weather readings: one row per reading; for each measure the typed value (<mesure>) and the one read
     // from Environment Canada (<mesure>_web); who entered it and when. JSON keeps the readings as stored.
     function weatherCsvRows(readings) {
@@ -2254,8 +2304,8 @@
           comment: r.comment || '', createdAt: r.createdAt, modifiedAt: r.modifiedAt
         };
         WeatherService.KEYS.forEach(k => {
-          row[k] = r.manual && r.manual[k] !== null && r.manual[k] !== undefined ? r.manual[k] : '';
-          row[`${k}_web`] = r.web && r.web.fields && r.web.fields[k] ? r.web.fields[k].value : '';
+          row[k] = weatherWord(k, r.manual && r.manual[k]);
+          row[`${k}_web`] = weatherWord(k, r.web && r.web.fields && r.web.fields[k] && r.web.fields[k].value);
         });
         row.webFetchedAt = r.web ? r.web.fetchedAt || '' : '';
         return row;
@@ -2273,10 +2323,12 @@
         signalisation: document.getElementById('export-signalisations').checked,
         maintenance: document.getElementById('export-maintenance').checked,
         meteo: document.getElementById('export-meteo').checked,
-        jobs: document.getElementById('export-jobs').checked
+        jobs: document.getElementById('export-jobs').checked,
+        trails: document.getElementById('export-trails').checked,
+        statusLog: document.getElementById('export-status-log').checked
       };
 
-      if (!opts.trail && !opts.shelter && !opts.infraction && !opts.signalisation && !opts.maintenance && !opts.meteo && !opts.jobs) {
+      if (!Object.values(opts).some(Boolean)) {
         showExportStatus('Sélectionnez au moins un type de données.', 'error');
         return;
       }
@@ -2304,6 +2356,7 @@
           exportPeriod: { from: formatExportDate(startDate), to: formatExportDate(new Date()) },
           summary: {}
         };
+        const notExported = [];   // what could not be read: said at the end, never passed over in silence
 
         // Load inspectors for name resolution
         const inspectorsSnapshot = await db.collection('inspectors').get();
@@ -2405,6 +2458,39 @@
           } catch(e) { exportResult.weatherRecords = []; exportResult.summary.weatherRecordsCount = 0; }
         }
 
+        if (opts.trails) {
+          showExportStatus('Chargement sentiers...', 'info');
+          try {
+            // every trail and lift of the chosen activity, hidden ones included, as it is now (no date filter)
+            const sectors = await SectorService.loadAll(true);
+            const snap = await db.collection('trails').get();
+            const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(inNetwork)
+              .sort((a, b) => String(a.network).localeCompare(String(b.network)) || TrailService.kindOf(a).localeCompare(TrailService.kindOf(b)) || TrailService.compare(a, b))
+              .map(trail => {
+                const sector = SectorService.find(sectors, trail.sector);
+                const out = Object.assign(formatDocumentDates(trail), { sectorName: sector ? sector.name : '' });
+                if (trail.recommendation) out.recommendation = Object.assign({}, trail.recommendation, { at: formatExportDate(trail.recommendation.at) });
+                return out;
+              });
+            exportResult.trails = data;
+            exportResult.summary.trailsCount = data.length;
+          } catch(e) { console.error('Export des sentiers:', e); exportResult.trails = []; exportResult.summary.trailsCount = 0; notExported.push('sentiers et remontées (' + (e.message || e) + ')'); }
+        }
+
+        if (opts.statusLog) {
+          showExportStatus('Chargement journal des statuts...', 'info');
+          try {
+            const snap = await db.collection('status_log').where('at', '>=', startTimestamp).orderBy('at', 'desc').get();
+            const data = snap.docs.map(doc => ({ id: doc.id, ...formatDocumentDates(doc.data()) })).filter(inNetwork);
+            exportResult.statusLog = data;
+            exportResult.summary.statusLogCount = data.length;
+          } catch(e) {
+            console.error('Export du journal des statuts:', e);
+            exportResult.statusLog = []; exportResult.summary.statusLogCount = 0;
+            notExported.push(e && e.code === 'permission-denied' ? 'journal des statuts (il faut la permission « Régis gère »)' : 'journal des statuts (' + (e.message || e) + ')');
+          }
+        }
+
         const fromStr = startDate.toISOString().split('T')[0];
         const toStr = new Date().toISOString().split('T')[0];
         const baseName = `Orford_Live-Export-${fromStr}-to-${toStr}`;
@@ -2417,14 +2503,17 @@
             { key: 'signalisations', label: 'Signalisations' },
             { key: 'maintenanceLogs', label: 'Entretien', rows: maintenanceCsvRows },
             { key: 'jobs', label: 'Jobs', rows: jobsCsvRows },
-            { key: 'weatherRecords', label: 'Meteo', rows: weatherCsvRows }
+            { key: 'weatherRecords', label: 'Meteo', rows: weatherCsvRows },
+            { key: 'trails', label: 'Sentiers', rows: trailsCsvRows },
+            { key: 'statusLog', label: 'Journal-Statuts', rows: statusLogCsvRows }
           ];
-          types.forEach((t, i) => {
+          let sent = 0;   // the downloads are spaced half a second apart (browsers refuse a burst); only the files really written count
+          types.forEach(t => {
             const records = t.rows ? t.rows(exportResult[t.key] || []) : exportResult[t.key];
             if (!records || !records.length) return;
             const headers = [...new Set(records.flatMap(Object.keys))];
             const csv = '\uFEFF' + [headers.join(','), ...records.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
-            setTimeout(() => downloadFile(csv, `${baseName}_${t.label}.csv`, 'text/csv;charset=utf-8'), i * 500);
+            setTimeout(() => downloadFile(csv, `${baseName}_${t.label}.csv`, 'text/csv;charset=utf-8'), sent++ * 500);
           });
         } else {
           downloadFile(JSON.stringify(exportResult, null, 2), `${baseName}.json`, 'application/json');
@@ -2432,8 +2521,10 @@
 
         const total = (exportResult.summary.trailInspectionsCount || 0) + (exportResult.summary.shelterInspectionsCount || 0) + 
                       (exportResult.summary.infractionsCount || 0) + (exportResult.summary.signalisationsCount || 0) +
-                      (exportResult.summary.maintenanceLogsCount || 0) + (exportResult.summary.weatherRecordsCount || 0) + (exportResult.summary.jobsCount || 0);
-        showExportStatus(`✓ Export réussi! ${total} enregistrements.`, 'success');
+                      (exportResult.summary.maintenanceLogsCount || 0) + (exportResult.summary.weatherRecordsCount || 0) + (exportResult.summary.jobsCount || 0) +
+                      (exportResult.summary.trailsCount || 0) + (exportResult.summary.statusLogCount || 0);
+        if (notExported.length) showExportStatus(`Export fait avec ${total} enregistrements, mais NON exporté : ${notExported.join(', ')}.`, 'error');
+        else showExportStatus(`✓ Export réussi! ${total} enregistrements.`, 'success');
 
       } catch (error) {
         console.error('Export error:', error);
