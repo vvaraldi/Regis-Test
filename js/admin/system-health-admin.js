@@ -18,6 +18,7 @@ const SystemHealthAdmin = (() => {
     el('sh-cards').innerHTML = result.cards.map(c => `<div class="sh-card sh-card--${c.state}" data-card="${c.id}">
       <div class="sh-card__head"><h4 class="sh-card__title">${esc(c.title)}</h4><span class="sh-pill sh-pill--${c.state}">${WORD[c.state]}</span></div>
       <div class="sh-card__big">${esc(c.headline)}</div>
+      ${Number.isFinite(c.bar) ? `<div class="sh-bar" role="img" aria-label="${c.bar} % utilisé"><i style="width:${c.bar}%"></i></div>` : ''}
       ${c.lines.map(l => `<div class="sh-card__line">${esc(l)}</div>`).join('')}
       ${c.link ? `<a class="sh-card__link" href="${esc(c.link.href)}" target="_blank" rel="noopener">${esc(c.link.text)}</a>` : ''}
     </div>`).join('');
