@@ -77,7 +77,7 @@ const SystemHealth = (() => {
     const title = 'Courriels du support';
     if (enabled === false) return card('mail', title, 'none', 'Désactivés', ['Support > bas de page > Courriels du support.']);
     const events = ((doc && doc.events) || []).slice().sort((a, b) => ms(a.at) - ms(b.at));
-    if (!events.length) return card('mail', title, 'none', 'Aucun envoi enregistré', ['Les envois sont comptés une fois la fonction des courriels redéployée.']);
+    if (!events.length) return card('mail', title, 'none', 'Aucun envoi enregistré', ['La carte se remplit au premier courriel envoyé.']);
     const sent = events.filter(e => e.ok).length, failed = events.filter(e => !e.ok);
     const recent = failed.filter(e => now.getTime() - ms(e.at) <= MAIL_RECENT_DAYS * 86400000);
     const lastFail = failed[failed.length - 1];

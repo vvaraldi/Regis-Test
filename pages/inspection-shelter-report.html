@@ -384,10 +384,12 @@
         
         // Upload photos if any
         if (selectedFiles.length > 0) {
-          setFormLoading(true, 'Extraction des métadonnées et téléversement...');
+          setFormLoading(true, 'Préparation des photos...');
           const inspectionId = Date.now();
-          formData.photos = await Promise.all(selectedFiles.map(async (f, i) => {
-            // Extract GPS coordinates from EXIF
+          const prepared = [];
+          // one photo at a time: ten large pictures opened together are too much for a phone
+          for (const f of selectedFiles) {
+            // GPS coordinates and capture time are read from the ORIGINAL: the reduced picture carries none
             let coordinates = null;
             let timestamp = null;
             try {
@@ -397,10 +399,13 @@
                 timestamp = extractTimestampFromExif(exifData);
               }
             } catch (e) { console.warn('EXIF extraction failed:', e); }
-            
-            // Upload to storage
+            prepared.push({ f, coordinates, timestamp, body: await PhotoService.shrink(f, 'inspection-shelter') });
+          }
+
+          setFormLoading(true, 'Téléversement des photos...');
+          formData.photos = await Promise.all(prepared.map(async ({ f, coordinates, timestamp, body }, i) => {
             const ref = storage.ref(`inspections/shelters/${inspectionId}/${i}-${f.name}`);
-            const snap = await ref.put(f);
+            const snap = await ref.put(body);
             return { url: await snap.ref.getDownloadURL(), filename: f.name, coordinates, timestamp };
           }));
         }

@@ -245,6 +245,15 @@
     return compressImage(file, rule.quality, rule.maxWidth);
   }
 
+  /**
+   * What to upload for a photo of a module: reduced by the module's rule, or the original when it is small enough,
+   * cannot be read by this browser, or would not get smaller. Read the EXIF from the original, before or after.
+   */
+  async function shrink(file, moduleName) {
+    var out = await maybeCompress(file, profileFor(moduleName).compress);
+    return out.size < file.size ? out : file;
+  }
+
   // ─── Hand-set location ─────────────────────────────────────────────────────
   //
   // An admin or the owner of a record can place a photo on the map (or correct its GPS position).
@@ -723,6 +732,7 @@
     extractTimestampFromExif: extractTimestampFromExif,
     // writing
     compressImage: compressImage,
+    shrink: shrink,
     uploadFiles: uploadFiles,
     uploadFromPicker: uploadFromPicker,
     // deleting
